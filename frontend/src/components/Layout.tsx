@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import {
   AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemIcon,
-  ListItemText, Box, IconButton, Divider, Chip, useMediaQuery, useTheme,
-  ToggleButtonGroup, ToggleButton
+  ListItemText, Box, IconButton, Divider, Chip, useMediaQuery, useTheme
 } from '@mui/material';
 import {
   Menu as MenuIcon, Dashboard, Business, Engineering, CleaningServices,
-  Assignment, Build, Person, Logout, Home, WorkOutline, Schedule,
-  AccountBalance, Payment, Settings, Language
+  Assignment, Build, Logout, Home, WorkOutline, Schedule,
+  AccountBalance, Payment, Settings
 } from '@mui/icons-material';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -46,25 +45,7 @@ const Layout: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { t, i18n } = useTranslation();
-
-  const handleLanguageChange = (_: React.MouseEvent<HTMLElement>, newLang: string | null) => {
-    if (newLang) {
-      i18n.changeLanguage(newLang);
-      localStorage.setItem('lang', newLang);
-      // Best-effort save to server; don't block UI
-      try {
-        const token = localStorage.getItem('token');
-        if (token) {
-          fetch('/api/users/me/language', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ language: newLang }),
-          }).catch(() => {});
-        }
-      } catch { /* ignore */ }
-    }
-  };
+  const { t } = useTranslation();
 
   const visibleItems = navItems.filter(item => hasAnyRole(...item.roles));
 
@@ -120,18 +101,6 @@ const Layout: React.FC = () => {
           <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
             {t('app.title')}
           </Typography>
-          {/* Language Switcher */}
-          <ToggleButtonGroup
-            value={i18n.language}
-            exclusive
-            onChange={handleLanguageChange}
-            size="small"
-            sx={{ mr: 2, '& .MuiToggleButton-root': { color: 'white', borderColor: 'rgba(255,255,255,0.4)', px: 1.5, py: 0.3, fontSize: '0.8rem' }, '& .Mui-selected': { bgcolor: 'rgba(255,255,255,0.2) !important', color: 'white !important' } }}
-          >
-            <ToggleButton value="he">{t('app.hebrew')}</ToggleButton>
-            <ToggleButton value="en">{t('app.english')}</ToggleButton>
-          </ToggleButtonGroup>
-          <Typography variant="body2" sx={{ mr: 1 }}>{user?.email}</Typography>
         </Toolbar>
       </AppBar>
 
