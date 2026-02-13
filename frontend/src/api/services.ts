@@ -1,0 +1,162 @@
+import apiClient from './client';
+import type {
+  LoginRequest, LoginResponse, BuildingDto, UnitDto, VendorDto,
+  AssetDto, PreventivePlanDto, ServiceRequestDto, WorkOrderDto,
+  CleaningPlanDto, GenerateJobResponse, JobRunLogDto, WorkOrderNoteDto,
+  AttachmentDto, HOAFeePlanDto, UnitChargeDto, PaymentMethodDto,
+  PaymentDto, CollectionStatusReport, AgingReport,
+  PaymentProviderConfigDto, PaymentSessionResponse, TokenizationResponse
+} from '../types';
+
+// Auth
+export const authApi = {
+  login: (data: LoginRequest) => apiClient.post<LoginResponse>('/api/auth/login', data),
+  refresh: (refreshToken: string) => apiClient.post<LoginResponse>('/api/auth/refresh', { refreshToken }),
+  logout: (refreshToken?: string) => apiClient.post('/api/auth/logout', { refreshToken }),
+  me: () => apiClient.get('/api/auth/me'),
+};
+
+// Buildings
+export const buildingsApi = {
+  getAll: () => apiClient.get<BuildingDto[]>('/api/buildings'),
+  getById: (id: number) => apiClient.get<BuildingDto>(`/api/buildings/${id}`),
+  create: (data: Partial<BuildingDto>) => apiClient.post<BuildingDto>('/api/buildings', data),
+  update: (id: number, data: Partial<BuildingDto>) => apiClient.put(`/api/buildings/${id}`, data),
+  delete: (id: number) => apiClient.delete(`/api/buildings/${id}`),
+  getUnits: (id: number) => apiClient.get<UnitDto[]>(`/api/buildings/${id}/units`),
+  createUnit: (buildingId: number, data: Partial<UnitDto>) => apiClient.post<UnitDto>(`/api/buildings/${buildingId}/units`, data),
+};
+
+// Vendors
+export const vendorsApi = {
+  getAll: () => apiClient.get<VendorDto[]>('/api/vendors'),
+  getById: (id: number) => apiClient.get<VendorDto>(`/api/vendors/${id}`),
+  create: (data: Partial<VendorDto>) => apiClient.post<VendorDto>('/api/vendors', data),
+  update: (id: number, data: Partial<VendorDto>) => apiClient.put(`/api/vendors/${id}`, data),
+};
+
+// Assets
+export const assetsApi = {
+  getAll: (buildingId?: number) => apiClient.get<AssetDto[]>('/api/assets', { params: { buildingId } }),
+  create: (data: Partial<AssetDto>) => apiClient.post<AssetDto>('/api/assets', data),
+};
+
+// Preventive Plans
+export const preventivePlansApi = {
+  getAll: (assetId?: number) => apiClient.get<PreventivePlanDto[]>('/api/preventiveplans', { params: { assetId } }),
+  create: (data: Partial<PreventivePlanDto>) => apiClient.post<PreventivePlanDto>('/api/preventiveplans', data),
+  generateNow: () => apiClient.post<GenerateJobResponse>('/api/preventiveplans/generate-now'),
+};
+
+// Service Requests
+export const serviceRequestsApi = {
+  getAll: (params?: { buildingId?: number; unitId?: number; status?: string }) =>
+    apiClient.get<ServiceRequestDto[]>('/api/servicerequests', { params }),
+  getMy: () => apiClient.get<ServiceRequestDto[]>('/api/servicerequests/my'),
+  getById: (id: number) => apiClient.get<ServiceRequestDto>(`/api/servicerequests/${id}`),
+  create: (data: any) => apiClient.post<ServiceRequestDto>('/api/servicerequests', data),
+  updateStatus: (id: number, data: { status: string; note?: string }) =>
+    apiClient.put(`/api/servicerequests/${id}/status`, data),
+  uploadAttachments: (id: number, files: File[]) => {
+    const formData = new FormData();
+    files.forEach(f => formData.append('files', f));
+    return apiClient.post<AttachmentDto[]>(`/api/servicerequests/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+};
+
+// Work Orders
+export const workOrdersApi = {
+  getAll: (params?: { buildingId?: number; vendorId?: number; status?: string }) =>
+    apiClient.get<WorkOrderDto[]>('/api/workorders', { params }),
+  getMy: () => apiClient.get<WorkOrderDto[]>('/api/workorders/my'),
+  getById: (id: number) => apiClient.get<WorkOrderDto>(`/api/workorders/${id}`),
+  create: (data: any) => apiClient.post<WorkOrderDto>('/api/workorders', data),
+  assign: (id: number, data: { vendorId: number; scheduledFor?: string }) =>
+    apiClient.put(`/api/workorders/${id}/assign`, data),
+  updateStatus: (id: number, data: { status: string }) =>
+    apiClient.put(`/api/workorders/${id}/status`, data),
+  addNote: (id: number, data: { noteText: string }) =>
+    apiClient.post<WorkOrderNoteDto>(`/api/workorders/${id}/notes`, data),
+  uploadAttachments: (id: number, files: File[]) => {
+    const formData = new FormData();
+    files.forEach(f => formData.append('files', f));
+    return apiClient.post<AttachmentDto[]>(`/api/workorders/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+};
+
+// Cleaning Plans
+export const cleaningPlansApi = {
+  getByBuilding: (buildingId: number) => apiClient.get<CleaningPlanDto | null>(`/api/cleaningplans/${buildingId}`),
+  create: (buildingId: number, data: any) => apiClient.post<CleaningPlanDto>(`/api/cleaningplans/${buildingId}`, data),
+  generateWeekly: (buildingId: number) => apiClient.post<GenerateJobResponse>(`/api/cleaningplans/${buildingId}/generate-weekly`),
+};
+
+// Jobs
+export const jobsApi = {
+  generatePreventive: () => apiClient.post<GenerateJobResponse>('/api/jobs/generate-preventive'),
+  generateCleaningWeek: () => apiClient.post<GenerateJobResponse>('/api/jobs/generate-cleaning-week'),
+  getLogs: () => apiClient.get<JobRunLogDto[]>('/api/jobs/logs'),
+};
+
+// ─── Finance / HOA ─────────────────────────────────────
+
+export const hoaApi = {
+  getPlans: (buildingId: number) => apiClient.get<HOAFeePlanDto[]>(`/api/hoa/plans/${buildingId}`),
+  createPlan: (data: Partial<HOAFeePlanDto>) => apiClient.post<HOAFeePlanDto>('/api/hoa/plans', data),
+  updatePlan: (id: number, data: Partial<HOAFeePlanDto>) => apiClient.put(`/api/hoa/plans/${id}`, data),
+  generateCharges: (planId: number, period: string) =>
+    apiClient.post(`/api/hoa/plans/${planId}/generate/${period}`),
+  getCharges: (params?: { buildingId?: number; period?: string }) =>
+    apiClient.get<UnitChargeDto[]>('/api/hoa/charges', { params }),
+  getMyCharges: () => apiClient.get<UnitChargeDto[]>('/api/hoa/charges/my'),
+  getChargesForUnit: (unitId: number) => apiClient.get<UnitChargeDto[]>(`/api/hoa/charges/unit/${unitId}`),
+  adjustCharge: (id: number, data: { newAmount: number; reason?: string }) =>
+    apiClient.put(`/api/hoa/charges/${id}/adjust`, data),
+};
+
+export const paymentsApi = {
+  // Legacy direct tokenization (Fake provider only)
+  setupMethod: (data: { methodType: string; cardNumber?: string; expiry?: string; cvv?: string; isDefault: boolean; provider?: string }) =>
+    apiClient.post<PaymentMethodDto>('/api/payments/setup-method', data),
+  // Hosted tokenization flow (all providers)
+  startTokenization: (data: { buildingId: number; isDefault: boolean }) =>
+    apiClient.post<TokenizationResponse>('/api/payments/tokenize', data),
+  getMethods: () => apiClient.get<PaymentMethodDto[]>('/api/payments/methods'),
+  setDefault: (id: number) => apiClient.put(`/api/payments/methods/${id}/default`),
+  deleteMethod: (id: number) => apiClient.delete(`/api/payments/methods/${id}`),
+  // Direct charge via saved token
+  payCharge: (unitChargeId: number, data: { paymentMethodId?: number; amount?: number }) =>
+    apiClient.post<PaymentDto>(`/api/payments/pay/${unitChargeId}`, data),
+  // Hosted payment session (redirects user to provider)
+  createSession: (unitChargeId: number) =>
+    apiClient.post<PaymentSessionResponse>(`/api/payments/session/${unitChargeId}`),
+  getMyPayments: () => apiClient.get<PaymentDto[]>('/api/payments/my'),
+  getPaymentsForUnit: (unitId: number) => apiClient.get<PaymentDto[]>(`/api/payments/unit/${unitId}`),
+};
+
+// ─── Payment Provider Config ───────────────────────────
+
+export const paymentConfigApi = {
+  getAll: (buildingId?: number) =>
+    apiClient.get<PaymentProviderConfigDto[]>('/api/payment-config', { params: buildingId ? { buildingId } : undefined }),
+  getById: (id: number) => apiClient.get<PaymentProviderConfigDto>(`/api/payment-config/${id}`),
+  create: (data: Partial<PaymentProviderConfigDto>) => apiClient.post<PaymentProviderConfigDto>('/api/payment-config', data),
+  update: (id: number, data: Partial<PaymentProviderConfigDto>) => apiClient.put(`/api/payment-config/${id}`, data),
+  delete: (id: number) => apiClient.delete(`/api/payment-config/${id}`),
+  getProviders: () => apiClient.get<string[]>('/api/payment-config/providers'),
+};
+
+export const reportsApi = {
+  collectionStatus: (buildingId: number, period?: string) =>
+    apiClient.get<CollectionStatusReport>(`/api/reports/collection-status/${buildingId}`, { params: { period } }),
+  aging: (buildingId: number) =>
+    apiClient.get<AgingReport>(`/api/reports/aging/${buildingId}`),
+  collectionStatusCsv: (buildingId: number, period?: string, lang?: string) =>
+    apiClient.get(`/api/reports/collection-status/${buildingId}/csv`, { params: { period, lang }, responseType: 'blob' }),
+  agingCsv: (buildingId: number, lang?: string) =>
+    apiClient.get(`/api/reports/aging/${buildingId}/csv`, { params: { lang }, responseType: 'blob' }),
+};

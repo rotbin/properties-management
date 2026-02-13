@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: src/BuildingManagement.Api/Dockerfile
+    ports:
+      - "5219:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Data Source=/app/data/buildingmgmt.db
+      - FileStorage__Provider=Local
+    volumes:
+      - backend-data:/app/data
+      - backend-uploads:/app/wwwroot/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  backend-data:
+  backend-uploads:

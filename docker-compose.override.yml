@@ -1,0 +1,28 @@
+version: '3.8'
+
+# Local development overrides
+# Uses SQLite, local file storage, and enables Swagger
+services:
+  backend:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Data Source=/app/data/buildingmgmt.db
+      - Jwt__Key=SuperSecretKeyForDevelopmentOnly123456!
+      - FileStorage__Provider=Local
+      - Jobs__AutoRunEnabled=false
+    ports:
+      - "5219:8080"
+
+  frontend:
+    environment:
+      - VITE_API_URL=http://localhost:5219
+    ports:
+      - "3000:80"
+
+  # Optional: Adminer for DB inspection (uncomment to use)
+  # adminer:
+  #   image: adminer
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     - backend

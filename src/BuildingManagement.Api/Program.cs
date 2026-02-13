@@ -1,0 +1,200 @@
+using System.Text;
+using BuildingManagement.Core.Entities;
+using BuildingManagement.Core.Interfaces;
+using BuildingManagement.Infrastructure.Data;
+using BuildingManagement.Infrastructure.Jobs;
+using BuildingManagement.Infrastructure.Services;
+using BuildingManagement.Infrastructure.Services.Gateways;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// ─── Database ───────────────────────────────────────────
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Data Source=buildingmgmt.db";
+
+if (connectionString.Contains(".db", StringComparison.OrdinalIgnoreCase)
+    || connectionString.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase)
+       && !connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseSqlite(connectionString));
+}
+else
+{
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseSqlServer(connectionString));
+}
+
+// ─── Identity ───────────────────────────────────────────
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+{
+    options.Password.RequireDigit = true;
+    options.Password.RequiredLength = 8;
+    options.Password.RequireNonAlphanumeric = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireLowercase = true;
+    options.User.RequireUniqueEmail = true;
+})
+.AddEntityFrameworkStores<AppDbContext>()
+.AddDefaultTokenProviders();
+
+// ─── JWT Authentication ─────────────────────────────────
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "SuperSecretKeyForDevelopmentOnly123456!";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "BuildingManagement";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "BuildingManagement";
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        ClockSkew = TimeSpan.FromMinutes(1)
+    };
+});
+
+builder.Services.AddAuthorization();
+
+// ─── Services ───────────────────────────────────────────
+builder.Services.AddScoped<JwtTokenService>();
+
+// File Storage
+var fileProvider = builder.Configuration["FileStorage:Provider"] ?? "Local";
+if (fileProvider.Equals("Azure", StringComparison.OrdinalIgnoreCase))
+{
+    var blobConn = builder.Configuration["AzureBlob:ConnectionString"]!;
+    var container = builder.Configuration["AzureBlob:ContainerName"] ?? "building-files";
+    builder.Services.AddSingleton<IFileStorageService>(sp =>
+        new AzureBlobStorageService(blobConn, container, sp.GetRequiredService<ILogger<AzureBlobStorageService>>()));
+}
+else
+{
+    var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
+    builder.Services.AddSingleton<IFileStorageService>(sp =>
+        new LocalFileStorageService(wwwrootPath, sp.GetRequiredService<ILogger<LocalFileStorageService>>()));
+}
+
+// Email
+builder.Services.AddSingleton<IEmailService, LoggingEmailService>();
+
+// Payment Gateways (HttpClientFactory + typed clients)
+builder.Services.AddHttpClient<MeshulamGateway>();
+builder.Services.AddHttpClient<PelecardGateway>();
+builder.Services.AddHttpClient<TranzilaGateway>();
+builder.Services.AddSingleton<FakePaymentGateway>();
+builder.Services.AddSingleton<MeshulamGateway>();
+builder.Services.AddSingleton<PelecardGateway>();
+builder.Services.AddSingleton<TranzilaGateway>();
+builder.Services.AddSingleton<IPaymentGatewayFactory, PaymentGatewayFactory>();
+
+// HOA Fee Service
+builder.Services.AddScoped<IHOAFeeService, HOAFeeService>();
+
+// Background Jobs
+builder.Services.AddSingleton<MaintenanceJobService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<MaintenanceJobService>());
+builder.Services.AddSingleton<RecurringPaymentJob>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<RecurringPaymentJob>());
+
+// Health Checks
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>("database");
+
+// ─── CORS ───────────────────────────────────────────────
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173", "http://localhost:3000", "http://localhost:4173")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
+// ─── Controllers & Swagger ──────────────────────────────
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Building Management API",
+        Version = "v1",
+        Description = "API for Building Maintenance Management System"
+    });
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Enter: Bearer {token}",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
+var app = builder.Build();
+
+// ─── Seed Data (Development) ────────────────────────────
+if (app.Environment.IsDevelopment())
+{
+    await DataSeeder.SeedAsync(app.Services);
+}
+else
+{
+    // In production, just run migrations
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
+}
+
+// ─── Middleware Pipeline ────────────────────────────────
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Building Management API v1"));
+}
+
+app.UseCors("AllowFrontend");
+app.UseStaticFiles();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+app.MapHealthChecks("/health");
+
+app.Run();

@@ -1,0 +1,37 @@
+# .NET
+bin/
+obj/
+*.db
+*.db-shm
+*.db-wal
+*.user
+*.suo
+.vs/
+publish/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads (dev files)
+wwwroot/uploads/*
+!wwwroot/uploads/.gitkeep
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Build
+*.log

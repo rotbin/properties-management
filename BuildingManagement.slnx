@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BuildingManagement.Api/BuildingManagement.Api.csproj" />
+    <Project Path="src/BuildingManagement.Core/BuildingManagement.Core.csproj" />
+    <Project Path="src/BuildingManagement.Infrastructure/BuildingManagement.Infrastructure.csproj" />
+  </Folder>
+</Solution>

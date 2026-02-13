@@ -1,0 +1,159 @@
+import React, { useState } from 'react';
+import {
+  AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemIcon,
+  ListItemText, Box, IconButton, Divider, Chip, useMediaQuery, useTheme,
+  ToggleButtonGroup, ToggleButton
+} from '@mui/material';
+import {
+  Menu as MenuIcon, Dashboard, Business, Engineering, CleaningServices,
+  Assignment, Build, Person, Logout, Home, WorkOutline, Schedule,
+  AccountBalance, Payment, Settings, Language
+} from '@mui/icons-material';
+import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
+import { useTranslation } from 'react-i18next';
+
+const DRAWER_WIDTH = 260;
+
+interface NavItem {
+  labelKey: string;
+  path: string;
+  icon: React.ReactNode;
+  roles: string[];
+}
+
+const navItems: NavItem[] = [
+  { labelKey: 'nav.dashboard', path: '/dashboard', icon: <Dashboard />, roles: ['Admin', 'Manager'] },
+  { labelKey: 'nav.buildings', path: '/buildings', icon: <Business />, roles: ['Admin', 'Manager'] },
+  { labelKey: 'nav.vendors', path: '/vendors', icon: <Engineering />, roles: ['Admin', 'Manager'] },
+  { labelKey: 'nav.assets', path: '/assets', icon: <Build />, roles: ['Admin', 'Manager'] },
+  { labelKey: 'nav.serviceRequests', path: '/service-requests', icon: <Assignment />, roles: ['Admin', 'Manager'] },
+  { labelKey: 'nav.workOrders', path: '/work-orders', icon: <WorkOutline />, roles: ['Admin', 'Manager'] },
+  { labelKey: 'nav.cleaningPlans', path: '/cleaning-plans', icon: <CleaningServices />, roles: ['Admin', 'Manager'] },
+  { labelKey: 'nav.jobs', path: '/jobs', icon: <Schedule />, roles: ['Admin', 'Manager'] },
+  { labelKey: 'nav.hoaFinance', path: '/hoa', icon: <AccountBalance />, roles: ['Admin', 'Manager'] },
+  { labelKey: 'nav.paymentProviders', path: '/payment-config', icon: <Settings />, roles: ['Admin', 'Manager'] },
+  { labelKey: 'nav.myRequests', path: '/my-requests', icon: <Assignment />, roles: ['Tenant'] },
+  { labelKey: 'nav.newRequest', path: '/new-request', icon: <Assignment />, roles: ['Tenant'] },
+  { labelKey: 'nav.myCharges', path: '/my-charges', icon: <Payment />, roles: ['Tenant'] },
+  { labelKey: 'nav.myWorkOrders', path: '/my-work-orders', icon: <WorkOutline />, roles: ['Vendor'] },
+];
+
+const Layout: React.FC = () => {
+  const { user, logout, hasAnyRole } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const { t, i18n } = useTranslation();
+
+  const handleLanguageChange = (_: React.MouseEvent<HTMLElement>, newLang: string | null) => {
+    if (newLang) {
+      i18n.changeLanguage(newLang);
+      localStorage.setItem('lang', newLang);
+      // Best-effort save to server; don't block UI
+      try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          fetch('/api/users/me/language', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ language: newLang }),
+          }).catch(() => {});
+        }
+      } catch { /* ignore */ }
+    }
+  };
+
+  const visibleItems = navItems.filter(item => hasAnyRole(...item.roles));
+
+  const drawer = (
+    <Box sx={{ overflow: 'auto' }}>
+      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Home color="primary" />
+        <Typography variant="h6" noWrap sx={{ fontWeight: 700 }}>
+          {t('app.brand')}
+        </Typography>
+      </Box>
+      <Divider />
+      <Box sx={{ p: 2 }}>
+        <Typography variant="body2" color="text.secondary">{user?.fullName}</Typography>
+        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 0.5 }}>
+          {user?.roles.map(r => (
+            <Chip key={r} label={r} size="small" color="primary" variant="outlined" />
+          ))}
+        </Box>
+      </Box>
+      <Divider />
+      <List>
+        {visibleItems.map(item => (
+          <ListItemButton
+            key={item.path}
+            selected={location.pathname === item.path}
+            onClick={() => { navigate(item.path); if (isMobile) setMobileOpen(false); }}
+          >
+            <ListItemIcon>{item.icon}</ListItemIcon>
+            <ListItemText primary={t(item.labelKey)} />
+          </ListItemButton>
+        ))}
+      </List>
+      <Divider />
+      <List>
+        <ListItemButton onClick={logout}>
+          <ListItemIcon><Logout /></ListItemIcon>
+          <ListItemText primary={t('app.logout')} />
+        </ListItemButton>
+      </List>
+    </Box>
+  );
+
+  return (
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+      <AppBar position="fixed" sx={{ zIndex: theme.zIndex.drawer + 1 }}>
+        <Toolbar>
+          {isMobile && (
+            <IconButton color="inherit" onClick={() => setMobileOpen(!mobileOpen)} sx={{ mr: 2 }}>
+              <MenuIcon />
+            </IconButton>
+          )}
+          <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
+            {t('app.title')}
+          </Typography>
+          {/* Language Switcher */}
+          <ToggleButtonGroup
+            value={i18n.language}
+            exclusive
+            onChange={handleLanguageChange}
+            size="small"
+            sx={{ mr: 2, '& .MuiToggleButton-root': { color: 'white', borderColor: 'rgba(255,255,255,0.4)', px: 1.5, py: 0.3, fontSize: '0.8rem' }, '& .Mui-selected': { bgcolor: 'rgba(255,255,255,0.2) !important', color: 'white !important' } }}
+          >
+            <ToggleButton value="he">{t('app.hebrew')}</ToggleButton>
+            <ToggleButton value="en">{t('app.english')}</ToggleButton>
+          </ToggleButtonGroup>
+          <Typography variant="body2" sx={{ mr: 1 }}>{user?.email}</Typography>
+        </Toolbar>
+      </AppBar>
+
+      {isMobile ? (
+        <Drawer variant="temporary" open={mobileOpen} onClose={() => setMobileOpen(false)}
+          ModalProps={{ keepMounted: true }}
+          sx={{ '& .MuiDrawer-paper': { width: DRAWER_WIDTH } }}>
+          {drawer}
+        </Drawer>
+      ) : (
+        <Drawer variant="permanent"
+          sx={{ width: DRAWER_WIDTH, flexShrink: 0, '& .MuiDrawer-paper': { width: DRAWER_WIDTH, boxSizing: 'border-box' } }}>
+          <Toolbar />
+          {drawer}
+        </Drawer>
+      )}
+
+      <Box component="main" sx={{ flexGrow: 1, p: 3, mt: 8, width: { md: `calc(100% - ${DRAWER_WIDTH}px)` } }}>
+        <Outlet />
+      </Box>
+    </Box>
+  );
+};
+
+export default Layout;
