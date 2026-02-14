@@ -133,6 +133,119 @@ public class ReportsController : ControllerBase
         });
     }
 
+    // ─── Income vs Expenses ────────────────────────────────
+
+    [HttpGet("income-expenses/{buildingId}")]
+    public async Task<ActionResult<IncomeExpensesReport>> IncomeExpenses(
+        int buildingId, [FromQuery] DateTime? from, [FromQuery] DateTime? to)
+    {
+        var building = await _db.Buildings.FindAsync(buildingId);
+        if (building == null) return NotFound();
+
+        var fromDate = from ?? DateTime.UtcNow.AddMonths(-12);
+        var toDate = to ?? DateTime.UtcNow;
+
+        var entries = await _db.LedgerEntries
+            .Where(le => le.BuildingId == buildingId
+                && le.CreatedAtUtc >= fromDate
+                && le.CreatedAtUtc <= toDate)
+            .ToListAsync();
+
+        // Income = Credits where EntryType == Payment
+        var incomeEntries = entries.Where(e => e.EntryType == LedgerEntryType.Payment).ToList();
+        var totalIncome = incomeEntries.Sum(e => e.Credit);
+
+        // Expenses = Debits where EntryType == Expense
+        var expenseEntries = entries.Where(e => e.EntryType == LedgerEntryType.Expense).ToList();
+        var totalExpenses = expenseEntries.Sum(e => e.Debit);
+
+        // Income by category
+        var incomeByCategory = incomeEntries
+            .GroupBy(e => e.Category ?? "HOAMonthlyFees")
+            .Select(g => new CategoryAmount { Category = g.Key, Amount = g.Sum(e => e.Credit) })
+            .OrderByDescending(c => c.Amount)
+            .ToList();
+
+        // Expenses by category
+        var expensesByCategory = expenseEntries
+            .GroupBy(e => e.Category ?? "Other")
+            .Select(g => new CategoryAmount { Category = g.Key, Amount = g.Sum(e => e.Debit) })
+            .OrderByDescending(c => c.Amount)
+            .ToList();
+
+        // Monthly breakdown
+        var monthlyBreakdown = entries
+            .GroupBy(e => e.CreatedAtUtc.ToString("yyyy-MM"))
+            .OrderBy(g => g.Key)
+            .Select(g => new MonthlyBreakdown
+            {
+                Month = g.Key,
+                Income = g.Where(e => e.EntryType == LedgerEntryType.Payment).Sum(e => e.Credit),
+                Expenses = g.Where(e => e.EntryType == LedgerEntryType.Expense).Sum(e => e.Debit),
+                Net = g.Where(e => e.EntryType == LedgerEntryType.Payment).Sum(e => e.Credit)
+                    - g.Where(e => e.EntryType == LedgerEntryType.Expense).Sum(e => e.Debit)
+            })
+            .ToList();
+
+        return Ok(new IncomeExpensesReport
+        {
+            BuildingId = buildingId,
+            BuildingName = building.Name,
+            FromDate = fromDate,
+            ToDate = toDate,
+            TotalIncome = totalIncome,
+            TotalExpenses = totalExpenses,
+            NetBalance = totalIncome - totalExpenses,
+            IncomeByCategory = incomeByCategory,
+            ExpensesByCategory = expensesByCategory,
+            MonthlyBreakdown = monthlyBreakdown
+        });
+    }
+
+    [HttpGet("income-expenses/{buildingId}/csv")]
+    public async Task<IActionResult> IncomeExpensesCsv(
+        int buildingId, [FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string? lang)
+    {
+        var building = await _db.Buildings.FindAsync(buildingId);
+        if (building == null) return NotFound();
+
+        var fromDate = from ?? DateTime.UtcNow.AddMonths(-12);
+        var toDate = to ?? DateTime.UtcNow;
+
+        var entries = await _db.LedgerEntries
+            .Where(le => le.BuildingId == buildingId
+                && le.CreatedAtUtc >= fromDate
+                && le.CreatedAtUtc <= toDate)
+            .OrderBy(le => le.CreatedAtUtc)
+            .ToListAsync();
+
+        var h = GetIncomeExpenseHeaders(lang);
+        var sb = new StringBuilder();
+        sb.Append('\uFEFF'); // UTF-8 BOM for Excel
+        sb.AppendLine($"{h["Date"]},{h["Type"]},{h["Category"]},{h["Description"]},{h["Debit"]},{h["Credit"]},{h["Balance"]}");
+
+        decimal runningBalance = 0;
+        foreach (var e in entries)
+        {
+            runningBalance += e.Credit - e.Debit;
+            var type = e.EntryType.ToString();
+            var category = e.Category ?? "—";
+            var description = (e.Description ?? "").Replace("\"", "'");
+            sb.AppendLine($"{e.CreatedAtUtc:yyyy-MM-dd},{type},\"{category}\",\"{description}\",{e.Debit:F2},{e.Credit:F2},{runningBalance:F2}");
+        }
+
+        return File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv",
+            $"income-expenses-{buildingId}-{fromDate:yyyyMMdd}-{toDate:yyyyMMdd}.csv");
+    }
+
+    private static Dictionary<string, string> GetIncomeExpenseHeaders(string? lang)
+    {
+        lang = (lang ?? "he").ToLowerInvariant();
+        return lang == "en"
+            ? new() { ["Date"] = "Date", ["Type"] = "Type", ["Category"] = "Category", ["Description"] = "Description", ["Debit"] = "Debit", ["Credit"] = "Credit", ["Balance"] = "Balance" }
+            : new() { ["Date"] = "תאריך", ["Type"] = "סוג", ["Category"] = "קטגוריה", ["Description"] = "תיאור", ["Debit"] = "חובה", ["Credit"] = "זכות", ["Balance"] = "יתרה" };
+    }
+
     // ─── CSV Exports ────────────────────────────────────
 
     // Simple CSV header localization dictionary (NOT .resx, as per spec)

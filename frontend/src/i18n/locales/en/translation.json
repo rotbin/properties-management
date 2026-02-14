@@ -49,7 +49,8 @@
     "myRequests": "My Requests",
     "newRequest": "New Request",
     "myCharges": "My Charges",
-    "myWorkOrders": "My Work Orders"
+    "myWorkOrders": "My Work Orders",
+    "incomeExpenses": "Income & Expenses"
   },
 
   "login": {
@@ -578,6 +579,46 @@
       "RecurringCharges": "Recurring Charges",
       "Refunds": "Refunds",
       "Webhooks": "Webhooks"
+    },
+    "finCategory": {
+      "HOAMonthlyFees": "HOA Monthly Fees",
+      "SpecialAssessment": "Special Assessment",
+      "LateFees": "Late Fees",
+      "OtherIncome": "Other Income",
+      "Cleaning": "Cleaning",
+      "Gardening": "Gardening",
+      "Electricity": "Electricity",
+      "ElevatorMaintenance": "Elevator Maintenance",
+      "WaterPumps": "Water Pumps",
+      "FireSystems": "Fire Systems",
+      "PestControl": "Pest Control",
+      "Insurance": "Insurance",
+      "BankFees": "Bank Fees",
+      "Repairs": "Repairs",
+      "Projects": "Projects",
+      "Other": "Other"
     }
+  },
+
+  "incomeExpenses": {
+    "title": "Income vs Expenses Report",
+    "building": "Building",
+    "from": "From Date",
+    "to": "To Date",
+    "selectBuilding": "Select a building to view the financial report.",
+    "totalIncome": "Total Income",
+    "totalExpenses": "Total Expenses",
+    "netBalance": "Net Balance",
+    "incomeByCategory": "Income by Category",
+    "expensesByCategory": "Expenses by Category",
+    "monthlyBreakdown": "Monthly Breakdown",
+    "categoryBreakdown": "Category Breakdown",
+    "income": "Income",
+    "expenses": "Expenses",
+    "type": "Type",
+    "category": "Category",
+    "amount": "Amount",
+    "errorLoading": "Failed to load financial report.",
+    "errorExport": "Failed to export CSV."
   }
 }

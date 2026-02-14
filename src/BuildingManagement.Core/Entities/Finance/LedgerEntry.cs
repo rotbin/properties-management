@@ -16,7 +16,15 @@ public class LedgerEntry
 
     public LedgerEntryType EntryType { get; set; }
 
-    /// <summary>FK to Charge / Payment / etc.</summary>
+    /// <summary>Category label for reporting (e.g. "HOAMonthlyFees", "Cleaning")</summary>
+    [MaxLength(100)]
+    public string? Category { get; set; }
+
+    /// <summary>Human-readable description for CSV / audit</summary>
+    [MaxLength(500)]
+    public string? Description { get; set; }
+
+    /// <summary>FK to Charge / Payment / WorkOrder etc.</summary>
     public int? ReferenceId { get; set; }
 
     [Column(TypeName = "decimal(18,2)")]

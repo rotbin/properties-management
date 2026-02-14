@@ -88,6 +88,8 @@ public class HOAFeeService : IHOAFeeService
                 BuildingId = buildingId,
                 UnitId = unit.Id,
                 EntryType = LedgerEntryType.Charge,
+                Category = "HOAMonthlyFees",
+                Description = $"HOA charge for {period}",
                 Debit = amount,
                 Credit = 0,
                 BalanceAfter = lastBalance + amount

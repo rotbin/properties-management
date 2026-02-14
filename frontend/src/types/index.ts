@@ -293,6 +293,42 @@ export interface AgingReport {
   grandTotal: number;
 }
 
+// ─── Income vs Expenses Report ─────────────────────────
+
+export interface CategoryAmount {
+  category: string;
+  amount: number;
+}
+
+export interface MonthlyBreakdown {
+  month: string;
+  income: number;
+  expenses: number;
+  net: number;
+}
+
+export interface IncomeExpensesReport {
+  buildingId: number;
+  buildingName?: string;
+  fromDate: string;
+  toDate: string;
+  totalIncome: number;
+  totalExpenses: number;
+  netBalance: number;
+  incomeByCategory: CategoryAmount[];
+  expensesByCategory: CategoryAmount[];
+  monthlyBreakdown: MonthlyBreakdown[];
+}
+
+export const EXPENSE_CATEGORIES = [
+  'Cleaning', 'Gardening', 'Electricity', 'ElevatorMaintenance', 'WaterPumps',
+  'FireSystems', 'PestControl', 'Insurance', 'BankFees', 'Repairs', 'Projects', 'Other'
+] as const;
+
+export const INCOME_CATEGORIES = [
+  'HOAMonthlyFees', 'SpecialAssessment', 'LateFees', 'OtherIncome'
+] as const;
+
 export const HOA_CALC_METHODS = ['BySqm', 'FixedPerUnit', 'ManualPerUnit'] as const;
 export const CHARGE_STATUSES = ['Pending', 'Paid', 'PartiallyPaid', 'Overdue', 'Cancelled'] as const;
 export const PAYMENT_STATUSES = ['Pending', 'Succeeded', 'Failed', 'Refunded'] as const;

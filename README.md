@@ -712,6 +712,79 @@ CSV files include a UTF-8 BOM for proper Hebrew display in Excel.
 
 ---
 
+## Income vs Expenses Report
+
+### How Income is Calculated
+- Income = sum of `LedgerEntry.Credit` where `EntryType = Payment`
+- Grouped by `Category` field (e.g. HOAMonthlyFees, SpecialAssessment, LateFees, OtherIncome)
+
+### How Expenses are Recorded
+- Expenses = sum of `LedgerEntry.Debit` where `EntryType = Expense`
+- Standard expense categories: Cleaning, Gardening, Electricity, ElevatorMaintenance, WaterPumps, FireSystems, PestControl, Insurance, BankFees, Repairs, Projects, Other
+- When work orders are completed, they can generate Expense ledger entries linked to the work order
+
+### API Endpoints
+
+**Summary Report:**
+```
+GET /api/reports/income-expenses/{buildingId}?from=2025-01-01&to=2025-12-31
+```
+
+Response:
+```json
+{
+  "buildingId": 1,
+  "buildingName": "Sunrise Towers",
+  "fromDate": "2025-01-01",
+  "toDate": "2025-12-31",
+  "totalIncome": 102000.00,
+  "totalExpenses": 68400.00,
+  "netBalance": 33600.00,
+  "incomeByCategory": [
+    { "category": "HOAMonthlyFees", "amount": 102000.00 }
+  ],
+  "expensesByCategory": [
+    { "category": "Cleaning", "amount": 26400.00 },
+    { "category": "Electricity", "amount": 7400.00 }
+  ],
+  "monthlyBreakdown": [
+    { "month": "2025-01", "income": 8500.00, "expenses": 5700.00, "net": 2800.00 }
+  ]
+}
+```
+
+**CSV Export:**
+```
+GET /api/reports/income-expenses/{buildingId}/csv?from=2025-01-01&to=2025-12-31&lang=he
+```
+
+CSV columns: Date, Type, Category, Description, Debit, Credit, Balance
+
+### Financial ERD (updated)
+
+```mermaid
+erDiagram
+    Building ||--o{ LedgerEntry : has
+    Unit ||--o{ LedgerEntry : has
+    LedgerEntry {
+        int Id PK
+        int BuildingId FK
+        int UnitId FK
+        string EntryType "Charge|Payment|Expense|Adjustment"
+        string Category "HOAMonthlyFees|Cleaning|etc."
+        string Description
+        int ReferenceId
+        decimal Debit
+        decimal Credit
+        decimal BalanceAfter
+        datetime CreatedAtUtc
+    }
+    Payment ||--o{ LedgerEntry : generates
+    WorkOrder ||--o{ LedgerEntry : generates
+```
+
+---
+
 ## Assumptions
 
 - Currency defaults to ILS (Israeli Shekel)

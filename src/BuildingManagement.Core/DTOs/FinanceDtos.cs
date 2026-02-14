@@ -226,3 +226,33 @@ public record AgingReport
     public List<AgingBucket> Buckets { get; init; } = [];
     public decimal GrandTotal { get; init; }
 }
+
+// ─── Income vs Expenses Report ─────────────────────────
+
+public record CategoryAmount
+{
+    public string Category { get; init; } = string.Empty;
+    public decimal Amount { get; init; }
+}
+
+public record MonthlyBreakdown
+{
+    public string Month { get; init; } = string.Empty;
+    public decimal Income { get; init; }
+    public decimal Expenses { get; init; }
+    public decimal Net { get; init; }
+}
+
+public record IncomeExpensesReport
+{
+    public int BuildingId { get; init; }
+    public string? BuildingName { get; init; }
+    public DateTime FromDate { get; init; }
+    public DateTime ToDate { get; init; }
+    public decimal TotalIncome { get; init; }
+    public decimal TotalExpenses { get; init; }
+    public decimal NetBalance { get; init; }
+    public List<CategoryAmount> IncomeByCategory { get; init; } = [];
+    public List<CategoryAmount> ExpensesByCategory { get; init; } = [];
+    public List<MonthlyBreakdown> MonthlyBreakdown { get; init; } = [];
+}

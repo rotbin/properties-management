@@ -142,6 +142,8 @@ public class RecurringPaymentJob : BackgroundService
                     BuildingId = charge.Unit.BuildingId,
                     UnitId = charge.UnitId,
                     EntryType = LedgerEntryType.Payment,
+                    Category = "HOAMonthlyFees",
+                    Description = $"Recurring payment for charge #{charge.Id}",
                     ReferenceId = payment.Id,
                     Debit = 0,
                     Credit = remaining,

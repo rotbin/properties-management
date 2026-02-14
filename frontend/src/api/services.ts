@@ -159,4 +159,8 @@ export const reportsApi = {
     apiClient.get(`/api/reports/collection-status/${buildingId}/csv`, { params: { period, lang }, responseType: 'blob' }),
   agingCsv: (buildingId: number, lang?: string) =>
     apiClient.get(`/api/reports/aging/${buildingId}/csv`, { params: { lang }, responseType: 'blob' }),
+  incomeExpenses: (buildingId: number, from?: string, to?: string) =>
+    apiClient.get<import('../types').IncomeExpensesReport>(`/api/reports/income-expenses/${buildingId}`, { params: { from, to } }),
+  incomeExpensesCsv: (buildingId: number, from?: string, to?: string, lang?: string) =>
+    apiClient.get(`/api/reports/income-expenses/${buildingId}/csv`, { params: { from, to, lang }, responseType: 'blob' }),
 };

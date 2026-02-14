@@ -194,6 +194,87 @@ public static class DataSeeder
         });
         await context.SaveChangesAsync();
 
+        // Seed demo financial ledger entries (income + expenses) for report
+        if (!await context.LedgerEntries.AnyAsync())
+        {
+            var buildingId = (await context.Buildings.FirstAsync()).Id;
+            var now = DateTime.UtcNow;
+            var entries = new List<LedgerEntry>();
+            decimal balance = 0;
+
+            // 12 months of sample income (HOA collections)
+            for (int m = 11; m >= 0; m--)
+            {
+                var date = now.AddMonths(-m);
+                var income = 8500m + (m % 3) * 500m; // vary a bit
+                balance += income;
+                entries.Add(new LedgerEntry
+                {
+                    BuildingId = buildingId,
+                    EntryType = LedgerEntryType.Payment,
+                    Category = "HOAMonthlyFees",
+                    Description = $"HOA collection {date:yyyy-MM}",
+                    Debit = 0, Credit = income, BalanceAfter = balance,
+                    CreatedAtUtc = new DateTime(date.Year, date.Month, 5, 10, 0, 0, DateTimeKind.Utc)
+                });
+            }
+
+            // Sample expenses
+            var expenses = new (string cat, decimal amount, int monthsAgo, string desc)[]
+            {
+                ("Cleaning", 2200, 11, "Monthly cleaning service"),
+                ("Cleaning", 2200, 10, "Monthly cleaning service"),
+                ("Cleaning", 2200, 9, "Monthly cleaning service"),
+                ("Cleaning", 2200, 8, "Monthly cleaning service"),
+                ("Cleaning", 2200, 7, "Monthly cleaning service"),
+                ("Cleaning", 2200, 6, "Monthly cleaning service"),
+                ("Cleaning", 2200, 5, "Monthly cleaning service"),
+                ("Cleaning", 2200, 4, "Monthly cleaning service"),
+                ("Cleaning", 2200, 3, "Monthly cleaning service"),
+                ("Cleaning", 2200, 2, "Monthly cleaning service"),
+                ("Cleaning", 2200, 1, "Monthly cleaning service"),
+                ("Cleaning", 2200, 0, "Monthly cleaning service"),
+                ("Gardening", 900, 10, "Gardening Q4"),
+                ("Gardening", 900, 7, "Gardening Q1"),
+                ("Gardening", 900, 4, "Gardening Q2"),
+                ("Gardening", 900, 1, "Gardening Q3"),
+                ("Electricity", 1800, 9, "Common area electricity"),
+                ("Electricity", 2100, 6, "Common area electricity"),
+                ("Electricity", 1600, 3, "Common area electricity"),
+                ("Electricity", 1900, 0, "Common area electricity"),
+                ("ElevatorMaintenance", 3500, 8, "Elevator annual inspection"),
+                ("ElevatorMaintenance", 850, 2, "Elevator repair"),
+                ("WaterPumps", 650, 5, "Water pump service"),
+                ("Insurance", 4200, 11, "Annual building insurance"),
+                ("PestControl", 500, 6, "Quarterly pest control"),
+                ("PestControl", 500, 0, "Quarterly pest control"),
+                ("Repairs", 1200, 4, "Lobby door repair"),
+                ("BankFees", 120, 9, "Bank service fees"),
+                ("BankFees", 120, 6, "Bank service fees"),
+                ("BankFees", 120, 3, "Bank service fees"),
+                ("BankFees", 120, 0, "Bank service fees"),
+            };
+
+            foreach (var (cat, amount, monthsAgo, desc) in expenses)
+            {
+                var date = now.AddMonths(-monthsAgo);
+                balance -= amount;
+                entries.Add(new LedgerEntry
+                {
+                    BuildingId = buildingId,
+                    EntryType = LedgerEntryType.Expense,
+                    Category = cat,
+                    Description = desc,
+                    Debit = amount, Credit = 0, BalanceAfter = balance,
+                    CreatedAtUtc = new DateTime(date.Year, date.Month, 15, 14, 0, 0, DateTimeKind.Utc)
+                });
+            }
+
+            context.LedgerEntries.AddRange(entries);
+            await context.SaveChangesAsync();
+            logger.LogInformation("Seeded {Count} demo financial ledger entries.", entries.Count);
+        }
+
         // Seed global Fake payment provider config
         if (!await context.PaymentProviderConfigs.AnyAsync())
         {

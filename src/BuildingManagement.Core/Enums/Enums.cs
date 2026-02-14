@@ -128,7 +128,32 @@ public enum LedgerEntryType
 {
     Charge = 0,
     Payment = 1,
-    Adjustment = 2
+    Adjustment = 2,
+    Expense = 3
+}
+
+public enum ExpenseCategory
+{
+    Cleaning = 0,
+    Gardening = 1,
+    Electricity = 2,
+    ElevatorMaintenance = 3,
+    WaterPumps = 4,
+    FireSystems = 5,
+    PestControl = 6,
+    Insurance = 7,
+    BankFees = 8,
+    Repairs = 9,
+    Projects = 10,
+    Other = 99
+}
+
+public enum IncomeCategory
+{
+    HOAMonthlyFees = 0,
+    SpecialAssessment = 1,
+    LateFees = 2,
+    OtherIncome = 99
 }
 
 public enum PaymentProviderType

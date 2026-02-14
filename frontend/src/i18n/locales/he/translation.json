@@ -49,7 +49,8 @@
     "myRequests": "הקריאות שלי",
     "newRequest": "קריאה חדשה",
     "myCharges": "החיובים שלי",
-    "myWorkOrders": "הזמנות העבודה שלי"
+    "myWorkOrders": "הזמנות העבודה שלי",
+    "incomeExpenses": "הכנסות והוצאות"
   },
 
   "login": {
@@ -578,6 +579,46 @@
       "RecurringCharges": "חיובים חוזרים",
       "Refunds": "החזרים",
       "Webhooks": "Webhooks"
+    },
+    "finCategory": {
+      "HOAMonthlyFees": "דמי ועד חודשיים",
+      "SpecialAssessment": "חיוב מיוחד",
+      "LateFees": "עמלות איחור",
+      "OtherIncome": "הכנסות אחרות",
+      "Cleaning": "ניקיון",
+      "Gardening": "גינון",
+      "Electricity": "חשמל",
+      "ElevatorMaintenance": "תחזוקת מעלית",
+      "WaterPumps": "משאבות מים",
+      "FireSystems": "מערכות כיבוי אש",
+      "PestControl": "הדברה",
+      "Insurance": "ביטוח",
+      "BankFees": "עמלות בנק",
+      "Repairs": "תיקונים",
+      "Projects": "פרויקטים",
+      "Other": "אחר"
     }
+  },
+
+  "incomeExpenses": {
+    "title": "דוח הכנסות מול הוצאות",
+    "building": "מבנה",
+    "from": "מתאריך",
+    "to": "עד תאריך",
+    "selectBuilding": "בחר מבנה כדי לצפות בדוח הכספי.",
+    "totalIncome": "סה\"כ הכנסות",
+    "totalExpenses": "סה\"כ הוצאות",
+    "netBalance": "יתרה נטו",
+    "incomeByCategory": "הכנסות לפי קטגוריה",
+    "expensesByCategory": "הוצאות לפי קטגוריה",
+    "monthlyBreakdown": "פירוט חודשי",
+    "categoryBreakdown": "פירוט לפי קטגוריה",
+    "income": "הכנסה",
+    "expenses": "הוצאה",
+    "type": "סוג",
+    "category": "קטגוריה",
+    "amount": "סכום",
+    "errorLoading": "שגיאה בטעינת הדוח הכספי.",
+    "errorExport": "שגיאה בייצוא CSV."
   }
 }

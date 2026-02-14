@@ -455,6 +455,8 @@ public class PaymentsController : ControllerBase
             BuildingId = charge.Unit.BuildingId,
             UnitId = charge.UnitId,
             EntryType = LedgerEntryType.Payment,
+            Category = "HOAMonthlyFees",
+            Description = $"Payment for charge #{charge.Id}",
             ReferenceId = payment.Id,
             Debit = 0,
             Credit = amount,
