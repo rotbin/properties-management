@@ -164,6 +164,7 @@ const Layout: React.FC = () => {
             '& .MuiDrawer-paper': {
               width: DRAWER_WIDTH,
               top: '52px',
+              height: 'calc(100% - 52px)',
               bgcolor: 'background.paper',
             },
           }}>
