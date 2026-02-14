@@ -17,7 +17,7 @@ const WorkOrdersPage: React.FC = () => {
   const { t } = useTranslation();
   const [workOrders, setWorkOrders] = useState<WorkOrderDto[]>([]);
   const [vendors, setVendors] = useState<VendorDto[]>([]);
-  const [buildings, setBuildings] = useState<BuildingDto[]>([]);
+  const [_buildings, setBuildings] = useState<BuildingDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');

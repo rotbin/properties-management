@@ -9,7 +9,7 @@ import { Add, PlayArrow, Edit, Download } from '@mui/icons-material';
 import { buildingsApi, hoaApi, reportsApi } from '../../api/services';
 import type { BuildingDto, HOAFeePlanDto, UnitChargeDto, CollectionStatusReport, AgingReport } from '../../types';
 import { HOA_CALC_METHODS } from '../../types';
-import { formatDateLocal, formatDateOnly } from '../../utils/dateUtils';
+import { formatDateOnly } from '../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
 
 const HOAPlansPage: React.FC = () => {

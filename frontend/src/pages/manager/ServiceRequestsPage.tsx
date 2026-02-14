@@ -7,7 +7,7 @@ import {
 import { Visibility, Add } from '@mui/icons-material';
 import { serviceRequestsApi, buildingsApi, workOrdersApi, vendorsApi } from '../../api/services';
 import type { ServiceRequestDto, BuildingDto, VendorDto } from '../../types';
-import { SR_STATUSES, PRIORITIES } from '../../types';
+import { SR_STATUSES } from '../../types';
 import { formatDateLocal } from '../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
 

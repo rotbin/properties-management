@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Box, Typography, Button, TextField, MenuItem, Paper, Alert, CircularProgress, Card, CardContent, Grid
+  Box, Typography, Button, TextField, MenuItem, Alert, CircularProgress, Card, CardContent, Grid
 } from '@mui/material';
 import { PlayArrow, Save } from '@mui/icons-material';
 import { cleaningPlansApi, buildingsApi, vendorsApi } from '../../api/services';

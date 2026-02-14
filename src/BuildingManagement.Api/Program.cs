@@ -128,7 +128,9 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:3000", "http://localhost:4173")
+        policy.WithOrigins(
+                  "http://localhost:5173", "http://localhost:3000", "http://localhost:4173",
+                  "https://properties-management-d8g3gfd8gfcwajft.israelcentral-01.azurewebsites.net")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -188,13 +190,18 @@ var app = builder.Build();
         await db.Database.EnsureCreatedAsync();
     }
 
-    if (app.Environment.IsDevelopment())
+    if (isInMemory)
     {
-        await DataSeeder.SeedAsync(app.Services, useInMemory: isInMemory);
+        // InMemory: always seed (data is lost on restart anyway)
+        await DataSeeder.SeedAsync(app.Services, useInMemory: true);
     }
-    else if (!isInMemory)
+    else if (app.Environment.IsDevelopment())
     {
-        // In production with a real DB, just run migrations
+        await DataSeeder.SeedAsync(app.Services, useInMemory: false);
+    }
+    else
+    {
+        // Production with real DB: just run migrations
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.MigrateAsync();
@@ -209,10 +216,17 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowFrontend");
+
+// Serve React SPA static files from wwwroot
+app.UseDefaultFiles(); // Serves index.html for root "/"
 app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health");
+
+// SPA fallback: for any non-API, non-file request, serve index.html so React Router works
+app.MapFallbackToFile("index.html");
 
 app.Run();

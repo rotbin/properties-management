@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Box, Typography, Button, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, MenuItem, Alert, CircularProgress, Chip, Divider
+  TextField, MenuItem, Alert, CircularProgress, Chip
 } from '@mui/material';
 import { Add, PlayArrow } from '@mui/icons-material';
 import { assetsApi, preventivePlansApi, buildingsApi, vendorsApi } from '../../api/services';
@@ -16,7 +16,7 @@ const AssetsPage: React.FC = () => {
   const [assets, setAssets] = useState<AssetDto[]>([]);
   const [plans, setPlans] = useState<PreventivePlanDto[]>([]);
   const [buildings, setBuildings] = useState<BuildingDto[]>([]);
-  const [vendors, setVendors] = useState<VendorDto[]>([]);
+  const [_vendors, setVendors] = useState<VendorDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
