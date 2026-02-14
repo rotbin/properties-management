@@ -113,12 +113,18 @@ const LoginPage: React.FC = () => {
               onChange={e => setEmail(e.target.value)} required
               sx={{ mb: 2 }}
               size="medium"
+              slotProps={{
+                htmlInput: { dir: 'ltr', style: { textAlign: 'left' } },
+              }}
             />
             <TextField
               fullWidth label={t('login.password')} type="password" value={password}
               onChange={e => setPassword(e.target.value)} required
               sx={{ mb: 3 }}
               size="medium"
+              slotProps={{
+                htmlInput: { dir: 'ltr', style: { textAlign: 'left' } },
+              }}
             />
             <Button
               fullWidth variant="contained" size="large" type="submit" disabled={isLoading}
