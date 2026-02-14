@@ -214,6 +214,21 @@ export interface UnitChargeDto {
   createdAtUtc: string;
 }
 
+export interface ChargePaymentDto {
+  id: number;
+  amount: number;
+  paymentDateUtc: string;
+  isManual: boolean;
+  manualMethodType?: string;
+  providerReference?: string;
+  notes?: string;
+  enteredByName?: string;
+  status: string;
+  createdAtUtc: string;
+}
+
+export const MANUAL_PAYMENT_METHODS = ['Manual', 'BankTransfer', 'Cash', 'Check'] as const;
+
 export interface PaymentMethodDto {
   id: number;
   methodType: string;

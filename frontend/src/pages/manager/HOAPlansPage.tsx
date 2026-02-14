@@ -4,12 +4,12 @@ import {
   TableContainer, TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent,
   DialogActions, TextField, MenuItem, Chip, Alert, CircularProgress,
   FormControl, InputLabel, Select, IconButton, Tooltip, Stack,
-  useMediaQuery, useTheme
+  useMediaQuery, useTheme, List, ListItem, ListItemText, Divider
 } from '@mui/material';
-import { Add, PlayArrow, Edit, Download } from '@mui/icons-material';
+import { Add, PlayArrow, Edit, Download, Payment, Visibility, Delete } from '@mui/icons-material';
 import { buildingsApi, hoaApi, reportsApi } from '../../api/services';
-import type { BuildingDto, HOAFeePlanDto, UnitChargeDto, CollectionStatusReport, AgingReport } from '../../types';
-import { HOA_CALC_METHODS } from '../../types';
+import type { BuildingDto, HOAFeePlanDto, UnitChargeDto, CollectionStatusReport, AgingReport, ChargePaymentDto } from '../../types';
+import { HOA_CALC_METHODS, MANUAL_PAYMENT_METHODS } from '../../types';
 import { formatDateOnly } from '../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
 
@@ -33,6 +33,23 @@ const HOAPlansPage: React.FC = () => {
   const [adjustChargeId, setAdjustChargeId] = useState(0);
   const [adjustAmount, setAdjustAmount] = useState('');
   const [adjustReason, setAdjustReason] = useState('');
+
+  // Manual payment state
+  const [manualPayDialog, setManualPayDialog] = useState(false);
+  const [manualPayChargeId, setManualPayChargeId] = useState(0);
+  const [manualPayCharge, setManualPayCharge] = useState<UnitChargeDto | null>(null);
+  const [manualPayForm, setManualPayForm] = useState({ paidAmount: '', paidAt: '', method: 'BankTransfer' as string, reference: '', notes: '' });
+
+  // Payments list state
+  const [paymentsDialog, setPaymentsDialog] = useState(false);
+  const [paymentsChargeId, setPaymentsChargeId] = useState(0);
+  const [chargePayments, setChargePayments] = useState<ChargePaymentDto[]>([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+
+  // Edit manual payment state
+  const [editPayDialog, setEditPayDialog] = useState(false);
+  const [editPayId, setEditPayId] = useState(0);
+  const [editPayForm, setEditPayForm] = useState({ paidAmount: '', paidAt: '', method: 'BankTransfer' as string, reference: '', notes: '' });
 
   useEffect(() => { buildingsApi.getAll().then(r => setBuildings(r.data)); }, []);
 
@@ -73,6 +90,95 @@ const HOAPlansPage: React.FC = () => {
 
   const handleAdjust = async () => {
     try { await hoaApi.adjustCharge(adjustChargeId, { newAmount: parseFloat(adjustAmount), reason: adjustReason }); setAdjustDialog(false); setMsg(t('hoa.chargeAdjusted')); loadCharges(); } catch { setMsg(t('hoa.errorAdjusting')); }
+  };
+
+  const openManualPayment = (charge: UnitChargeDto) => {
+    setManualPayChargeId(charge.id);
+    setManualPayCharge(charge);
+    setManualPayForm({ paidAmount: charge.balance > 0 ? charge.balance.toFixed(2) : '', paidAt: new Date().toISOString().slice(0, 16), method: 'BankTransfer', reference: '', notes: '' });
+    setManualPayDialog(true);
+  };
+
+  const handleManualPayment = async () => {
+    const amount = parseFloat(manualPayForm.paidAmount);
+    if (!amount || amount <= 0) { setMsg(t('hoa.errorAmountRequired')); return; }
+    try {
+      await hoaApi.addManualPayment(manualPayChargeId, {
+        paidAmount: amount,
+        paidAt: manualPayForm.paidAt || undefined,
+        method: manualPayForm.method,
+        reference: manualPayForm.reference || undefined,
+        notes: manualPayForm.notes || undefined,
+      });
+      setManualPayDialog(false);
+      setMsg(t('hoa.manualPaymentSaved'));
+      loadCharges();
+    } catch (err: unknown) {
+      let detail = '';
+      if (err && typeof err === 'object' && 'response' in err) {
+        const resp = (err as { response?: { data?: { message?: string } } }).response;
+        if (resp?.data?.message) detail = resp.data.message;
+      }
+      setMsg(t('hoa.errorManualPayment') + (detail ? ` – ${detail}` : ''));
+    }
+  };
+
+  const openChargePayments = async (chargeId: number) => {
+    setPaymentsChargeId(chargeId);
+    setPaymentsDialog(true);
+    setPaymentsLoading(true);
+    try {
+      const r = await hoaApi.getChargePayments(chargeId);
+      setChargePayments(r.data);
+    } catch { setChargePayments([]); }
+    finally { setPaymentsLoading(false); }
+  };
+
+  const openEditPayment = (p: ChargePaymentDto) => {
+    setEditPayId(p.id);
+    setEditPayForm({
+      paidAmount: p.amount.toFixed(2),
+      paidAt: p.paymentDateUtc.slice(0, 16),
+      method: p.manualMethodType || 'BankTransfer',
+      reference: p.providerReference || '',
+      notes: p.notes || '',
+    });
+    setEditPayDialog(true);
+  };
+
+  const handleEditPayment = async () => {
+    const amount = parseFloat(editPayForm.paidAmount);
+    if (!amount || amount <= 0) { setMsg(t('hoa.errorAmountRequired')); return; }
+    try {
+      await hoaApi.editManualPayment(editPayId, {
+        paidAmount: amount,
+        paidAt: editPayForm.paidAt || undefined,
+        method: editPayForm.method,
+        reference: editPayForm.reference || undefined,
+        notes: editPayForm.notes || undefined,
+      });
+      setEditPayDialog(false);
+      setMsg(t('hoa.manualPaymentUpdated'));
+      openChargePayments(paymentsChargeId); // refresh list
+      loadCharges();
+    } catch (err: unknown) {
+      let detail = '';
+      if (err && typeof err === 'object' && 'response' in err) {
+        const resp = (err as { response?: { data?: { message?: string } } }).response;
+        if (resp?.data?.message) detail = resp.data.message;
+      }
+      setMsg(t('hoa.errorManualPayment') + (detail ? ` – ${detail}` : ''));
+    }
+  };
+
+  const handleDeletePayment = async (paymentId: number) => {
+    if (!window.confirm(t('hoa.confirmDeletePayment'))) return;
+    try {
+      await hoaApi.deleteManualPayment(paymentId);
+      setMsg(t('hoa.manualPaymentDeleted'));
+      openChargePayments(paymentsChargeId); // refresh list
+      loadCharges();
+    } catch { setMsg(t('hoa.errorManualPayment')); }
   };
 
   const downloadCsv = async (type: 'collection' | 'aging') => {
@@ -196,8 +302,10 @@ const HOAPlansPage: React.FC = () => {
                       <Typography variant="body2">{t('hoa.paid')}: {c.amountPaid.toFixed(2)}</Typography>
                       <Typography variant="body2" fontWeight="bold" color={c.balance > 0 ? 'error.main' : 'success.main'}>{t('hoa.balance')}: {c.balance.toFixed(2)}</Typography>
                     </Box>
-                    <Box sx={{ mt: 0.5 }}>
+                    <Box sx={{ mt: 0.5, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                       <Button size="small" variant="outlined" startIcon={<Edit />} onClick={() => { setAdjustChargeId(c.id); setAdjustAmount(c.amountDue.toString()); setAdjustReason(''); setAdjustDialog(true); }}>{t('hoa.adjustAmount')}</Button>
+                      {c.balance > 0 && <Button size="small" variant="contained" color="primary" startIcon={<Payment />} onClick={() => openManualPayment(c)}>{t('hoa.manualPayment')}</Button>}
+                      <Button size="small" variant="outlined" color="info" startIcon={<Visibility />} onClick={() => openChargePayments(c.id)}>{t('hoa.viewPayments')}</Button>
                     </Box>
                   </CardContent>
                 </Card>
@@ -219,7 +327,11 @@ const HOAPlansPage: React.FC = () => {
                       <TableCell align="right">{c.amountDue.toFixed(2)}</TableCell><TableCell align="right">{c.amountPaid.toFixed(2)}</TableCell>
                       <TableCell align="right" sx={{ fontWeight: 'bold', color: c.balance > 0 ? 'error.main' : 'success.main' }}>{c.balance.toFixed(2)}</TableCell>
                       <TableCell><Chip label={t(`enums.chargeStatus.${c.status}`, c.status)} size="small" color={c.status === 'Paid' ? 'success' : c.status === 'Overdue' ? 'error' : c.status === 'PartiallyPaid' ? 'warning' : 'default'} /></TableCell>
-                      <TableCell><Tooltip title={t('hoa.adjustAmount')}><IconButton size="small" onClick={() => { setAdjustChargeId(c.id); setAdjustAmount(c.amountDue.toString()); setAdjustReason(''); setAdjustDialog(true); }}><Edit /></IconButton></Tooltip></TableCell>
+                      <TableCell>
+                        <Tooltip title={t('hoa.adjustAmount')}><IconButton size="small" onClick={() => { setAdjustChargeId(c.id); setAdjustAmount(c.amountDue.toString()); setAdjustReason(''); setAdjustDialog(true); }}><Edit /></IconButton></Tooltip>
+                        {c.balance > 0 && <Tooltip title={t('hoa.manualPayment')}><IconButton size="small" color="primary" onClick={() => openManualPayment(c)}><Payment /></IconButton></Tooltip>}
+                        <Tooltip title={t('hoa.viewPayments')}><IconButton size="small" color="info" onClick={() => openChargePayments(c.id)}><Visibility /></IconButton></Tooltip>
+                      </TableCell>
                     </TableRow>
                   ))}
                   {charges.length === 0 && <TableRow><TableCell colSpan={8} align="center">{t('hoa.noCharges')}</TableCell></TableRow>}
@@ -369,6 +481,118 @@ const HOAPlansPage: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setAdjustDialog(false)}>{t('app.cancel')}</Button>
           <Button variant="contained" onClick={handleAdjust}>{t('app.save')}</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Manual Payment Dialog */}
+      <Dialog open={manualPayDialog} onClose={() => setManualPayDialog(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
+        <DialogTitle>{t('hoa.manualPayment')}</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+          {manualPayCharge && (
+            <Alert severity="info" sx={{ mb: 1 }}>
+              {t('hoa.unitCol')}: {manualPayCharge.unitNumber} · {manualPayCharge.tenantName || '—'} — {t('hoa.balance')}: <b>{manualPayCharge.balance.toFixed(2)}</b>
+            </Alert>
+          )}
+          <TextField label={t('hoa.paidAmount')} type="number" value={manualPayForm.paidAmount}
+            onChange={e => setManualPayForm(f => ({ ...f, paidAmount: e.target.value }))} required
+            inputProps={{ min: 0.01, step: 0.01 }} />
+          <TextField label={t('hoa.paymentDate')} type="datetime-local" value={manualPayForm.paidAt}
+            onChange={e => setManualPayForm(f => ({ ...f, paidAt: e.target.value }))}
+            InputLabelProps={{ shrink: true }} />
+          <FormControl fullWidth>
+            <InputLabel>{t('hoa.paymentMethod')}</InputLabel>
+            <Select value={manualPayForm.method} label={t('hoa.paymentMethod')}
+              onChange={e => setManualPayForm(f => ({ ...f, method: e.target.value }))}>
+              {MANUAL_PAYMENT_METHODS.map(m => <MenuItem key={m} value={m}>{t(`enums.manualPayMethod.${m}`, m)}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <TextField label={t('hoa.reference')} value={manualPayForm.reference}
+            onChange={e => setManualPayForm(f => ({ ...f, reference: e.target.value }))}
+            placeholder={t('hoa.referencePlaceholder')} />
+          <TextField label={t('hoa.notes')} value={manualPayForm.notes}
+            onChange={e => setManualPayForm(f => ({ ...f, notes: e.target.value }))}
+            multiline rows={2} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setManualPayDialog(false)}>{t('app.cancel')}</Button>
+          <Button variant="contained" onClick={handleManualPayment}>{t('app.save')}</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Payments List Dialog */}
+      <Dialog open={paymentsDialog} onClose={() => setPaymentsDialog(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
+        <DialogTitle>{t('hoa.chargePayments')}</DialogTitle>
+        <DialogContent>
+          {paymentsLoading ? <CircularProgress /> : chargePayments.length === 0 ? (
+            <Typography color="text.secondary" sx={{ py: 3 }} align="center">{t('hoa.noPayments')}</Typography>
+          ) : (
+            <List disablePadding>
+              {chargePayments.map((p, idx) => (
+                <React.Fragment key={p.id}>
+                  {idx > 0 && <Divider />}
+                  <ListItem
+                    secondaryAction={p.isManual && p.status !== 'Cancelled' ? (
+                      <Box>
+                        <Tooltip title={t('app.edit')}><IconButton size="small" onClick={() => openEditPayment(p)}><Edit /></IconButton></Tooltip>
+                        <Tooltip title={t('app.delete')}><IconButton size="small" color="error" onClick={() => handleDeletePayment(p.id)}><Delete /></IconButton></Tooltip>
+                      </Box>
+                    ) : undefined}
+                  >
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <Typography variant="subtitle2">{p.amount.toFixed(2)} ILS</Typography>
+                          <Chip label={p.isManual ? t(`enums.manualPayMethod.${p.manualMethodType}`, p.manualMethodType || 'Manual') : t('hoa.card')} size="small" variant="outlined" />
+                          <Chip label={t(`enums.paymentStatus.${p.status}`, p.status)} size="small"
+                            color={p.status === 'Succeeded' ? 'success' : p.status === 'Cancelled' ? 'error' : 'default'} />
+                        </Box>
+                      }
+                      secondary={
+                        <>
+                          {formatDateOnly(p.paymentDateUtc)}
+                          {p.providerReference && ` · ${t('hoa.reference')}: ${p.providerReference}`}
+                          {p.notes && ` · ${p.notes}`}
+                          {p.enteredByName && ` · ${t('hoa.enteredBy')}: ${p.enteredByName}`}
+                        </>
+                      }
+                    />
+                  </ListItem>
+                </React.Fragment>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPaymentsDialog(false)}>{t('app.close')}</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Manual Payment Dialog */}
+      <Dialog open={editPayDialog} onClose={() => setEditPayDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{t('hoa.editManualPayment')}</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+          <TextField label={t('hoa.paidAmount')} type="number" value={editPayForm.paidAmount}
+            onChange={e => setEditPayForm(f => ({ ...f, paidAmount: e.target.value }))} required
+            inputProps={{ min: 0.01, step: 0.01 }} />
+          <TextField label={t('hoa.paymentDate')} type="datetime-local" value={editPayForm.paidAt}
+            onChange={e => setEditPayForm(f => ({ ...f, paidAt: e.target.value }))}
+            InputLabelProps={{ shrink: true }} />
+          <FormControl fullWidth>
+            <InputLabel>{t('hoa.paymentMethod')}</InputLabel>
+            <Select value={editPayForm.method} label={t('hoa.paymentMethod')}
+              onChange={e => setEditPayForm(f => ({ ...f, method: e.target.value }))}>
+              {MANUAL_PAYMENT_METHODS.map(m => <MenuItem key={m} value={m}>{t(`enums.manualPayMethod.${m}`, m)}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <TextField label={t('hoa.reference')} value={editPayForm.reference}
+            onChange={e => setEditPayForm(f => ({ ...f, reference: e.target.value }))} />
+          <TextField label={t('hoa.notes')} value={editPayForm.notes}
+            onChange={e => setEditPayForm(f => ({ ...f, notes: e.target.value }))}
+            multiline rows={2} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditPayDialog(false)}>{t('app.cancel')}</Button>
+          <Button variant="contained" onClick={handleEditPayment}>{t('app.save')}</Button>
         </DialogActions>
       </Dialog>
     </Box>

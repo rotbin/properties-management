@@ -326,7 +326,26 @@
     "errorSaving": "שגיאה בשמירת תוכנית",
     "errorGenerating": "שגיאה בהפקת חיובים",
     "errorAdjusting": "שגיאה בהתאמת חיוב",
-    "errorCsv": "שגיאה בהורדת CSV"
+    "errorCsv": "שגיאה בהורדת CSV",
+    "manualPayment": "עדכון תשלום ידני",
+    "editManualPayment": "עריכת תשלום ידני",
+    "viewPayments": "צפייה בתשלומים",
+    "chargePayments": "תשלומים לחיוב",
+    "paidAmount": "סכום ששולם",
+    "paymentDate": "תאריך תשלום",
+    "paymentMethod": "אמצעי תשלום",
+    "reference": "אסמכתא",
+    "referencePlaceholder": "מספר העברה, מספר צ'ק...",
+    "notes": "הערות",
+    "noPayments": "אין תשלומים לחיוב זה",
+    "card": "כרטיס אשראי",
+    "enteredBy": "הוזן ע\"י",
+    "manualPaymentSaved": "התשלום הידני נשמר בהצלחה",
+    "manualPaymentUpdated": "התשלום הידני עודכן",
+    "manualPaymentDeleted": "התשלום הידני בוטל",
+    "confirmDeletePayment": "האם לבטל תשלום זה? הפעולה תעדכן את יתרת החיוב.",
+    "errorAmountRequired": "יש להזין סכום תקין",
+    "errorManualPayment": "שגיאה בשמירת תשלום ידני"
   },
 
   "paymentConfig": {
@@ -573,7 +592,14 @@
       "Pending": "ממתין",
       "Succeeded": "הצליח",
       "Failed": "נכשל",
-      "Refunded": "הוחזר"
+      "Refunded": "הוחזר",
+      "Cancelled": "בוטל"
+    },
+    "manualPayMethod": {
+      "Manual": "ידני",
+      "BankTransfer": "העברה בנקאית",
+      "Cash": "מזומן",
+      "Check": "צ'ק"
     },
     "vendorServiceType": {
       "Cleaning": "ניקיון",

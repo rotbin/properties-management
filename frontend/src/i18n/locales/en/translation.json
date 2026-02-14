@@ -326,7 +326,26 @@
     "errorSaving": "Error saving plan",
     "errorGenerating": "Error generating charges",
     "errorAdjusting": "Error adjusting charge",
-    "errorCsv": "Error downloading CSV"
+    "errorCsv": "Error downloading CSV",
+    "manualPayment": "Manual Payment Update",
+    "editManualPayment": "Edit Manual Payment",
+    "viewPayments": "View Payments",
+    "chargePayments": "Charge Payments",
+    "paidAmount": "Amount Paid",
+    "paymentDate": "Payment Date",
+    "paymentMethod": "Payment Method",
+    "reference": "Reference",
+    "referencePlaceholder": "Transfer number, check number...",
+    "notes": "Notes",
+    "noPayments": "No payments for this charge",
+    "card": "Credit Card",
+    "enteredBy": "Entered by",
+    "manualPaymentSaved": "Manual payment saved successfully",
+    "manualPaymentUpdated": "Manual payment updated",
+    "manualPaymentDeleted": "Manual payment cancelled",
+    "confirmDeletePayment": "Cancel this payment? This will update the charge balance.",
+    "errorAmountRequired": "Please enter a valid amount",
+    "errorManualPayment": "Error saving manual payment"
   },
 
   "paymentConfig": {
@@ -573,7 +592,14 @@
       "Pending": "Pending",
       "Succeeded": "Succeeded",
       "Failed": "Failed",
-      "Refunded": "Refunded"
+      "Refunded": "Refunded",
+      "Cancelled": "Cancelled"
+    },
+    "manualPayMethod": {
+      "Manual": "Manual",
+      "BankTransfer": "Bank Transfer",
+      "Cash": "Cash",
+      "Check": "Check"
     },
     "vendorServiceType": {
       "Cleaning": "Cleaning",

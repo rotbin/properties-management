@@ -181,6 +181,50 @@ public record PayChargeRequest
     public decimal? Amount { get; init; }
 }
 
+// ─── Manual Payment ─────────────────────────────────────
+
+public record ManualPaymentRequest
+{
+    [Required]
+    public decimal PaidAmount { get; init; }
+
+    public DateTime? PaidAt { get; init; }
+
+    /// <summary>Manual | BankTransfer | Cash | Check</summary>
+    public PaymentMethodType Method { get; init; } = PaymentMethodType.Manual;
+
+    [MaxLength(200)]
+    public string? Reference { get; init; }
+
+    [MaxLength(1000)]
+    public string? Notes { get; init; }
+}
+
+public record ManualPaymentResultDto
+{
+    public int PaymentId { get; init; }
+    public int UnitChargeId { get; init; }
+    public decimal AmountDue { get; init; }
+    public decimal AmountPaid { get; init; }
+    public decimal Outstanding { get; init; }
+    public UnitChargeStatus Status { get; init; }
+    public DateTime? LastPaymentDate { get; init; }
+}
+
+public record ChargePaymentDto
+{
+    public int Id { get; init; }
+    public decimal Amount { get; init; }
+    public DateTime PaymentDateUtc { get; init; }
+    public bool IsManual { get; init; }
+    public PaymentMethodType? ManualMethodType { get; init; }
+    public string? ProviderReference { get; init; }
+    public string? Notes { get; init; }
+    public string? EnteredByName { get; init; }
+    public PaymentStatus Status { get; init; }
+    public DateTime CreatedAtUtc { get; init; }
+}
+
 // ─── Reports: Collection Status (Who Paid / Who Has Not) ─────
 
 public record CollectionRowDto

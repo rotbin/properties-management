@@ -114,7 +114,11 @@ public enum UnitChargeStatus
 public enum PaymentMethodType
 {
     CreditCard = 0,
-    BankAccount = 1
+    BankAccount = 1,
+    Manual = 10,
+    BankTransfer = 11,
+    Cash = 12,
+    Check = 13
 }
 
 public enum PaymentStatus
@@ -122,7 +126,8 @@ public enum PaymentStatus
     Pending = 0,
     Succeeded = 1,
     Failed = 2,
-    Refunded = 3
+    Refunded = 3,
+    Cancelled = 4
 }
 
 public enum LedgerEntryType

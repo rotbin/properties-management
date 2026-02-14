@@ -120,6 +120,15 @@ export const hoaApi = {
   getChargesForUnit: (unitId: number) => apiClient.get<UnitChargeDto[]>(`/api/hoa/charges/unit/${unitId}`),
   adjustCharge: (id: number, data: { newAmount: number; reason?: string }) =>
     apiClient.put(`/api/hoa/charges/${id}/adjust`, data),
+  // Manual payments
+  addManualPayment: (unitChargeId: number, data: { paidAmount: number; paidAt?: string; method: string; reference?: string; notes?: string }) =>
+    apiClient.post(`/api/hoa/charges/${unitChargeId}/manual-payment`, data),
+  editManualPayment: (paymentId: number, data: { paidAmount: number; paidAt?: string; method: string; reference?: string; notes?: string }) =>
+    apiClient.put(`/api/hoa/manual-payments/${paymentId}`, data),
+  deleteManualPayment: (paymentId: number) =>
+    apiClient.delete(`/api/hoa/manual-payments/${paymentId}`),
+  getChargePayments: (unitChargeId: number) =>
+    apiClient.get(`/api/hoa/charges/${unitChargeId}/payments`),
 };
 
 export const paymentsApi = {

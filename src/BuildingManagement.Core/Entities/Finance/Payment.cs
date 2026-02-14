@@ -28,6 +28,20 @@ public class Payment
 
     public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
 
+    /// <summary>True when entered manually by manager (not via payment gateway).</summary>
+    public bool IsManual { get; set; }
+
+    /// <summary>Manual payment method type (BankTransfer, Cash, Check, Manual).</summary>
+    public PaymentMethodType? ManualMethodType { get; set; }
+
+    /// <summary>Free-text notes for manual payments.</summary>
+    [MaxLength(1000)]
+    public string? Notes { get; set; }
+
+    /// <summary>UserId of manager who entered the manual payment.</summary>
+    [MaxLength(450)]
+    public string? EnteredByUserId { get; set; }
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     public ICollection<PaymentAllocation> Allocations { get; set; } = new List<PaymentAllocation>();
