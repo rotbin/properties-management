@@ -586,8 +586,11 @@
       "Pending": "Pending",
       "Paid": "Paid",
       "PartiallyPaid": "Partially Paid",
+      "Partial": "Partially Paid",
+      "Unpaid": "Unpaid",
       "Overdue": "Overdue",
-      "Cancelled": "Cancelled"
+      "Cancelled": "Cancelled",
+      "NotGenerated": "Not Generated"
     },
     "paymentStatus": {
       "Pending": "Pending",

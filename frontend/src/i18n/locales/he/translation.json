@@ -586,8 +586,11 @@
       "Pending": "ממתין",
       "Paid": "שולם",
       "PartiallyPaid": "שולם חלקית",
+      "Partial": "שולם חלקית",
+      "Unpaid": "לא שולם",
       "Overdue": "באיחור",
-      "Cancelled": "בוטל"
+      "Cancelled": "בוטל",
+      "NotGenerated": "לא הופק"
     },
     "paymentStatus": {
       "Pending": "ממתין",
