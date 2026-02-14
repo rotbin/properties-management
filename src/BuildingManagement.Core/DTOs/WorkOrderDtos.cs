@@ -8,6 +8,7 @@ public record WorkOrderDto
     public int Id { get; init; }
     public int BuildingId { get; init; }
     public string? BuildingName { get; init; }
+    public string? BuildingAddress { get; init; }
     public int? ServiceRequestId { get; init; }
     public int? VendorId { get; init; }
     public string? VendorName { get; init; }
@@ -20,6 +21,16 @@ public record WorkOrderDto
     public DateTime? CompletedAtUtc { get; init; }
     public List<WorkOrderNoteDto> Notes { get; init; } = [];
     public List<AttachmentDto> Attachments { get; init; } = [];
+
+    // SR details (populated when WO is linked to an SR)
+    public string? SrArea { get; init; }
+    public string? SrCategory { get; init; }
+    public string? SrPriority { get; init; }
+    public bool SrIsEmergency { get; init; }
+    public string? SrPhone { get; init; }
+    public string? SrSubmittedByName { get; init; }
+    public string? SrDescription { get; init; }
+    public List<AttachmentDto> SrAttachments { get; init; } = [];
 }
 
 public record CreateWorkOrderRequest
@@ -44,6 +55,17 @@ public record AssignWorkOrderRequest
     [Required]
     public int VendorId { get; init; }
     public DateTime? ScheduledFor { get; init; }
+}
+
+public record AssignVendorToSrRequest
+{
+    [Required]
+    public int VendorId { get; init; }
+    public DateTime? ScheduledFor { get; init; }
+    [MaxLength(300)]
+    public string? Title { get; init; }
+    [MaxLength(2000)]
+    public string? Notes { get; init; }
 }
 
 public record UpdateWorkOrderStatusRequest

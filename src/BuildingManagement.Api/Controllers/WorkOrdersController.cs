@@ -84,6 +84,7 @@ public class WorkOrdersController : ControllerBase
         IQueryable<WorkOrder> query = _db.WorkOrders
             .Include(wo => wo.Building)
             .Include(wo => wo.Vendor)
+            .Include(wo => wo.ServiceRequest).ThenInclude(sr => sr!.Attachments)
             .Include(wo => wo.Notes).ThenInclude(n => n.CreatedByUser)
             .Include(wo => wo.Attachments);
 
@@ -115,13 +116,20 @@ public class WorkOrdersController : ControllerBase
         var items = await _db.WorkOrders
             .Include(wo => wo.Building)
             .Include(wo => wo.Vendor)
+            .Include(wo => wo.ServiceRequest).ThenInclude(sr => sr!.Attachments)
             .Include(wo => wo.Notes).ThenInclude(n => n.CreatedByUser)
             .Include(wo => wo.Attachments)
             .Where(wo => wo.VendorId == user.VendorId)
-            .OrderByDescending(wo => wo.CreatedAtUtc)
             .ToListAsync();
 
-        return Ok(items.Select(MapToDto).ToList());
+        // Sort: emergency first, then by scheduled date, then by created date
+        var sorted = items
+            .OrderByDescending(wo => wo.ServiceRequest?.IsEmergency ?? false)
+            .ThenBy(wo => wo.ScheduledFor ?? DateTime.MaxValue)
+            .ThenByDescending(wo => wo.CreatedAtUtc)
+            .ToList();
+
+        return Ok(sorted.Select(MapToDto).ToList());
     }
 
     [HttpGet("{id}")]
@@ -280,6 +288,7 @@ public class WorkOrdersController : ControllerBase
         var wo = await _db.WorkOrders
             .Include(wo => wo.Building)
             .Include(wo => wo.Vendor)
+            .Include(wo => wo.ServiceRequest).ThenInclude(sr => sr!.Attachments)
             .Include(wo => wo.Notes).ThenInclude(n => n.CreatedByUser)
             .Include(wo => wo.Attachments)
             .FirstOrDefaultAsync(wo => wo.Id == id);
@@ -287,36 +296,57 @@ public class WorkOrdersController : ControllerBase
         return wo == null ? null : MapToDto(wo);
     }
 
-    private static WorkOrderDto MapToDto(WorkOrder wo) => new()
+    private static WorkOrderDto MapToDto(WorkOrder wo)
     {
-        Id = wo.Id,
-        BuildingId = wo.BuildingId,
-        BuildingName = wo.Building?.Name,
-        ServiceRequestId = wo.ServiceRequestId,
-        VendorId = wo.VendorId,
-        VendorName = wo.Vendor?.Name,
-        Title = wo.Title,
-        Description = wo.Description,
-        ScheduledFor = wo.ScheduledFor,
-        Status = wo.Status,
-        CreatedAtUtc = wo.CreatedAtUtc,
-        UpdatedAtUtc = wo.UpdatedAtUtc,
-        CompletedAtUtc = wo.CompletedAtUtc,
-        Notes = wo.Notes?.Select(n => new WorkOrderNoteDto
+        var sr = wo.ServiceRequest;
+        return new WorkOrderDto
         {
-            Id = n.Id,
-            NoteText = n.NoteText,
-            CreatedAtUtc = n.CreatedAtUtc,
-            CreatedByUserId = n.CreatedByUserId,
-            CreatedByName = n.CreatedByUser?.FullName
-        }).ToList() ?? [],
-        Attachments = wo.Attachments?.Select(a => new AttachmentDto
-        {
-            Id = a.Id,
-            FileName = a.FileName,
-            ContentType = a.ContentType,
-            Url = $"/api/files/wo-{a.Id}",
-            UploadedAtUtc = a.UploadedAtUtc
-        }).ToList() ?? []
-    };
+            Id = wo.Id,
+            BuildingId = wo.BuildingId,
+            BuildingName = wo.Building?.Name,
+            BuildingAddress = wo.Building?.AddressLine,
+            ServiceRequestId = wo.ServiceRequestId,
+            VendorId = wo.VendorId,
+            VendorName = wo.Vendor?.Name,
+            Title = wo.Title,
+            Description = wo.Description,
+            ScheduledFor = wo.ScheduledFor,
+            Status = wo.Status,
+            CreatedAtUtc = wo.CreatedAtUtc,
+            UpdatedAtUtc = wo.UpdatedAtUtc,
+            CompletedAtUtc = wo.CompletedAtUtc,
+            Notes = wo.Notes?.Select(n => new WorkOrderNoteDto
+            {
+                Id = n.Id,
+                NoteText = n.NoteText,
+                CreatedAtUtc = n.CreatedAtUtc,
+                CreatedByUserId = n.CreatedByUserId,
+                CreatedByName = n.CreatedByUser?.FullName
+            }).ToList() ?? [],
+            Attachments = wo.Attachments?.Select(a => new AttachmentDto
+            {
+                Id = a.Id,
+                FileName = a.FileName,
+                ContentType = a.ContentType,
+                Url = $"/api/files/wo-{a.Id}",
+                UploadedAtUtc = a.UploadedAtUtc
+            }).ToList() ?? [],
+            // SR details
+            SrArea = sr?.Area.ToString(),
+            SrCategory = sr?.Category.ToString(),
+            SrPriority = sr?.Priority.ToString(),
+            SrIsEmergency = sr?.IsEmergency ?? false,
+            SrPhone = sr?.Phone,
+            SrSubmittedByName = sr?.SubmittedByName,
+            SrDescription = sr?.Description,
+            SrAttachments = sr?.Attachments?.Select(a => new AttachmentDto
+            {
+                Id = a.Id,
+                FileName = a.FileName,
+                ContentType = a.ContentType,
+                Url = $"/api/files/sr-{a.Id}",
+                UploadedAtUtc = a.UploadedAtUtc
+            }).ToList() ?? []
+        };
+    }
 }

@@ -196,7 +196,17 @@
     "createSr": "יצירת קריאת שירות",
     "srCreated": "קריאת שירות נוצרה!",
     "failedCreateSr": "יצירת קריאת שירות נכשלה",
-    "missingFields": "מבנה ותיאור הם שדות חובה"
+    "missingFields": "מבנה ותיאור הם שדות חובה",
+    "assignVendor": "הקצה ספק",
+    "reassignVendor": "שנה ספק",
+    "vendorAssigned": "הספק הוקצה בהצלחה!",
+    "failedAssign": "הקצאת ספק נכשלה",
+    "vendorRequired": "יש לבחור ספק",
+    "vendorNotes": "הערות לספק",
+    "vendor": "ספק",
+    "assignedVendor": "ספק מוקצה",
+    "linkedWo": "הזמנת עבודה מקושרת",
+    "unassignedOnly": "ללא הקצאה"
   },
 
   "workOrders": {
@@ -489,7 +499,20 @@
     "failedLoad": "טעינת הזמנות עבודה נכשלה",
     "failedUpdateStatus": "עדכון סטטוס נכשל",
     "failedAddNote": "הוספת הערה נכשלה",
-    "failedUpload": "העלאת תמונות נכשלה"
+    "failedUpload": "העלאת תמונות נכשלה",
+    "activeTasks": "משימות פעילות",
+    "emergencies": "חירום",
+    "emergency": "חירום",
+    "emergencyAlert": "זוהי קריאת חירום — נא לתעדף!",
+    "address": "כתובת",
+    "priority": "עדיפות",
+    "area": "אזור",
+    "category": "קטגוריה",
+    "callbackPhone": "טלפון לחזרה",
+    "phone": "טלפון",
+    "tenant": "דייר",
+    "srDescription": "תיאור קריאת השירות",
+    "srPhotos": "תמונות קריאת שירות"
   },
 
   "enums": {
@@ -524,6 +547,7 @@
       "New": "חדש",
       "InReview": "בבדיקה",
       "Approved": "מאושר",
+      "Assigned": "הוקצה לספק",
       "InProgress": "בביצוע",
       "Resolved": "נפתר",
       "Closed": "סגור",

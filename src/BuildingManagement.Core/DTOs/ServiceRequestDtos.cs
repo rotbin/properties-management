@@ -23,6 +23,12 @@ public record ServiceRequestDto
     public DateTime CreatedAtUtc { get; init; }
     public DateTime? UpdatedAtUtc { get; init; }
     public List<AttachmentDto> Attachments { get; init; } = [];
+
+    // Linked vendor assignment info (from WorkOrder)
+    public int? AssignedVendorId { get; init; }
+    public string? AssignedVendorName { get; init; }
+    public int? LinkedWorkOrderId { get; init; }
+    public string? LinkedWorkOrderStatus { get; init; }
 }
 
 public record CreateServiceRequestRequest

@@ -77,7 +77,8 @@ public class ServiceRequestsController : ControllerBase
         IQueryable<ServiceRequest> query = _db.ServiceRequests
             .Include(sr => sr.Building)
             .Include(sr => sr.Unit)
-            .Include(sr => sr.Attachments);
+            .Include(sr => sr.Attachments)
+            .Include(sr => sr.WorkOrders).ThenInclude(wo => wo.Vendor);
 
         // Manager: filter to their buildings
         if (!isAdmin)
@@ -107,6 +108,7 @@ public class ServiceRequestsController : ControllerBase
             .Include(sr => sr.Building)
             .Include(sr => sr.Unit)
             .Include(sr => sr.Attachments)
+            .Include(sr => sr.WorkOrders).ThenInclude(wo => wo.Vendor)
             .Where(sr => sr.SubmittedByUserId == userId)
             .OrderByDescending(sr => sr.CreatedAtUtc)
             .ToListAsync();
@@ -121,6 +123,7 @@ public class ServiceRequestsController : ControllerBase
             .Include(sr => sr.Building)
             .Include(sr => sr.Unit)
             .Include(sr => sr.Attachments)
+            .Include(sr => sr.WorkOrders).ThenInclude(wo => wo.Vendor)
             .FirstOrDefaultAsync(sr => sr.Id == id);
 
         if (sr == null) return NotFound();
@@ -133,6 +136,81 @@ public class ServiceRequestsController : ControllerBase
         }
 
         return Ok(MapToDto(sr));
+    }
+
+    /// <summary>Assign a vendor to a service request by creating/updating a linked work order.</summary>
+    [HttpPut("{id}/assign-vendor")]
+    [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Manager}")]
+    public async Task<ActionResult<object>> AssignVendor(int id, [FromBody] AssignVendorToSrRequest request)
+    {
+        var sr = await _db.ServiceRequests
+            .Include(s => s.Building)
+            .Include(s => s.WorkOrders)
+            .FirstOrDefaultAsync(s => s.Id == id);
+        if (sr == null) return NotFound();
+
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var isAdmin = User.IsInRole(AppRoles.Admin);
+
+        // Manager building access check
+        if (!isAdmin)
+        {
+            var hasAccess = await _db.BuildingManagers.AnyAsync(bm => bm.UserId == userId && bm.BuildingId == sr.BuildingId);
+            if (!hasAccess) return Forbid();
+        }
+
+        var vendor = await _db.Vendors.FindAsync(request.VendorId);
+        if (vendor == null) return BadRequest(new { message = "Vendor not found." });
+
+        // Find existing work order for this SR, or create new
+        var wo = sr.WorkOrders.FirstOrDefault();
+        if (wo == null)
+        {
+            wo = new WorkOrder
+            {
+                BuildingId = sr.BuildingId,
+                ServiceRequestId = sr.Id,
+                Title = request.Title ?? $"SR #{sr.Id}: {sr.Category} — {sr.Area}",
+                Description = request.Notes ?? sr.Description,
+                VendorId = request.VendorId,
+                ScheduledFor = request.ScheduledFor,
+                Status = request.ScheduledFor.HasValue ? WorkOrderStatus.Scheduled : WorkOrderStatus.Assigned,
+                CreatedBy = userId
+            };
+            _db.WorkOrders.Add(wo);
+        }
+        else
+        {
+            wo.VendorId = request.VendorId;
+            if (request.ScheduledFor.HasValue) wo.ScheduledFor = request.ScheduledFor;
+            if (!string.IsNullOrEmpty(request.Title)) wo.Title = request.Title;
+            if (!string.IsNullOrEmpty(request.Notes)) wo.Description = request.Notes;
+            wo.Status = request.ScheduledFor.HasValue ? WorkOrderStatus.Scheduled : WorkOrderStatus.Assigned;
+            wo.UpdatedBy = userId;
+        }
+
+        // Update SR status
+        sr.Status = ServiceRequestStatus.Assigned;
+        sr.UpdatedBy = userId;
+
+        await _db.SaveChangesAsync();
+
+        // Send notification to vendor
+        if (vendor.Email != null)
+        {
+            await _emailService.SendEmailAsync(vendor.Email,
+                $"New assignment: SR #{sr.Id}",
+                $"You have been assigned to service request #{sr.Id}: {sr.Description}");
+        }
+
+        return Ok(new
+        {
+            serviceRequestId = sr.Id,
+            serviceRequestStatus = sr.Status.ToString(),
+            workOrderId = wo.Id,
+            workOrderStatus = wo.Status.ToString(),
+            vendorName = vendor.Name
+        });
     }
 
     [HttpPut("{id}/status")]
@@ -208,6 +286,7 @@ public class ServiceRequestsController : ControllerBase
 
     private static ServiceRequestDto MapToDto(ServiceRequest sr)
     {
+        var linkedWo = sr.WorkOrders?.FirstOrDefault();
         return new ServiceRequestDto
         {
             Id = sr.Id,
@@ -234,7 +313,11 @@ public class ServiceRequestsController : ControllerBase
                 ContentType = a.ContentType,
                 Url = $"/api/files/sr-{a.Id}",
                 UploadedAtUtc = a.UploadedAtUtc
-            }).ToList() ?? []
+            }).ToList() ?? [],
+            AssignedVendorId = linkedWo?.VendorId,
+            AssignedVendorName = linkedWo?.Vendor?.Name,
+            LinkedWorkOrderId = linkedWo?.Id,
+            LinkedWorkOrderStatus = linkedWo?.Status.ToString()
         };
     }
 }

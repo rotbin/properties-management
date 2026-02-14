@@ -59,6 +59,8 @@ export const serviceRequestsApi = {
   create: (data: any) => apiClient.post<ServiceRequestDto>('/api/servicerequests', data),
   updateStatus: (id: number, data: { status: string; note?: string }) =>
     apiClient.put(`/api/servicerequests/${id}/status`, data),
+  assignVendor: (id: number, data: { vendorId: number; scheduledFor?: string; title?: string; notes?: string }) =>
+    apiClient.put(`/api/servicerequests/${id}/assign-vendor`, data),
   uploadAttachments: (id: number, files: File[]) => {
     const formData = new FormData();
     files.forEach(f => formData.append('files', f));

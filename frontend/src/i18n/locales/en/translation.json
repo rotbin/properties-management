@@ -196,7 +196,17 @@
     "createSr": "Create Service Request",
     "srCreated": "Service request created!",
     "failedCreateSr": "Failed to create service request",
-    "missingFields": "Building and description are required"
+    "missingFields": "Building and description are required",
+    "assignVendor": "Assign Vendor",
+    "reassignVendor": "Reassign Vendor",
+    "vendorAssigned": "Vendor assigned successfully!",
+    "failedAssign": "Failed to assign vendor",
+    "vendorRequired": "Please select a vendor",
+    "vendorNotes": "Notes for vendor",
+    "vendor": "Vendor",
+    "assignedVendor": "Assigned Vendor",
+    "linkedWo": "Linked Work Order",
+    "unassignedOnly": "Unassigned"
   },
 
   "workOrders": {
@@ -489,7 +499,20 @@
     "failedLoad": "Failed to load work orders",
     "failedUpdateStatus": "Failed to update status",
     "failedAddNote": "Failed to add note",
-    "failedUpload": "Failed to upload photos"
+    "failedUpload": "Failed to upload photos",
+    "activeTasks": "Active Tasks",
+    "emergencies": "Emergencies",
+    "emergency": "Emergency",
+    "emergencyAlert": "This is an EMERGENCY request — please prioritize!",
+    "address": "Address",
+    "priority": "Priority",
+    "area": "Area",
+    "category": "Category",
+    "callbackPhone": "Callback Phone",
+    "phone": "Phone",
+    "tenant": "Tenant",
+    "srDescription": "Service Request Description",
+    "srPhotos": "Service Request Photos"
   },
 
   "enums": {
@@ -524,6 +547,7 @@
       "New": "New",
       "InReview": "In Review",
       "Approved": "Approved",
+      "Assigned": "Assigned",
       "InProgress": "In Progress",
       "Resolved": "Resolved",
       "Closed": "Closed",

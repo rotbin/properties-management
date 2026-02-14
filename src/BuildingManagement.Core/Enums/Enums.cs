@@ -38,6 +38,7 @@ public enum ServiceRequestStatus
     New = 0,
     InReview = 1,
     Approved = 2,
+    Assigned = 7,
     InProgress = 3,
     Resolved = 4,
     Closed = 5,

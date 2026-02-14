@@ -98,6 +98,11 @@ export interface ServiceRequestDto {
   createdAtUtc: string;
   updatedAtUtc?: string;
   attachments: AttachmentDto[];
+  // Linked vendor assignment
+  assignedVendorId?: number;
+  assignedVendorName?: string;
+  linkedWorkOrderId?: number;
+  linkedWorkOrderStatus?: string;
 }
 
 export interface AttachmentDto {
@@ -112,6 +117,7 @@ export interface WorkOrderDto {
   id: number;
   buildingId: number;
   buildingName?: string;
+  buildingAddress?: string;
   serviceRequestId?: number;
   vendorId?: number;
   vendorName?: string;
@@ -124,6 +130,15 @@ export interface WorkOrderDto {
   completedAtUtc?: string;
   notes: WorkOrderNoteDto[];
   attachments: AttachmentDto[];
+  // SR details
+  srArea?: string;
+  srCategory?: string;
+  srPriority?: string;
+  srIsEmergency?: boolean;
+  srPhone?: string;
+  srSubmittedByName?: string;
+  srDescription?: string;
+  srAttachments?: AttachmentDto[];
 }
 
 export interface WorkOrderNoteDto {
@@ -163,7 +178,7 @@ export interface GenerateJobResponse {
 export const AREAS = ['Stairwell', 'Parking', 'Lobby', 'Corridor', 'GarbageRoom', 'Garden', 'Roof', 'Other'] as const;
 export const CATEGORIES = ['Plumbing', 'Electrical', 'HVAC', 'Cleaning', 'Pest', 'Structural', 'Elevator', 'Security', 'General'] as const;
 export const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'] as const;
-export const SR_STATUSES = ['New', 'InReview', 'Approved', 'InProgress', 'Resolved', 'Closed', 'Rejected'] as const;
+export const SR_STATUSES = ['New', 'InReview', 'Approved', 'Assigned', 'InProgress', 'Resolved', 'Closed', 'Rejected'] as const;
 export const WO_STATUSES = ['Draft', 'Assigned', 'Scheduled', 'InProgress', 'Completed', 'Cancelled', 'OnHold'] as const;
 export const VENDOR_SERVICE_TYPES = ['Cleaning', 'Plumbing', 'Electrical', 'Elevator', 'HVAC', 'Gardening', 'PestControl', 'Security', 'General'] as const;
 export const ASSET_TYPES = ['Elevator', 'Generator', 'WaterPump', 'FireSystem', 'HVAC', 'Boiler', 'Intercom', 'Gate', 'SolarPanel', 'Other'] as const;
