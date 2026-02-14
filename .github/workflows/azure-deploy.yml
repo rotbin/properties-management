@@ -46,12 +46,12 @@ jobs:
           mkdir -p src/BuildingManagement.Api/wwwroot
           cp -r frontend/dist/* src/BuildingManagement.Api/wwwroot/
 
-      - name: Publish backend (self-contained)
+      - name: Publish backend (self-contained, x86 for Azure Free tier)
         run: >
           dotnet publish src/BuildingManagement.Api/BuildingManagement.Api.csproj
           -c Release
           --self-contained
-          -r win-x64
+          -r win-x86
           -o publish
 
       # ─── Deploy to Azure ───────────────────────────
