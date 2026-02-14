@@ -1,7 +1,7 @@
 {
   "app": {
-    "brand": "BuildingMgr",
-    "title": "Building Maintenance Management",
+    "brand": "HomeHero",
+    "title": "HomeHero Property Management",
     "logout": "Logout",
     "cancel": "Cancel",
     "save": "Save",
@@ -54,7 +54,7 @@
 
   "login": {
     "title": "Building Management",
-    "subtitle": "Sign in to your account",
+    "subtitle": "Sign in to your property management portal",
     "email": "Email",
     "password": "Password",
     "signIn": "Sign In",

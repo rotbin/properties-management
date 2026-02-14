@@ -96,15 +96,60 @@ const App: React.FC = () => {
       createTheme({
         direction,
         palette: {
-          primary: { main: '#1976d2' },
-          secondary: { main: '#9c27b0' },
-          background: { default: '#f5f5f5' },
+          primary: { main: '#1a56a0', light: '#2d6fbe', dark: '#123d73', contrastText: '#fff' },
+          secondary: { main: '#f5911e', light: '#f9a94e', dark: '#c67418', contrastText: '#fff' },
+          background: { default: '#f7f8fa', paper: '#ffffff' },
+          text: { primary: '#1e293b', secondary: '#64748b' },
         },
         typography: {
-          fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+          fontFamily: '"Inter", "Roboto", "Helvetica Neue", "Arial", sans-serif',
+          h4: { fontWeight: 700, letterSpacing: '-0.02em' },
+          h5: { fontWeight: 600, letterSpacing: '-0.01em' },
+          h6: { fontWeight: 600 },
+          subtitle1: { fontWeight: 500 },
         },
+        shape: { borderRadius: 10 },
         components: {
-          MuiButton: { styleOverrides: { root: { textTransform: 'none' } } },
+          MuiButton: {
+            styleOverrides: {
+              root: { textTransform: 'none', fontWeight: 600, borderRadius: 8 },
+              contained: { boxShadow: 'none', '&:hover': { boxShadow: '0 2px 8px rgba(26,86,160,0.25)' } },
+            },
+          },
+          MuiCard: {
+            styleOverrides: {
+              root: { borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06)' },
+            },
+          },
+          MuiPaper: {
+            styleOverrides: { rounded: { borderRadius: 12 } },
+          },
+          MuiChip: {
+            styleOverrides: { root: { fontWeight: 500 } },
+          },
+          MuiAppBar: {
+            styleOverrides: {
+              root: { boxShadow: '0 1px 3px rgba(0,0,0,0.1)' },
+            },
+          },
+          MuiDrawer: {
+            styleOverrides: {
+              paper: { borderRight: '1px solid rgba(0,0,0,0.06)' },
+            },
+          },
+          MuiListItemButton: {
+            styleOverrides: {
+              root: {
+                borderRadius: 8,
+                marginInline: 8,
+                marginBlock: 2,
+                '&.Mui-selected': {
+                  backgroundColor: 'rgba(26,86,160,0.08)',
+                  '&:hover': { backgroundColor: 'rgba(26,86,160,0.12)' },
+                },
+              },
+            },
+          },
         },
       }),
     [direction]
