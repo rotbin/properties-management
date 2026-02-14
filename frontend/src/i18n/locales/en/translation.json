@@ -53,7 +53,8 @@
     "incomeExpenses": "Income & Expenses",
     "collectionStatus": "Collection Status",
     "tenants": "Tenants",
-    "vendorInvoices": "Vendor Payments"
+    "vendorInvoices": "Vendor Payments",
+    "smsReminders": "SMS Reminders"
   },
 
   "login": {
@@ -832,5 +833,56 @@
     "failedPayment": "Failed to record payment",
     "failedLoadPayments": "Failed to load payments",
     "failedDeletePayment": "Failed to delete payment"
+  },
+
+  "sms": {
+    "title": "SMS Payment Reminders",
+    "setup": "Campaign Setup",
+    "building": "Building",
+    "period": "Period",
+    "template": "Message Template",
+    "includePartial": "Include partial payers",
+    "campaignNotes": "Campaign notes",
+    "generateList": "Generate Recipient List",
+    "totalRecipients": "Total Recipients",
+    "selected": "Selected",
+    "campaignStatus": "Campaign Status",
+    "sendResults": "Send Results",
+    "recipientsList": "Recipient List",
+    "sendSms": "Send SMS",
+    "unitCol": "Unit",
+    "tenantName": "Tenant Name",
+    "phone": "Phone",
+    "chargeStatus": "Charge Status",
+    "outstanding": "Outstanding",
+    "sendStatusCol": "Send Status",
+    "preview": "Preview",
+    "previewTitle": "Preview — {{name}}",
+    "confirmSendTitle": "Confirm SMS Send",
+    "confirmSendBody": "Send SMS to {{count}} recipients?",
+    "confirmSend": "Send",
+    "sendResultTitle": "Send Results",
+    "sent": "Sent",
+    "failed": "Failed",
+    "skipped": "Skipped",
+    "noRecipients": "No recipients in the list",
+    "listGenerated": "Recipient list generated successfully",
+    "sendSuccess": "Campaign sent successfully",
+    "errorMissingFields": "Please select a building, period, and template",
+    "errorGenerating": "Error generating list",
+    "errorUpdating": "Error updating recipients",
+    "errorPreview": "Error loading preview",
+    "errorSending": "Error sending SMS",
+    "status": {
+      "Draft": "Draft",
+      "Sent": "Sent",
+      "Cancelled": "Cancelled"
+    },
+    "sendStatus": {
+      "Pending": "Pending",
+      "Sent": "Sent",
+      "Failed": "Failed",
+      "Skipped": "Skipped"
+    }
   }
 }

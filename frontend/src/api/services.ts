@@ -7,7 +7,8 @@ import type {
   PaymentDto, CollectionStatusReport, AgingReport,
   PaymentProviderConfigDto, PaymentSessionResponse, TokenizationResponse,
   TenantProfileDto, CreateTenantRequest, UpdateTenantRequest, EndTenancyRequest,
-  VendorInvoiceDto, VendorPaymentDto
+  VendorInvoiceDto, VendorPaymentDto,
+  SmsTemplateDto, SmsCampaignDto, CreateCampaignResult, SendCampaignResult, SmsCampaignRecipientDto
 } from '../types';
 
 // Auth
@@ -210,4 +211,23 @@ export const reportsApi = {
     apiClient.get(`/api/reports/income-expenses/${buildingId}/csv`, { params: { from, to, lang }, responseType: 'blob' }),
   dashboardCollection: (period?: string) =>
     apiClient.get<import('../types').CollectionSummaryDto[]>(`/api/reports/dashboard/collection`, { params: { period } }),
+};
+
+// ─── SMS Notifications ──────────────────────────────────
+
+export const smsApi = {
+  getTemplates: (lang?: string) =>
+    apiClient.get<SmsTemplateDto[]>('/api/notifications/sms/templates', { params: lang ? { lang } : undefined }),
+  getCampaigns: (params?: { buildingId?: number; period?: string }) =>
+    apiClient.get<SmsCampaignDto[]>('/api/notifications/sms/campaigns', { params }),
+  getCampaign: (id: number) =>
+    apiClient.get<CreateCampaignResult>(`/api/notifications/sms/campaigns/${id}`),
+  createCampaign: (data: { buildingId: number; period: string; templateId: number; includePartial: boolean; notes?: string }) =>
+    apiClient.post<CreateCampaignResult>('/api/notifications/sms/hoa-nonpayment/campaigns', data),
+  updateRecipients: (campaignId: number, data: { updates?: { recipientId: number; isSelected: boolean }[]; addUnitIds?: number[]; removeRecipientIds?: number[] }) =>
+    apiClient.put<SmsCampaignRecipientDto[]>(`/api/notifications/sms/campaigns/${campaignId}/recipients`, data),
+  previewMessage: (campaignId: number, recipientId: number) =>
+    apiClient.get<{ message: string }>(`/api/notifications/sms/campaigns/${campaignId}/recipients/${recipientId}/preview`),
+  sendCampaign: (campaignId: number) =>
+    apiClient.post<SendCampaignResult>(`/api/notifications/sms/campaigns/${campaignId}/send`, { confirm: true }),
 };

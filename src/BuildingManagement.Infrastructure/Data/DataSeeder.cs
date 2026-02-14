@@ -379,6 +379,29 @@ public static class DataSeeder
             logger.LogInformation("Seeded global Fake payment provider config.");
         }
 
+        // Seed SMS Templates
+        if (!await context.SmsTemplates.AnyAsync())
+        {
+            context.SmsTemplates.AddRange(
+                new Core.Entities.Notifications.SmsTemplate
+                {
+                    Name = "תזכורת תשלום ועד בית",
+                    Language = "he",
+                    Body = "שלום {{FullName}}, תזכורת: דמי ועד בית עבור {{BuildingName}} לתקופה {{Period}} טרם שולמו. יתרה לתשלום: {{Outstanding}} ₪. לתשלום: {{PayLink}}",
+                    IsActive = true
+                },
+                new Core.Entities.Notifications.SmsTemplate
+                {
+                    Name = "HOA Payment Reminder",
+                    Language = "en",
+                    Body = "Hello {{FullName}}, reminder: HOA fees for {{BuildingName}} period {{Period}} have not been paid. Outstanding: {{Outstanding}} ILS. Pay now: {{PayLink}}",
+                    IsActive = true
+                }
+            );
+            await context.SaveChangesAsync();
+            logger.LogInformation("Seeded SMS templates.");
+        }
+
         logger.LogInformation("Database seeded successfully with demo data.");
     }
 

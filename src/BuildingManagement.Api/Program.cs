@@ -2,6 +2,7 @@ using System.Text;
 using BuildingManagement.Core.Entities;
 using BuildingManagement.Core.Interfaces;
 using BuildingManagement.Infrastructure.Data;
+using BuildingManagement.Infrastructure.Services.Sms;
 using BuildingManagement.Infrastructure.Jobs;
 using BuildingManagement.Infrastructure.Services;
 using BuildingManagement.Infrastructure.Services.Gateways;
@@ -112,6 +113,14 @@ builder.Services.AddSingleton<IPaymentGatewayFactory, PaymentGatewayFactory>();
 
 // HOA Fee Service
 builder.Services.AddScoped<IHOAFeeService, HOAFeeService>();
+
+// SMS
+var smsProvider = builder.Configuration["Sms:Provider"] ?? "Fake";
+if (smsProvider.Equals("AzureAcs", StringComparison.OrdinalIgnoreCase))
+    builder.Services.AddSingleton<ISmsSender, BuildingManagement.Infrastructure.Services.Sms.AzureAcsSmsSender>();
+else
+    builder.Services.AddSingleton<ISmsSender, BuildingManagement.Infrastructure.Services.Sms.FakeSmsSender>();
+builder.Services.AddSingleton(new BuildingManagement.Infrastructure.Services.Sms.SmsRateLimiter(30));
 
 // Background Jobs
 builder.Services.AddSingleton<MaintenanceJobService>();

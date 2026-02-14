@@ -53,7 +53,8 @@
     "incomeExpenses": "הכנסות והוצאות",
     "collectionStatus": "סטטוס גבייה",
     "tenants": "דיירים",
-    "vendorInvoices": "תשלומי ספקים"
+    "vendorInvoices": "תשלומי ספקים",
+    "smsReminders": "תזכורות SMS"
   },
 
   "login": {
@@ -832,5 +833,56 @@
     "failedPayment": "רישום תשלום נכשל",
     "failedLoadPayments": "טעינת תשלומים נכשלה",
     "failedDeletePayment": "מחיקת תשלום נכשלה"
+  },
+
+  "sms": {
+    "title": "תזכורות תשלום ב-SMS",
+    "setup": "הגדרות קמפיין",
+    "building": "מבנה",
+    "period": "תקופה",
+    "template": "תבנית הודעה",
+    "includePartial": "כלול תשלומים חלקיים",
+    "campaignNotes": "הערות לקמפיין",
+    "generateList": "הפק רשימת נמענים",
+    "totalRecipients": "סה\"כ נמענים",
+    "selected": "נבחרו",
+    "campaignStatus": "סטטוס קמפיין",
+    "sendResults": "תוצאות שליחה",
+    "recipientsList": "רשימת נמענים",
+    "sendSms": "שלח SMS",
+    "unitCol": "יחידה",
+    "tenantName": "שם דייר",
+    "phone": "טלפון",
+    "chargeStatus": "סטטוס חיוב",
+    "outstanding": "יתרה",
+    "sendStatusCol": "סטטוס שליחה",
+    "preview": "תצוגה מקדימה",
+    "previewTitle": "תצוגה מקדימה — {{name}}",
+    "confirmSendTitle": "אישור שליחת SMS",
+    "confirmSendBody": "האם לשלוח SMS ל-{{count}} נמענים?",
+    "confirmSend": "שלח",
+    "sendResultTitle": "תוצאות שליחה",
+    "sent": "נשלחו",
+    "failed": "נכשלו",
+    "skipped": "דולגו",
+    "noRecipients": "אין נמענים ברשימה",
+    "listGenerated": "רשימת נמענים הופקה בהצלחה",
+    "sendSuccess": "הקמפיין נשלח בהצלחה",
+    "errorMissingFields": "יש לבחור מבנה, תקופה ותבנית",
+    "errorGenerating": "שגיאה בהפקת רשימה",
+    "errorUpdating": "שגיאה בעדכון נמענים",
+    "errorPreview": "שגיאה בטעינת תצוגה מקדימה",
+    "errorSending": "שגיאה בשליחת SMS",
+    "status": {
+      "Draft": "טיוטה",
+      "Sent": "נשלח",
+      "Cancelled": "בוטל"
+    },
+    "sendStatus": {
+      "Pending": "ממתין",
+      "Sent": "נשלח",
+      "Failed": "נכשל",
+      "Skipped": "דולג"
+    }
   }
 }

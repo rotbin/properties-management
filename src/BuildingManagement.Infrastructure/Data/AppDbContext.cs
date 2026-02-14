@@ -1,5 +1,6 @@
 using BuildingManagement.Core.Entities;
 using BuildingManagement.Core.Entities.Finance;
+using BuildingManagement.Core.Entities.Notifications;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -36,6 +37,11 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<WebhookEventLog> WebhookEventLogs => Set<WebhookEventLog>();
     public DbSet<VendorInvoice> VendorInvoices => Set<VendorInvoice>();
     public DbSet<VendorPayment> VendorPayments => Set<VendorPayment>();
+
+    // Notifications
+    public DbSet<SmsTemplate> SmsTemplates => Set<SmsTemplate>();
+    public DbSet<SmsCampaign> SmsCampaigns => Set<SmsCampaign>();
+    public DbSet<SmsCampaignRecipient> SmsCampaignRecipients => Set<SmsCampaignRecipient>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -326,6 +332,26 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<VendorPayment>()
             .Property(vp => vp.PaidAmount).HasColumnType("decimal(18,2)");
+
+        // ─── SMS Notifications ───────────────────────────────
+
+        builder.Entity<SmsCampaign>()
+            .HasOne(c => c.Building)
+            .WithMany()
+            .HasForeignKey(c => c.BuildingId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<SmsCampaign>()
+            .HasOne(c => c.Template)
+            .WithMany()
+            .HasForeignKey(c => c.TemplateId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<SmsCampaignRecipient>()
+            .HasOne(r => r.Campaign)
+            .WithMany(c => c.Recipients)
+            .HasForeignKey(r => r.CampaignId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 
     public override int SaveChanges()

@@ -485,3 +485,60 @@ export const VENDOR_PAYMENT_METHODS = ['BankTransfer', 'CreditCard', 'Cash', 'Ch
 export const VENDOR_INVOICE_CATEGORIES = [
   'Cleaning', 'Gardening', 'PestControl', 'Repairs', 'Elevator', 'Electricity', 'Other'
 ] as const;
+
+// ─── SMS Notifications ──────────────────────────────────
+
+export interface SmsTemplateDto {
+  id: number;
+  name: string;
+  language: string;
+  body: string;
+  isActive: boolean;
+}
+
+export interface SmsCampaignDto {
+  id: number;
+  buildingId: number;
+  buildingName?: string;
+  period: string;
+  templateId: number;
+  templateName?: string;
+  createdByUserId: string;
+  createdAtUtc: string;
+  status: string;
+  notes?: string;
+  totalSelected: number;
+  sentCount: number;
+  failedCount: number;
+  skippedCount: number;
+  sentAtUtc?: string;
+}
+
+export interface SmsCampaignRecipientDto {
+  id: number;
+  unitId: number;
+  tenantProfileId?: number;
+  fullNameSnapshot: string;
+  phoneSnapshot?: string;
+  amountDueSnapshot: number;
+  amountPaidSnapshot: number;
+  outstandingSnapshot: number;
+  chargeStatusSnapshot: string;
+  isSelected: boolean;
+  sendStatus: string;
+  providerMessageId?: string;
+  errorMessage?: string;
+  sentAtUtc?: string;
+}
+
+export interface CreateCampaignResult {
+  campaign: SmsCampaignDto;
+  recipients: SmsCampaignRecipientDto[];
+}
+
+export interface SendCampaignResult {
+  totalSelected: number;
+  sentCount: number;
+  failedCount: number;
+  skippedCount: number;
+}
