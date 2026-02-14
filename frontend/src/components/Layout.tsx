@@ -107,7 +107,7 @@ const Layout: React.FC = () => {
       {isMobile ? (
         <Drawer variant="temporary" open={mobileOpen} onClose={() => setMobileOpen(false)}
           ModalProps={{ keepMounted: true }}
-          sx={{ '& .MuiDrawer-paper': { width: DRAWER_WIDTH } }}>
+          sx={{ '& .MuiDrawer-paper': { width: DRAWER_WIDTH, top: '56px' } }}>
           {drawer}
         </Drawer>
       ) : (
@@ -118,7 +118,13 @@ const Layout: React.FC = () => {
         </Drawer>
       )}
 
-      <Box component="main" sx={{ flexGrow: 1, p: 3, mt: 8, width: { md: `calc(100% - ${DRAWER_WIDTH}px)` } }}>
+      <Box component="main" sx={{
+        flexGrow: 1,
+        p: { xs: 1.5, sm: 2, md: 3 },
+        mt: { xs: 7, md: 8 },
+        width: { xs: '100%', md: `calc(100% - ${DRAWER_WIDTH}px)` },
+        overflow: 'hidden',
+      }}>
         <Outlet />
       </Box>
     </Box>

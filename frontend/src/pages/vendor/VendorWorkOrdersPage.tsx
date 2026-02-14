@@ -2,7 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
   Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper, Chip, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  MenuItem, CircularProgress, Alert, Divider, List, ListItem, ListItemText
+  MenuItem, CircularProgress, Alert, Divider, List, ListItem, ListItemText,
+  Card, CardContent, CardActionArea, Stack, useMediaQuery, useTheme
 } from '@mui/material';
 import { Visibility, CloudUpload, Send } from '@mui/icons-material';
 import { workOrdersApi } from '../../api/services';
@@ -15,6 +16,8 @@ const statusColor = (s: string) => s === 'Completed' ? 'success' : s === 'Cancel
 
 const VendorWorkOrdersPage: React.FC = () => {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [workOrders, setWorkOrders] = useState<WorkOrderDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -58,35 +61,55 @@ const VendorWorkOrdersPage: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" sx={{ fontWeight: 700, mb: 3 }}>{t('vendorWo.title')}</Typography>
+      <Typography variant="h4" sx={{ fontWeight: 700, mb: 2, fontSize: { xs: '1.3rem', md: '2rem' } }}>{t('vendorWo.title')}</Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
       {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead><TableRow>
-            <TableCell>{t('vendorWo.id')}</TableCell><TableCell>{t('vendorWo.woTitle')}</TableCell><TableCell>{t('vendorWo.building')}</TableCell>
-            <TableCell>{t('vendorWo.status')}</TableCell><TableCell>{t('vendorWo.scheduled')}</TableCell><TableCell>{t('app.actions')}</TableCell>
-          </TableRow></TableHead>
-          <TableBody>
-            {workOrders.map(wo => (
-              <TableRow key={wo.id} hover>
-                <TableCell>{wo.id}</TableCell><TableCell>{wo.title}</TableCell><TableCell>{wo.buildingName}</TableCell>
-                <TableCell><Chip label={t(`enums.woStatus.${wo.status}`, wo.status)} size="small" color={statusColor(wo.status) as any} /></TableCell>
-                <TableCell>{formatDateLocal(wo.scheduledFor)}</TableCell>
-                <TableCell><Button size="small" startIcon={<Visibility />} onClick={() => { setSelected(wo); setStatusForm(wo.status); setDetailOpen(true); }}>{t('app.view')}</Button></TableCell>
-              </TableRow>
-            ))}
-            {workOrders.length === 0 && <TableRow><TableCell colSpan={6} align="center">{t('vendorWo.noWorkOrders')}</TableCell></TableRow>}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      {isMobile ? (
+        <Stack spacing={1.5}>
+          {workOrders.map(wo => (
+            <Card key={wo.id} variant="outlined">
+              <CardActionArea onClick={() => { setSelected(wo); setStatusForm(wo.status); setDetailOpen(true); }}>
+                <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                    <Typography variant="subtitle2">#{wo.id}</Typography>
+                    <Chip label={t(`enums.woStatus.${wo.status}`, wo.status)} size="small" color={statusColor(wo.status) as any} />
+                  </Box>
+                  <Typography variant="body2" fontWeight={600} noWrap>{wo.title}</Typography>
+                  <Typography variant="caption" color="text.secondary">{wo.buildingName} · {formatDateLocal(wo.scheduledFor)}</Typography>
+                </CardContent>
+              </CardActionArea>
+            </Card>
+          ))}
+          {workOrders.length === 0 && <Typography align="center" color="text.secondary" sx={{ py: 4 }}>{t('vendorWo.noWorkOrders')}</Typography>}
+        </Stack>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead><TableRow>
+              <TableCell>{t('vendorWo.id')}</TableCell><TableCell>{t('vendorWo.woTitle')}</TableCell><TableCell>{t('vendorWo.building')}</TableCell>
+              <TableCell>{t('vendorWo.status')}</TableCell><TableCell>{t('vendorWo.scheduled')}</TableCell><TableCell>{t('app.actions')}</TableCell>
+            </TableRow></TableHead>
+            <TableBody>
+              {workOrders.map(wo => (
+                <TableRow key={wo.id} hover>
+                  <TableCell>{wo.id}</TableCell><TableCell>{wo.title}</TableCell><TableCell>{wo.buildingName}</TableCell>
+                  <TableCell><Chip label={t(`enums.woStatus.${wo.status}`, wo.status)} size="small" color={statusColor(wo.status) as any} /></TableCell>
+                  <TableCell>{formatDateLocal(wo.scheduledFor)}</TableCell>
+                  <TableCell><Button size="small" startIcon={<Visibility />} onClick={() => { setSelected(wo); setStatusForm(wo.status); setDetailOpen(true); }}>{t('app.view')}</Button></TableCell>
+                </TableRow>
+              ))}
+              {workOrders.length === 0 && <TableRow><TableCell colSpan={6} align="center">{t('vendorWo.noWorkOrders')}</TableCell></TableRow>}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
-      <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         {selected && (<>
           <DialogTitle>{t('vendorWo.detailTitle', { id: selected.id })}</DialogTitle>
           <DialogContent>
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
               <Typography><strong>{t('vendorWo.woTitle')}:</strong> {selected.title}</Typography>
               <Typography><strong>{t('vendorWo.building')}:</strong> {selected.buildingName}</Typography>
               <Typography><strong>{t('vendorWo.status')}:</strong> <Chip label={t(`enums.woStatus.${selected.status}`, selected.status)} size="small" color={statusColor(selected.status) as any} /></Typography>

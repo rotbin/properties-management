@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import {
   Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper, Chip, MenuItem, TextField, Button, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, Alert
+  DialogActions, CircularProgress, Alert, useMediaQuery, useTheme, Card, CardContent,
+  Stack, CardActionArea
 } from '@mui/material';
 import { Visibility, Add } from '@mui/icons-material';
 import { serviceRequestsApi, buildingsApi, workOrdersApi, vendorsApi } from '../../api/services';
@@ -16,6 +17,8 @@ const statusColor = (s: string) => s === 'New' ? 'info' : s === 'Resolved' ? 'su
 
 const ServiceRequestsPage: React.FC = () => {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [requests, setRequests] = useState<ServiceRequestDto[]>([]);
   const [buildings, setBuildings] = useState<BuildingDto[]>([]);
   const [vendors, setVendors] = useState<VendorDto[]>([]);
@@ -67,7 +70,7 @@ const ServiceRequestsPage: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" sx={{ fontWeight: 700, mb: 3 }}>{t('serviceRequests.title')}</Typography>
+      <Typography variant="h4" sx={{ fontWeight: 700, mb: 2, fontSize: { xs: '1.3rem', md: '2rem' } }}>{t('serviceRequests.title')}</Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
       {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
 
@@ -82,42 +85,65 @@ const ServiceRequestsPage: React.FC = () => {
         </TextField>
       </Box>
 
-      <TableContainer component={Paper}>
-        <Table size="small">
-          <TableHead><TableRow>
-            <TableCell>{t('serviceRequests.id')}</TableCell><TableCell>{t('serviceRequests.building')}</TableCell><TableCell>{t('serviceRequests.area')}</TableCell>
-            <TableCell>{t('serviceRequests.category')}</TableCell><TableCell>{t('serviceRequests.priority')}</TableCell><TableCell>{t('serviceRequests.status')}</TableCell>
-            <TableCell>{t('serviceRequests.submittedBy')}</TableCell><TableCell>{t('serviceRequests.date')}</TableCell><TableCell>{t('app.actions')}</TableCell>
-          </TableRow></TableHead>
-          <TableBody>
-            {requests.map(sr => (
-              <TableRow key={sr.id} hover>
-                <TableCell>{sr.id}</TableCell>
-                <TableCell>{sr.buildingName}</TableCell>
-                <TableCell>{t(`enums.area.${sr.area}`, sr.area)}</TableCell>
-                <TableCell>{t(`enums.category.${sr.category}`, sr.category)}</TableCell>
-                <TableCell><Chip label={t(`enums.priority.${sr.priority}`, sr.priority)} size="small" color={priorityColor(sr.priority) as any} /></TableCell>
-                <TableCell><Chip label={t(`enums.srStatus.${sr.status}`, sr.status)} size="small" color={statusColor(sr.status) as any} /></TableCell>
-                <TableCell>{sr.submittedByName}</TableCell>
-                <TableCell>{formatDateLocal(sr.createdAtUtc)}</TableCell>
-                <TableCell>
-                  <Button size="small" startIcon={<Visibility />} onClick={() => { setSelected(sr); setStatusForm(sr.status); setDetailOpen(true); }}>{t('app.view')}</Button>
-                </TableCell>
-              </TableRow>
-            ))}
-            {requests.length === 0 && <TableRow><TableCell colSpan={9} align="center">{t('serviceRequests.noRequests')}</TableCell></TableRow>}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      {isMobile ? (
+        <Stack spacing={1.5}>
+          {requests.map(sr => (
+            <Card key={sr.id} variant="outlined">
+              <CardActionArea onClick={() => { setSelected(sr); setStatusForm(sr.status); setDetailOpen(true); }}>
+                <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                    <Typography variant="subtitle2">#{sr.id}</Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <Chip label={t(`enums.priority.${sr.priority}`, sr.priority)} size="small" color={priorityColor(sr.priority) as any} />
+                      <Chip label={t(`enums.srStatus.${sr.status}`, sr.status)} size="small" color={statusColor(sr.status) as any} />
+                    </Box>
+                  </Box>
+                  <Typography variant="body2" fontWeight={600} noWrap>{t(`enums.category.${sr.category}`, sr.category)} — {t(`enums.area.${sr.area}`, sr.area)}</Typography>
+                  <Typography variant="caption" color="text.secondary">{sr.buildingName} · {sr.submittedByName} · {formatDateLocal(sr.createdAtUtc)}</Typography>
+                </CardContent>
+              </CardActionArea>
+            </Card>
+          ))}
+          {requests.length === 0 && <Typography align="center" color="text.secondary" sx={{ py: 4 }}>{t('serviceRequests.noRequests')}</Typography>}
+        </Stack>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table size="small">
+            <TableHead><TableRow>
+              <TableCell>{t('serviceRequests.id')}</TableCell><TableCell>{t('serviceRequests.building')}</TableCell><TableCell>{t('serviceRequests.area')}</TableCell>
+              <TableCell>{t('serviceRequests.category')}</TableCell><TableCell>{t('serviceRequests.priority')}</TableCell><TableCell>{t('serviceRequests.status')}</TableCell>
+              <TableCell>{t('serviceRequests.submittedBy')}</TableCell><TableCell>{t('serviceRequests.date')}</TableCell><TableCell>{t('app.actions')}</TableCell>
+            </TableRow></TableHead>
+            <TableBody>
+              {requests.map(sr => (
+                <TableRow key={sr.id} hover>
+                  <TableCell>{sr.id}</TableCell>
+                  <TableCell>{sr.buildingName}</TableCell>
+                  <TableCell>{t(`enums.area.${sr.area}`, sr.area)}</TableCell>
+                  <TableCell>{t(`enums.category.${sr.category}`, sr.category)}</TableCell>
+                  <TableCell><Chip label={t(`enums.priority.${sr.priority}`, sr.priority)} size="small" color={priorityColor(sr.priority) as any} /></TableCell>
+                  <TableCell><Chip label={t(`enums.srStatus.${sr.status}`, sr.status)} size="small" color={statusColor(sr.status) as any} /></TableCell>
+                  <TableCell>{sr.submittedByName}</TableCell>
+                  <TableCell>{formatDateLocal(sr.createdAtUtc)}</TableCell>
+                  <TableCell>
+                    <Button size="small" startIcon={<Visibility />} onClick={() => { setSelected(sr); setStatusForm(sr.status); setDetailOpen(true); }}>{t('app.view')}</Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {requests.length === 0 && <TableRow><TableCell colSpan={9} align="center">{t('serviceRequests.noRequests')}</TableCell></TableRow>}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
-      <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         {selected && (<>
           <DialogTitle>
             {t('myRequests.detailTitle', { id: selected.id })}
             {selected.isEmergency && <Chip label={t('serviceRequests.emergency')} color="error" size="small" sx={{ ml: 1 }} />}
           </DialogTitle>
           <DialogContent>
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
               <Typography><strong>{t('serviceRequests.building')}:</strong> {selected.buildingName}</Typography>
               <Typography><strong>{t('serviceRequests.unit')}:</strong> {selected.unitNumber || t('app.na')}</Typography>
               <Typography><strong>{t('serviceRequests.submittedBy')}:</strong> {selected.submittedByName}</Typography>
@@ -151,7 +177,7 @@ const ServiceRequestsPage: React.FC = () => {
         </>)}
       </Dialog>
 
-      <Dialog open={woDialogOpen} onClose={() => setWoDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={woDialogOpen} onClose={() => setWoDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle>{t('serviceRequests.createWoFrom', { id: selected?.id })}</DialogTitle>
         <DialogContent>
           <TextField fullWidth label={t('serviceRequests.woTitle')} value={woForm.title} onChange={e => setWoForm({ ...woForm, title: e.target.value })} sx={{ mt: 1, mb: 2 }} />

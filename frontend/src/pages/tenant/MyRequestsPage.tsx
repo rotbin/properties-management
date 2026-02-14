@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import {
   Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, Chip, Button, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress
+  Paper, Chip, Button, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress,
+  Card, CardContent, CardActionArea, Stack, useMediaQuery, useTheme
 } from '@mui/material';
 import { Visibility, Add } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +17,8 @@ const statusColor = (s: string) => s === 'New' ? 'info' : s === 'Resolved' ? 'su
 const MyRequestsPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [requests, setRequests] = useState<ServiceRequestDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<ServiceRequestDto | null>(null);
@@ -27,42 +30,66 @@ const MyRequestsPage: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>{t('myRequests.title')}</Typography>
-        <Button variant="contained" startIcon={<Add />} onClick={() => navigate('/new-request')}>{t('myRequests.newRequest')}</Button>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+        <Typography variant="h4" sx={{ fontWeight: 700, fontSize: { xs: '1.3rem', md: '2rem' } }}>{t('myRequests.title')}</Typography>
+        <Button variant="contained" startIcon={<Add />} onClick={() => navigate('/new-request')} size={isMobile ? 'small' : 'medium'}>{t('myRequests.newRequest')}</Button>
       </Box>
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead><TableRow>
-            <TableCell>{t('myRequests.id')}</TableCell><TableCell>{t('myRequests.building')}</TableCell><TableCell>{t('myRequests.area')}</TableCell>
-            <TableCell>{t('myRequests.priority')}</TableCell><TableCell>{t('myRequests.status')}</TableCell><TableCell>{t('myRequests.date')}</TableCell><TableCell>{t('app.actions')}</TableCell>
-          </TableRow></TableHead>
-          <TableBody>
-            {requests.map(sr => (
-              <TableRow key={sr.id} hover>
-                <TableCell>{sr.id}</TableCell><TableCell>{sr.buildingName}</TableCell>
-                <TableCell>{t(`enums.area.${sr.area}`, sr.area)}</TableCell>
-                <TableCell><Chip label={t(`enums.priority.${sr.priority}`, sr.priority)} size="small" color={priorityColor(sr.priority) as any} /></TableCell>
-                <TableCell><Chip label={t(`enums.srStatus.${sr.status}`, sr.status)} size="small" color={statusColor(sr.status) as any} /></TableCell>
-                <TableCell>{formatDateLocal(sr.createdAtUtc)}</TableCell>
-                <TableCell><Button size="small" startIcon={<Visibility />} onClick={() => { setSelected(sr); setDetailOpen(true); }}>{t('app.view')}</Button></TableCell>
-              </TableRow>
-            ))}
-            {requests.length === 0 && (
-              <TableRow><TableCell colSpan={7} align="center"><Typography color="text.secondary" sx={{ py: 2 }}>{t('myRequests.noRequests')}</Typography></TableCell></TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
 
-      <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="md" fullWidth>
+      {isMobile ? (
+        <Stack spacing={1.5}>
+          {requests.map(sr => (
+            <Card key={sr.id} variant="outlined">
+              <CardActionArea onClick={() => { setSelected(sr); setDetailOpen(true); }}>
+                <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                    <Typography variant="subtitle2">#{sr.id}</Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <Chip label={t(`enums.priority.${sr.priority}`, sr.priority)} size="small" color={priorityColor(sr.priority) as any} />
+                      <Chip label={t(`enums.srStatus.${sr.status}`, sr.status)} size="small" color={statusColor(sr.status) as any} />
+                    </Box>
+                  </Box>
+                  <Typography variant="body2" fontWeight={600} noWrap>{t(`enums.area.${sr.area}`, sr.area)}</Typography>
+                  <Typography variant="caption" color="text.secondary">{sr.buildingName} · {formatDateLocal(sr.createdAtUtc)}</Typography>
+                </CardContent>
+              </CardActionArea>
+            </Card>
+          ))}
+          {requests.length === 0 && <Typography align="center" color="text.secondary" sx={{ py: 4 }}>{t('myRequests.noRequests')}</Typography>}
+        </Stack>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead><TableRow>
+              <TableCell>{t('myRequests.id')}</TableCell><TableCell>{t('myRequests.building')}</TableCell><TableCell>{t('myRequests.area')}</TableCell>
+              <TableCell>{t('myRequests.priority')}</TableCell><TableCell>{t('myRequests.status')}</TableCell><TableCell>{t('myRequests.date')}</TableCell><TableCell>{t('app.actions')}</TableCell>
+            </TableRow></TableHead>
+            <TableBody>
+              {requests.map(sr => (
+                <TableRow key={sr.id} hover>
+                  <TableCell>{sr.id}</TableCell><TableCell>{sr.buildingName}</TableCell>
+                  <TableCell>{t(`enums.area.${sr.area}`, sr.area)}</TableCell>
+                  <TableCell><Chip label={t(`enums.priority.${sr.priority}`, sr.priority)} size="small" color={priorityColor(sr.priority) as any} /></TableCell>
+                  <TableCell><Chip label={t(`enums.srStatus.${sr.status}`, sr.status)} size="small" color={statusColor(sr.status) as any} /></TableCell>
+                  <TableCell>{formatDateLocal(sr.createdAtUtc)}</TableCell>
+                  <TableCell><Button size="small" startIcon={<Visibility />} onClick={() => { setSelected(sr); setDetailOpen(true); }}>{t('app.view')}</Button></TableCell>
+                </TableRow>
+              ))}
+              {requests.length === 0 && (
+                <TableRow><TableCell colSpan={7} align="center"><Typography color="text.secondary" sx={{ py: 2 }}>{t('myRequests.noRequests')}</Typography></TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+
+      <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         {selected && (<>
           <DialogTitle>
             {t('myRequests.detailTitle', { id: selected.id })}
             {selected.isEmergency && <Chip label={t('serviceRequests.emergency')} color="error" size="small" sx={{ ml: 1 }} />}
           </DialogTitle>
           <DialogContent>
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
               <Typography><strong>{t('myRequests.building')}:</strong> {selected.buildingName}</Typography>
               <Typography><strong>{t('myRequests.unit')}:</strong> {selected.unitNumber || t('app.na')}</Typography>
               <Typography><strong>{t('myRequests.area')}:</strong> {t(`enums.area.${selected.area}`, selected.area)}</Typography>

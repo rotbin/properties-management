@@ -3,7 +3,8 @@ import {
   Typography, Box, Card, CardContent, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper, Button, Chip, Alert,
   CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, MenuItem, FormControl, InputLabel, Select, IconButton, Tooltip
+  TextField, MenuItem, FormControl, InputLabel, Select, IconButton, Tooltip,
+  Stack, useMediaQuery, useTheme
 } from '@mui/material';
 import { Payment, CreditCard, Add, Delete, Star, StarBorder, OpenInNew } from '@mui/icons-material';
 import { hoaApi, paymentsApi } from '../../api/services';
@@ -13,6 +14,8 @@ import { useTranslation } from 'react-i18next';
 
 const MyChargesPage: React.FC = () => {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [charges, setCharges] = useState<UnitChargeDto[]>([]);
   const [methods, setMethods] = useState<PaymentMethodDto[]>([]);
   const [payments, setPayments] = useState<PaymentDto[]>([]);
@@ -82,16 +85,16 @@ const MyChargesPage: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>{t('myCharges.title')}</Typography>
+      <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.3rem', md: '2rem' }, fontWeight: 700 }}>{t('myCharges.title')}</Typography>
       {msg && <Alert severity={msgSeverity} onClose={() => setMsg('')} sx={{ mb: 2 }}>{msg}</Alert>}
 
       <Card sx={{ mb: 3, bgcolor: totalBalance > 0 ? 'error.50' : 'success.50' }}>
-        <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
           <Box>
             <Typography variant="body2" color="text.secondary">{t('myCharges.outstandingBalance')}</Typography>
-            <Typography variant="h4" color={totalBalance > 0 ? 'error.main' : 'success.main'}>{totalBalance.toFixed(2)} ₪</Typography>
+            <Typography variant={isMobile ? 'h5' : 'h4'} color={totalBalance > 0 ? 'error.main' : 'success.main'}>{totalBalance.toFixed(2)} ₪</Typography>
           </Box>
-          <Button variant="contained" startIcon={<CreditCard />} onClick={() => setMethodDialog(true)}>{t('myCharges.addPaymentMethod')}</Button>
+          <Button variant="contained" startIcon={<CreditCard />} onClick={() => setMethodDialog(true)} size={isMobile ? 'small' : 'medium'}>{t('myCharges.addPaymentMethod')}</Button>
         </CardContent>
       </Card>
 
@@ -101,7 +104,33 @@ const MyChargesPage: React.FC = () => {
         ))}
       </Box>
 
-      {tab === 'charges' && (
+      {tab === 'charges' && (isMobile ? (
+        <Stack spacing={1.5}>
+          {charges.map(c => (
+            <Card key={c.id} variant="outlined">
+              <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                  <Typography variant="subtitle2">{c.period} · {c.unitNumber}</Typography>
+                  <Chip label={t(`enums.chargeStatus.${c.status}`, c.status)} size="small" color={c.status === 'Paid' ? 'success' : c.status === 'Overdue' ? 'error' : c.status === 'PartiallyPaid' ? 'warning' : 'default'} />
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2">{t('myCharges.due')}: {c.amountDue.toFixed(2)}</Typography>
+                  <Typography variant="body2">{t('myCharges.paid')}: {c.amountPaid.toFixed(2)}</Typography>
+                  <Typography variant="body2" fontWeight="bold" color={c.balance > 0 ? 'error.main' : 'success.main'}>{c.balance.toFixed(2)}</Typography>
+                </Box>
+                <Typography variant="caption" color="text.secondary">{t('myCharges.dueDate')}: {formatDateLocal(c.dueDate)}</Typography>
+                {c.balance > 0 && (
+                  <Box sx={{ display: 'flex', gap: 0.5, mt: 1 }}>
+                    {methods.length > 0 && <Button size="small" startIcon={<Payment />} variant="outlined" onClick={() => { setPayChargeId(c.id); setPayAmount(c.balance.toString()); setPayMethodId(methods.find(m => m.isDefault)?.id || ''); setPayMode('token'); setPayDialog(true); }}>{t('myCharges.pay')}</Button>}
+                    <Button size="small" startIcon={<OpenInNew />} variant="contained" color="secondary" onClick={() => { setPayChargeId(c.id); setPayMode('hosted'); setPayDialog(true); }}>{t('myCharges.payOnline')}</Button>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+          {charges.length === 0 && <Typography align="center" color="text.secondary" sx={{ py: 4 }}>{t('myCharges.noCharges')}</Typography>}
+        </Stack>
+      ) : (
         <TableContainer component={Paper} variant="outlined">
           <Table size="small">
             <TableHead><TableRow>
@@ -131,9 +160,25 @@ const MyChargesPage: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
-      )}
+      ))}
 
-      {tab === 'payments' && (
+      {tab === 'payments' && (isMobile ? (
+        <Stack spacing={1.5}>
+          {payments.map(p => (
+            <Card key={p.id} variant="outlined">
+              <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                  <Typography variant="subtitle2">{p.amount.toFixed(2)} ₪</Typography>
+                  <Chip label={t(`enums.paymentStatus.${p.status}`, p.status)} size="small" color={p.status === 'Succeeded' ? 'success' : p.status === 'Failed' ? 'error' : p.status === 'Pending' ? 'warning' : 'default'} />
+                </Box>
+                <Typography variant="body2">{p.unitNumber} · {p.last4 ? `****${p.last4}` : '—'}</Typography>
+                <Typography variant="caption" color="text.secondary">{formatDateLocal(p.paymentDateUtc)}</Typography>
+              </CardContent>
+            </Card>
+          ))}
+          {payments.length === 0 && <Typography align="center" color="text.secondary" sx={{ py: 4 }}>{t('myCharges.noPayments')}</Typography>}
+        </Stack>
+      ) : (
         <TableContainer component={Paper} variant="outlined">
           <Table size="small">
             <TableHead><TableRow>
@@ -154,22 +199,22 @@ const MyChargesPage: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
-      )}
+      ))}
 
       {tab === 'methods' && (
         <Box>
           <Box sx={{ display: 'flex', gap: 1, mb: 2 }}><Button startIcon={<Add />} variant="contained" onClick={() => setMethodDialog(true)}>{t('myCharges.addCardHosted')}</Button></Box>
           {methods.map(m => (
             <Card key={m.id} variant="outlined" sx={{ mb: 1 }}>
-              <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1, '&:last-child': { pb: 1 } }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1, '&:last-child': { pb: 1 }, flexWrap: 'wrap', gap: 0.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', minWidth: 0 }}>
                   <CreditCard />
-                  <Typography>{m.cardBrand || (m.methodType === 'CreditCard' ? t('myCharges.cardBrand') : t('myCharges.bank'))} ****{m.last4Digits || '****'}</Typography>
-                  {m.expiry && <Typography variant="body2" color="text.secondary">{t('myCharges.expiry')} {m.expiry}</Typography>}
+                  <Typography noWrap>{m.cardBrand || (m.methodType === 'CreditCard' ? t('myCharges.cardBrand') : t('myCharges.bank'))} ****{m.last4Digits || '****'}</Typography>
+                  {m.expiry && <Typography variant="body2" color="text.secondary" noWrap>{t('myCharges.expiry')} {m.expiry}</Typography>}
                   {m.provider && <Chip label={m.provider} size="small" variant="outlined" />}
                   {m.isDefault && <Chip label={t('myCharges.default')} color="primary" size="small" />}
                 </Box>
-                <Box>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
                   {!m.isDefault && <Tooltip title={t('myCharges.setDefault')}><IconButton size="small" onClick={() => handleSetDefault(m.id)}><StarBorder fontSize="small" /></IconButton></Tooltip>}
                   {m.isDefault && <Star fontSize="small" color="primary" sx={{ mx: 0.5 }} />}
                   <IconButton size="small" color="error" onClick={() => handleDeleteMethod(m.id)}><Delete fontSize="small" /></IconButton>
@@ -181,7 +226,7 @@ const MyChargesPage: React.FC = () => {
         </Box>
       )}
 
-      <Dialog open={payDialog} onClose={() => setPayDialog(false)} maxWidth="xs" fullWidth>
+      <Dialog open={payDialog} onClose={() => setPayDialog(false)} maxWidth="xs" fullWidth fullScreen={isMobile}>
         <DialogTitle>{payMode === 'hosted' ? t('myCharges.payOnlineTitle') : t('myCharges.payWithCard')}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
           {payMode === 'hosted' ? (
@@ -206,7 +251,7 @@ const MyChargesPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={methodDialog} onClose={() => setMethodDialog(false)} maxWidth="sm" fullWidth>
+      <Dialog open={methodDialog} onClose={() => setMethodDialog(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle>{t('myCharges.addMethodTitle')}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
           <Alert severity="info"><span dangerouslySetInnerHTML={{ __html: t('myCharges.hostedFlowNote') }} /></Alert>

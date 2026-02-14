@@ -3,6 +3,7 @@ import {
   Box, Typography, Button, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, IconButton, Chip, Alert, CircularProgress, Collapse,
+  useMediaQuery, useTheme, Stack, Card, CardContent, CardActionArea,
 } from '@mui/material';
 import { Add, Edit, Delete, ExpandMore, ExpandLess } from '@mui/icons-material';
 import { buildingsApi } from '../../api/services';
@@ -11,6 +12,8 @@ import { useTranslation } from 'react-i18next';
 
 const BuildingsPage: React.FC = () => {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [buildings, setBuildings] = useState<BuildingDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,65 +83,106 @@ const BuildingsPage: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>{t('buildings.title')}</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+        <Typography variant="h4" sx={{ fontWeight: 700, fontSize: { xs: '1.3rem', md: '2rem' } }}>{t('buildings.title')}</Typography>
         <Button variant="contained" startIcon={<Add />} onClick={handleOpenCreateBuilding}>{t('buildings.addBuilding')}</Button>
       </Box>
       {error && <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>{error}</Alert>}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead><TableRow>
-            <TableCell width={48} /><TableCell>{t('buildings.name')}</TableCell><TableCell>{t('buildings.address')}</TableCell>
-            <TableCell>{t('buildings.city')}</TableCell><TableCell align="center">{t('buildings.units')}</TableCell><TableCell align="right">{t('app.actions')}</TableCell>
-          </TableRow></TableHead>
-          <TableBody>
-            {buildings.map(building => (
-              <React.Fragment key={building.id}>
-                <TableRow hover sx={{ cursor: 'pointer', '& > *': { borderBottom: 'unset' } }} onClick={() => handleExpandRow(building.id)}>
-                  <TableCell><IconButton size="small">{selectedBuildingId === building.id ? <ExpandLess /> : <ExpandMore />}</IconButton></TableCell>
-                  <TableCell><Typography fontWeight={600}>{building.name}</Typography></TableCell>
-                  <TableCell>{building.addressLine || '—'}</TableCell>
-                  <TableCell>{building.city || '—'}</TableCell>
-                  <TableCell align="center"><Chip label={building.unitCount} size="small" color="primary" variant="outlined" /></TableCell>
-                  <TableCell align="right" onClick={e => e.stopPropagation()}>
-                    <IconButton size="small" color="primary" onClick={() => handleOpenEditBuilding(building)}><Edit /></IconButton>
-                    <IconButton size="small" color="error" onClick={() => handleOpenDeleteBuilding(building)}><Delete /></IconButton>
+      {isMobile ? (
+        <Stack spacing={1.5}>
+          {buildings.map(building => (
+            <Card key={building.id} variant="outlined">
+              <CardActionArea onClick={() => handleExpandRow(building.id)}>
+                <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="subtitle1" fontWeight={600}>{building.name}</Typography>
+                    <Chip label={building.unitCount} size="small" color="primary" variant="outlined" />
+                  </Box>
+                  <Typography variant="body2" color="text.secondary">{building.addressLine || ''}{building.city ? `, ${building.city}` : ''}</Typography>
+                </CardContent>
+              </CardActionArea>
+              <Collapse in={selectedBuildingId === building.id} timeout="auto" unmountOnExit>
+                <Box sx={{ px: 2, pb: 2, bgcolor: 'action.hover' }}>
+                  <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+                    <Button size="small" variant="outlined" onClick={() => handleOpenEditBuilding(building)}>{t('app.edit')}</Button>
+                    <Button size="small" variant="outlined" color="error" onClick={() => handleOpenDeleteBuilding(building)}>{t('app.delete')}</Button>
                     <Button size="small" variant="outlined" startIcon={<Add />} onClick={() => handleOpenAddUnit(building.id)}>{t('buildings.addUnit')}</Button>
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell colSpan={6} sx={{ py: 0, borderBottom: 0 }}>
-                    <Collapse in={selectedBuildingId === building.id} timeout="auto" unmountOnExit>
-                      <Box sx={{ py: 2, pl: 6, pr: 2, bgcolor: 'action.hover' }}>
-                        <Typography variant="subtitle2" gutterBottom>{t('buildings.unitsIn', { name: building.name })}</Typography>
-                        {unitsLoading ? <CircularProgress size={24} /> : units.length === 0 ? (
-                          <Typography variant="body2" color="text.secondary">{t('buildings.noUnits')}</Typography>
-                        ) : (
-                          <Table size="small">
-                            <TableHead><TableRow>
-                              <TableCell>{t('buildings.unitNumber')}</TableCell><TableCell>{t('buildings.floor')}</TableCell>
-                              <TableCell>{t('buildings.sizeSqm')}</TableCell><TableCell>{t('buildings.ownerName')}</TableCell>
-                            </TableRow></TableHead>
-                            <TableBody>
-                              {units.map(unit => (
-                                <TableRow key={unit.id}>
-                                  <TableCell>{unit.unitNumber}</TableCell><TableCell>{unit.floor ?? '—'}</TableCell>
-                                  <TableCell>{unit.sizeSqm ?? '—'}</TableCell><TableCell>{unit.ownerName ?? '—'}</TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        )}
-                      </Box>
-                    </Collapse>
-                  </TableCell>
-                </TableRow>
-              </React.Fragment>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      {buildings.length === 0 && !loading && <Typography variant="body1" color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>{t('buildings.noBuildings')}</Typography>}
+                  </Box>
+                  {unitsLoading ? <CircularProgress size={24} /> : units.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary">{t('buildings.noUnits')}</Typography>
+                  ) : (
+                    <Stack spacing={0.5}>
+                      {units.map(unit => (
+                        <Typography key={unit.id} variant="body2">
+                          {t('buildings.unitNumber')}: {unit.unitNumber} · {t('buildings.floor')}: {unit.floor ?? '—'} · {unit.sizeSqm ?? '—'}m² · {unit.ownerName ?? '—'}
+                        </Typography>
+                      ))}
+                    </Stack>
+                  )}
+                </Box>
+              </Collapse>
+            </Card>
+          ))}
+          {buildings.length === 0 && !loading && <Typography variant="body1" color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>{t('buildings.noBuildings')}</Typography>}
+        </Stack>
+      ) : (
+        <>
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead><TableRow>
+                <TableCell width={48} /><TableCell>{t('buildings.name')}</TableCell><TableCell>{t('buildings.address')}</TableCell>
+                <TableCell>{t('buildings.city')}</TableCell><TableCell align="center">{t('buildings.units')}</TableCell><TableCell align="right">{t('app.actions')}</TableCell>
+              </TableRow></TableHead>
+              <TableBody>
+                {buildings.map(building => (
+                  <React.Fragment key={building.id}>
+                    <TableRow hover sx={{ cursor: 'pointer', '& > *': { borderBottom: 'unset' } }} onClick={() => handleExpandRow(building.id)}>
+                      <TableCell><IconButton size="small">{selectedBuildingId === building.id ? <ExpandLess /> : <ExpandMore />}</IconButton></TableCell>
+                      <TableCell><Typography fontWeight={600}>{building.name}</Typography></TableCell>
+                      <TableCell>{building.addressLine || '—'}</TableCell>
+                      <TableCell>{building.city || '—'}</TableCell>
+                      <TableCell align="center"><Chip label={building.unitCount} size="small" color="primary" variant="outlined" /></TableCell>
+                      <TableCell align="right" onClick={e => e.stopPropagation()}>
+                        <IconButton size="small" color="primary" onClick={() => handleOpenEditBuilding(building)}><Edit /></IconButton>
+                        <IconButton size="small" color="error" onClick={() => handleOpenDeleteBuilding(building)}><Delete /></IconButton>
+                        <Button size="small" variant="outlined" startIcon={<Add />} onClick={() => handleOpenAddUnit(building.id)}>{t('buildings.addUnit')}</Button>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell colSpan={6} sx={{ py: 0, borderBottom: 0 }}>
+                        <Collapse in={selectedBuildingId === building.id} timeout="auto" unmountOnExit>
+                          <Box sx={{ py: 2, pl: 6, pr: 2, bgcolor: 'action.hover' }}>
+                            <Typography variant="subtitle2" gutterBottom>{t('buildings.unitsIn', { name: building.name })}</Typography>
+                            {unitsLoading ? <CircularProgress size={24} /> : units.length === 0 ? (
+                              <Typography variant="body2" color="text.secondary">{t('buildings.noUnits')}</Typography>
+                            ) : (
+                              <Table size="small">
+                                <TableHead><TableRow>
+                                  <TableCell>{t('buildings.unitNumber')}</TableCell><TableCell>{t('buildings.floor')}</TableCell>
+                                  <TableCell>{t('buildings.sizeSqm')}</TableCell><TableCell>{t('buildings.ownerName')}</TableCell>
+                                </TableRow></TableHead>
+                                <TableBody>
+                                  {units.map(unit => (
+                                    <TableRow key={unit.id}>
+                                      <TableCell>{unit.unitNumber}</TableCell><TableCell>{unit.floor ?? '—'}</TableCell>
+                                      <TableCell>{unit.sizeSqm ?? '—'}</TableCell><TableCell>{unit.ownerName ?? '—'}</TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            )}
+                          </Box>
+                        </Collapse>
+                      </TableCell>
+                    </TableRow>
+                  </React.Fragment>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          {buildings.length === 0 && !loading && <Typography variant="body1" color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>{t('buildings.noBuildings')}</Typography>}
+        </>
+      )}
 
       <Dialog open={buildingDialogOpen} onClose={() => setBuildingDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editingBuilding ? t('buildings.editBuilding') : t('buildings.createBuilding')}</DialogTitle>

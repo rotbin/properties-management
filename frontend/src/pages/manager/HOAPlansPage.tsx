@@ -3,7 +3,8 @@ import {
   Typography, Box, Button, Card, CardContent, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent,
   DialogActions, TextField, MenuItem, Chip, Alert, CircularProgress,
-  FormControl, InputLabel, Select, IconButton, Tooltip
+  FormControl, InputLabel, Select, IconButton, Tooltip, Stack,
+  useMediaQuery, useTheme
 } from '@mui/material';
 import { Add, PlayArrow, Edit, Download } from '@mui/icons-material';
 import { buildingsApi, hoaApi, reportsApi } from '../../api/services';
@@ -14,6 +15,8 @@ import { useTranslation } from 'react-i18next';
 
 const HOAPlansPage: React.FC = () => {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [buildings, setBuildings] = useState<BuildingDto[]>([]);
   const [selectedBuilding, setSelectedBuilding] = useState<number | ''>('');
   const [plans, setPlans] = useState<HOAFeePlanDto[]>([]);
@@ -81,7 +84,7 @@ const HOAPlansPage: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>{t('hoa.title')}</Typography>
+      <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.3rem', md: '2rem' }, fontWeight: 700 }}>{t('hoa.title')}</Typography>
       {msg && <Alert severity="info" onClose={() => setMsg('')} sx={{ mb: 2 }}>{msg}</Alert>}
 
       <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -103,136 +106,230 @@ const HOAPlansPage: React.FC = () => {
 
       {tab === 'plans' && selectedBuilding && (
         <Card><CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
             <Typography variant="h6">{t('hoa.feePlans')}</Typography>
-            <Button startIcon={<Add />} variant="contained" onClick={() => { setEditingPlan({ calculationMethod: 'FixedPerUnit', effectiveFrom: new Date().toISOString().slice(0, 10), isActive: true }); setPlanDialog(true); }}>{t('hoa.newPlan')}</Button>
+            <Button startIcon={<Add />} variant="contained" size={isMobile ? 'small' : 'medium'} onClick={() => { setEditingPlan({ calculationMethod: 'FixedPerUnit', effectiveFrom: new Date().toISOString().slice(0, 10), isActive: true }); setPlanDialog(true); }}>{t('hoa.newPlan')}</Button>
           </Box>
-          <TableContainer component={Paper} variant="outlined">
-            <Table size="small">
-              <TableHead><TableRow>
-                <TableCell>{t('buildings.name')}</TableCell><TableCell>{t('hoa.calcMethod')}</TableCell><TableCell>{t('hoa.amount')}</TableCell>
-                <TableCell>{t('hoa.effectiveFrom')}</TableCell><TableCell>{t('hoa.active')}</TableCell><TableCell>{t('app.actions')}</TableCell>
-              </TableRow></TableHead>
-              <TableBody>
-                {plans.map(p => (
-                  <TableRow key={p.id}>
-                    <TableCell>{p.name}</TableCell>
-                    <TableCell><Chip label={t(`enums.calcMethod.${p.calculationMethod}`, p.calculationMethod)} size="small" /></TableCell>
-                    <TableCell>
+          {isMobile ? (
+            <Stack spacing={1.5}>
+              {plans.map(p => (
+                <Card key={p.id} variant="outlined">
+                  <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                      <Typography variant="subtitle1" fontWeight={600}>{p.name}</Typography>
+                      <Chip label={p.isActive ? t('hoa.active') : t('hoa.inactive')} color={p.isActive ? 'success' : 'default'} size="small" />
+                    </Box>
+                    <Typography variant="body2">
+                      <Chip label={t(`enums.calcMethod.${p.calculationMethod}`, p.calculationMethod)} size="small" sx={{ mr: 0.5 }} />
                       {p.calculationMethod === 'BySqm' && `${p.amountPerSqm} /m²`}
                       {p.calculationMethod === 'FixedPerUnit' && `${p.fixedAmountPerUnit} / ${t('buildings.units').toLowerCase()}`}
                       {p.calculationMethod === 'ManualPerUnit' && t('hoa.manual')}
-                    </TableCell>
-                    <TableCell>{formatDateOnly(p.effectiveFrom)}</TableCell>
-                    <TableCell><Chip label={p.isActive ? t('hoa.active') : t('hoa.inactive')} color={p.isActive ? 'success' : 'default'} size="small" /></TableCell>
-                    <TableCell>
-                      <Tooltip title={t('app.edit')}><IconButton size="small" onClick={() => { setEditingPlan(p); setPlanDialog(true); }}><Edit /></IconButton></Tooltip>
-                      <Tooltip title={t('hoa.generateCharges')}><IconButton size="small" color="primary" onClick={() => generateCharges(p.id)}><PlayArrow /></IconButton></Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {plans.length === 0 && <TableRow><TableCell colSpan={6} align="center">{t('hoa.noPlans')}</TableCell></TableRow>}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">{t('hoa.effectiveFrom')}: {formatDateOnly(p.effectiveFrom)}</Typography>
+                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                      <Button size="small" variant="outlined" startIcon={<Edit />} onClick={() => { setEditingPlan(p); setPlanDialog(true); }}>{t('app.edit')}</Button>
+                      <Button size="small" variant="outlined" color="primary" startIcon={<PlayArrow />} onClick={() => generateCharges(p.id)}>{t('hoa.generateCharges')}</Button>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+              {plans.length === 0 && <Typography align="center" color="text.secondary" sx={{ py: 4 }}>{t('hoa.noPlans')}</Typography>}
+            </Stack>
+          ) : (
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead><TableRow>
+                  <TableCell>{t('buildings.name')}</TableCell><TableCell>{t('hoa.calcMethod')}</TableCell><TableCell>{t('hoa.amount')}</TableCell>
+                  <TableCell>{t('hoa.effectiveFrom')}</TableCell><TableCell>{t('hoa.active')}</TableCell><TableCell>{t('app.actions')}</TableCell>
+                </TableRow></TableHead>
+                <TableBody>
+                  {plans.map(p => (
+                    <TableRow key={p.id}>
+                      <TableCell>{p.name}</TableCell>
+                      <TableCell><Chip label={t(`enums.calcMethod.${p.calculationMethod}`, p.calculationMethod)} size="small" /></TableCell>
+                      <TableCell>
+                        {p.calculationMethod === 'BySqm' && `${p.amountPerSqm} /m²`}
+                        {p.calculationMethod === 'FixedPerUnit' && `${p.fixedAmountPerUnit} / ${t('buildings.units').toLowerCase()}`}
+                        {p.calculationMethod === 'ManualPerUnit' && t('hoa.manual')}
+                      </TableCell>
+                      <TableCell>{formatDateOnly(p.effectiveFrom)}</TableCell>
+                      <TableCell><Chip label={p.isActive ? t('hoa.active') : t('hoa.inactive')} color={p.isActive ? 'success' : 'default'} size="small" /></TableCell>
+                      <TableCell>
+                        <Tooltip title={t('app.edit')}><IconButton size="small" onClick={() => { setEditingPlan(p); setPlanDialog(true); }}><Edit /></IconButton></Tooltip>
+                        <Tooltip title={t('hoa.generateCharges')}><IconButton size="small" color="primary" onClick={() => generateCharges(p.id)}><PlayArrow /></IconButton></Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {plans.length === 0 && <TableRow><TableCell colSpan={6} align="center">{t('hoa.noPlans')}</TableCell></TableRow>}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
         </CardContent></Card>
       )}
 
       {tab === 'charges' && selectedBuilding && (
         <Card><CardContent>
           <Typography variant="h6" gutterBottom>{t('hoa.charges', { period })}</Typography>
-          <TableContainer component={Paper} variant="outlined">
-            <Table size="small">
-              <TableHead><TableRow>
-                <TableCell>{t('hoa.unitCol')}</TableCell><TableCell>{t('hoa.floorCol')}</TableCell><TableCell>{t('hoa.tenant')}</TableCell>
-                <TableCell align="right">{t('hoa.due')}</TableCell><TableCell align="right">{t('hoa.paid')}</TableCell>
-                <TableCell align="right">{t('hoa.balance')}</TableCell><TableCell>{t('hoa.statusCol')}</TableCell><TableCell>{t('app.actions')}</TableCell>
-              </TableRow></TableHead>
-              <TableBody>
-                {charges.map(c => (
-                  <TableRow key={c.id}>
-                    <TableCell>{c.unitNumber}</TableCell><TableCell>{c.floor}</TableCell><TableCell>{c.tenantName || '—'}</TableCell>
-                    <TableCell align="right">{c.amountDue.toFixed(2)}</TableCell><TableCell align="right">{c.amountPaid.toFixed(2)}</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', color: c.balance > 0 ? 'error.main' : 'success.main' }}>{c.balance.toFixed(2)}</TableCell>
-                    <TableCell><Chip label={t(`enums.chargeStatus.${c.status}`, c.status)} size="small" color={c.status === 'Paid' ? 'success' : c.status === 'Overdue' ? 'error' : c.status === 'PartiallyPaid' ? 'warning' : 'default'} /></TableCell>
-                    <TableCell><Tooltip title={t('hoa.adjustAmount')}><IconButton size="small" onClick={() => { setAdjustChargeId(c.id); setAdjustAmount(c.amountDue.toString()); setAdjustReason(''); setAdjustDialog(true); }}><Edit /></IconButton></Tooltip></TableCell>
-                  </TableRow>
-                ))}
-                {charges.length === 0 && <TableRow><TableCell colSpan={8} align="center">{t('hoa.noCharges')}</TableCell></TableRow>}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          {isMobile ? (
+            <Stack spacing={1.5}>
+              {charges.map(c => (
+                <Card key={c.id} variant="outlined">
+                  <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                      <Typography variant="subtitle2">{c.unitNumber} · {c.tenantName || '—'}</Typography>
+                      <Chip label={t(`enums.chargeStatus.${c.status}`, c.status)} size="small" color={c.status === 'Paid' ? 'success' : c.status === 'Overdue' ? 'error' : c.status === 'PartiallyPaid' ? 'warning' : 'default'} />
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography variant="body2">{t('hoa.due')}: {c.amountDue.toFixed(2)}</Typography>
+                      <Typography variant="body2">{t('hoa.paid')}: {c.amountPaid.toFixed(2)}</Typography>
+                      <Typography variant="body2" fontWeight="bold" color={c.balance > 0 ? 'error.main' : 'success.main'}>{t('hoa.balance')}: {c.balance.toFixed(2)}</Typography>
+                    </Box>
+                    <Box sx={{ mt: 0.5 }}>
+                      <Button size="small" variant="outlined" startIcon={<Edit />} onClick={() => { setAdjustChargeId(c.id); setAdjustAmount(c.amountDue.toString()); setAdjustReason(''); setAdjustDialog(true); }}>{t('hoa.adjustAmount')}</Button>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+              {charges.length === 0 && <Typography align="center" color="text.secondary" sx={{ py: 4 }}>{t('hoa.noCharges')}</Typography>}
+            </Stack>
+          ) : (
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead><TableRow>
+                  <TableCell>{t('hoa.unitCol')}</TableCell><TableCell>{t('hoa.floorCol')}</TableCell><TableCell>{t('hoa.tenant')}</TableCell>
+                  <TableCell align="right">{t('hoa.due')}</TableCell><TableCell align="right">{t('hoa.paid')}</TableCell>
+                  <TableCell align="right">{t('hoa.balance')}</TableCell><TableCell>{t('hoa.statusCol')}</TableCell><TableCell>{t('app.actions')}</TableCell>
+                </TableRow></TableHead>
+                <TableBody>
+                  {charges.map(c => (
+                    <TableRow key={c.id}>
+                      <TableCell>{c.unitNumber}</TableCell><TableCell>{c.floor}</TableCell><TableCell>{c.tenantName || '—'}</TableCell>
+                      <TableCell align="right">{c.amountDue.toFixed(2)}</TableCell><TableCell align="right">{c.amountPaid.toFixed(2)}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 'bold', color: c.balance > 0 ? 'error.main' : 'success.main' }}>{c.balance.toFixed(2)}</TableCell>
+                      <TableCell><Chip label={t(`enums.chargeStatus.${c.status}`, c.status)} size="small" color={c.status === 'Paid' ? 'success' : c.status === 'Overdue' ? 'error' : c.status === 'PartiallyPaid' ? 'warning' : 'default'} /></TableCell>
+                      <TableCell><Tooltip title={t('hoa.adjustAmount')}><IconButton size="small" onClick={() => { setAdjustChargeId(c.id); setAdjustAmount(c.amountDue.toString()); setAdjustReason(''); setAdjustDialog(true); }}><Edit /></IconButton></Tooltip></TableCell>
+                    </TableRow>
+                  ))}
+                  {charges.length === 0 && <TableRow><TableCell colSpan={8} align="center">{t('hoa.noCharges')}</TableCell></TableRow>}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
         </CardContent></Card>
       )}
 
       {tab === 'collection' && selectedBuilding && collectionReport && (
         <Card><CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
             <Typography variant="h6">{t('hoa.collectionStatus', { period: collectionReport.period })}</Typography>
             <Button startIcon={<Download />} variant="outlined" size="small" onClick={() => downloadCsv('collection')}>{t('app.exportCsv')}</Button>
           </Box>
-          <Box sx={{ display: 'flex', gap: 3, mb: 2, flexWrap: 'wrap' }}>
-            <Card variant="outlined" sx={{ p: 2, minWidth: 140 }}><Typography variant="body2" color="text.secondary">{t('hoa.expected')}</Typography><Typography variant="h5">{collectionReport.totalExpected.toFixed(2)}</Typography></Card>
-            <Card variant="outlined" sx={{ p: 2, minWidth: 140 }}><Typography variant="body2" color="text.secondary">{t('hoa.collected')}</Typography><Typography variant="h5" color="success.main">{collectionReport.totalCollected.toFixed(2)}</Typography></Card>
-            <Card variant="outlined" sx={{ p: 2, minWidth: 140 }}><Typography variant="body2" color="text.secondary">{t('hoa.collectionRate')}</Typography><Typography variant="h5" color={collectionReport.collectionRate >= 80 ? 'success.main' : 'warning.main'}>{collectionReport.collectionRate}%</Typography></Card>
+          <Box sx={{ display: 'flex', gap: isMobile ? 1 : 3, mb: 2, flexWrap: 'wrap' }}>
+            <Card variant="outlined" sx={{ p: isMobile ? 1.5 : 2, minWidth: isMobile ? 'calc(50% - 8px)' : 140, flex: isMobile ? '1 1 calc(50% - 8px)' : undefined }}><Typography variant="body2" color="text.secondary">{t('hoa.expected')}</Typography><Typography variant={isMobile ? 'h6' : 'h5'}>{collectionReport.totalExpected.toFixed(2)}</Typography></Card>
+            <Card variant="outlined" sx={{ p: isMobile ? 1.5 : 2, minWidth: isMobile ? 'calc(50% - 8px)' : 140, flex: isMobile ? '1 1 calc(50% - 8px)' : undefined }}><Typography variant="body2" color="text.secondary">{t('hoa.collected')}</Typography><Typography variant={isMobile ? 'h6' : 'h5'} color="success.main">{collectionReport.totalCollected.toFixed(2)}</Typography></Card>
+            <Card variant="outlined" sx={{ p: isMobile ? 1.5 : 2, minWidth: isMobile ? '100%' : 140 }}><Typography variant="body2" color="text.secondary">{t('hoa.collectionRate')}</Typography><Typography variant={isMobile ? 'h6' : 'h5'} color={collectionReport.collectionRate >= 80 ? 'success.main' : 'warning.main'}>{collectionReport.collectionRate}%</Typography></Card>
           </Box>
-          <TableContainer component={Paper} variant="outlined">
-            <Table size="small">
-              <TableHead><TableRow>
-                <TableCell>{t('hoa.unitCol')}</TableCell><TableCell>{t('hoa.floorCol')}</TableCell><TableCell>{t('hoa.resident')}</TableCell>
-                <TableCell align="right">{t('hoa.due')}</TableCell><TableCell align="right">{t('hoa.paid')}</TableCell>
-                <TableCell align="right">{t('hoa.balance')}</TableCell><TableCell>{t('hoa.statusCol')}</TableCell>
-              </TableRow></TableHead>
-              <TableBody>
-                {collectionReport.rows.map(r => (
-                  <TableRow key={r.unitId}>
-                    <TableCell>{r.unitNumber}</TableCell><TableCell>{r.floor}</TableCell><TableCell>{r.residentName}</TableCell>
-                    <TableCell align="right">{r.amountDue.toFixed(2)}</TableCell><TableCell align="right">{r.amountPaid.toFixed(2)}</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', color: r.balance > 0 ? 'error.main' : 'success.main' }}>{r.balance.toFixed(2)}</TableCell>
-                    <TableCell><Chip label={t(`enums.chargeStatus.${r.status}`, r.status)} size="small" color={r.status === 'Paid' ? 'success' : r.status === 'Overdue' ? 'error' : 'default'} /></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          {isMobile ? (
+            <Stack spacing={1}>
+              {collectionReport.rows.map(r => (
+                <Card key={r.unitId} variant="outlined">
+                  <CardContent sx={{ py: 1, px: 2, '&:last-child': { pb: 1 } }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="subtitle2">{r.unitNumber} · {r.residentName}</Typography>
+                      <Chip label={t(`enums.chargeStatus.${r.status}`, r.status)} size="small" color={r.status === 'Paid' ? 'success' : r.status === 'Overdue' ? 'error' : 'default'} />
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                      <Typography variant="caption">{t('hoa.due')}: {r.amountDue.toFixed(2)}</Typography>
+                      <Typography variant="caption">{t('hoa.paid')}: {r.amountPaid.toFixed(2)}</Typography>
+                      <Typography variant="caption" fontWeight="bold" color={r.balance > 0 ? 'error.main' : 'success.main'}>{t('hoa.balance')}: {r.balance.toFixed(2)}</Typography>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Stack>
+          ) : (
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead><TableRow>
+                  <TableCell>{t('hoa.unitCol')}</TableCell><TableCell>{t('hoa.floorCol')}</TableCell><TableCell>{t('hoa.resident')}</TableCell>
+                  <TableCell align="right">{t('hoa.due')}</TableCell><TableCell align="right">{t('hoa.paid')}</TableCell>
+                  <TableCell align="right">{t('hoa.balance')}</TableCell><TableCell>{t('hoa.statusCol')}</TableCell>
+                </TableRow></TableHead>
+                <TableBody>
+                  {collectionReport.rows.map(r => (
+                    <TableRow key={r.unitId}>
+                      <TableCell>{r.unitNumber}</TableCell><TableCell>{r.floor}</TableCell><TableCell>{r.residentName}</TableCell>
+                      <TableCell align="right">{r.amountDue.toFixed(2)}</TableCell><TableCell align="right">{r.amountPaid.toFixed(2)}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 'bold', color: r.balance > 0 ? 'error.main' : 'success.main' }}>{r.balance.toFixed(2)}</TableCell>
+                      <TableCell><Chip label={t(`enums.chargeStatus.${r.status}`, r.status)} size="small" color={r.status === 'Paid' ? 'success' : r.status === 'Overdue' ? 'error' : 'default'} /></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
         </CardContent></Card>
       )}
 
       {tab === 'aging' && selectedBuilding && agingReport && (
         <Card><CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
             <Typography variant="h6">{t('hoa.agingReport', { name: agingReport.buildingName })}</Typography>
             <Button startIcon={<Download />} variant="outlined" size="small" onClick={() => downloadCsv('aging')}>{t('app.exportCsv')}</Button>
           </Box>
           <Typography variant="subtitle1" color="text.secondary" gutterBottom>{t('hoa.grandTotal')} <b>{agingReport.grandTotal.toFixed(2)}</b></Typography>
-          <TableContainer component={Paper} variant="outlined">
-            <Table size="small">
-              <TableHead><TableRow>
-                <TableCell>{t('hoa.unitCol')}</TableCell><TableCell>{t('hoa.resident')}</TableCell>
-                <TableCell align="right">{t('hoa.current')}</TableCell><TableCell align="right">{t('hoa.days1to30')}</TableCell>
-                <TableCell align="right">{t('hoa.days31to60')}</TableCell><TableCell align="right">{t('hoa.days61to90')}</TableCell>
-                <TableCell align="right">{t('hoa.days90plus')}</TableCell><TableCell align="right">{t('hoa.total')}</TableCell>
-              </TableRow></TableHead>
-              <TableBody>
-                {agingReport.buckets.map(b => (
-                  <TableRow key={b.unitId}>
-                    <TableCell>{b.unitNumber}</TableCell><TableCell>{b.residentName}</TableCell>
-                    <TableCell align="right">{b.current.toFixed(2)}</TableCell><TableCell align="right">{b.days1to30.toFixed(2)}</TableCell>
-                    <TableCell align="right">{b.days31to60.toFixed(2)}</TableCell><TableCell align="right">{b.days61to90.toFixed(2)}</TableCell>
-                    <TableCell align="right" sx={{ color: b.days90Plus > 0 ? 'error.main' : 'inherit' }}>{b.days90Plus.toFixed(2)}</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>{b.total.toFixed(2)}</TableCell>
-                  </TableRow>
-                ))}
-                {agingReport.buckets.length === 0 && <TableRow><TableCell colSpan={8} align="center">{t('hoa.noOutstanding')}</TableCell></TableRow>}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          {isMobile ? (
+            <Stack spacing={1}>
+              {agingReport.buckets.map(b => (
+                <Card key={b.unitId} variant="outlined">
+                  <CardContent sx={{ py: 1, px: 2, '&:last-child': { pb: 1 } }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                      <Typography variant="subtitle2">{b.unitNumber} · {b.residentName}</Typography>
+                      <Typography variant="subtitle2" fontWeight="bold">{b.total.toFixed(2)}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      <Chip label={`${t('hoa.current')}: ${b.current.toFixed(0)}`} size="small" variant="outlined" />
+                      <Chip label={`1-30: ${b.days1to30.toFixed(0)}`} size="small" variant="outlined" />
+                      <Chip label={`31-60: ${b.days31to60.toFixed(0)}`} size="small" variant="outlined" />
+                      <Chip label={`61-90: ${b.days61to90.toFixed(0)}`} size="small" variant="outlined" />
+                      {b.days90Plus > 0 && <Chip label={`90+: ${b.days90Plus.toFixed(0)}`} size="small" color="error" />}
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+              {agingReport.buckets.length === 0 && <Typography align="center" color="text.secondary" sx={{ py: 4 }}>{t('hoa.noOutstanding')}</Typography>}
+            </Stack>
+          ) : (
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead><TableRow>
+                  <TableCell>{t('hoa.unitCol')}</TableCell><TableCell>{t('hoa.resident')}</TableCell>
+                  <TableCell align="right">{t('hoa.current')}</TableCell><TableCell align="right">{t('hoa.days1to30')}</TableCell>
+                  <TableCell align="right">{t('hoa.days31to60')}</TableCell><TableCell align="right">{t('hoa.days61to90')}</TableCell>
+                  <TableCell align="right">{t('hoa.days90plus')}</TableCell><TableCell align="right">{t('hoa.total')}</TableCell>
+                </TableRow></TableHead>
+                <TableBody>
+                  {agingReport.buckets.map(b => (
+                    <TableRow key={b.unitId}>
+                      <TableCell>{b.unitNumber}</TableCell><TableCell>{b.residentName}</TableCell>
+                      <TableCell align="right">{b.current.toFixed(2)}</TableCell><TableCell align="right">{b.days1to30.toFixed(2)}</TableCell>
+                      <TableCell align="right">{b.days31to60.toFixed(2)}</TableCell><TableCell align="right">{b.days61to90.toFixed(2)}</TableCell>
+                      <TableCell align="right" sx={{ color: b.days90Plus > 0 ? 'error.main' : 'inherit' }}>{b.days90Plus.toFixed(2)}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 'bold' }}>{b.total.toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+                  {agingReport.buckets.length === 0 && <TableRow><TableCell colSpan={8} align="center">{t('hoa.noOutstanding')}</TableCell></TableRow>}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
         </CardContent></Card>
       )}
 
       {!selectedBuilding && <Typography color="text.secondary" sx={{ mt: 2 }}>{t('hoa.selectBuilding')}</Typography>}
 
-      <Dialog open={planDialog} onClose={() => setPlanDialog(false)} maxWidth="sm" fullWidth>
+      <Dialog open={planDialog} onClose={() => setPlanDialog(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle>{editingPlan.id ? t('hoa.editPlan') : t('hoa.createPlan')}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
           <TextField label={t('hoa.planName')} value={editingPlan.name || ''} onChange={e => setEditingPlan(p => ({ ...p, name: e.target.value }))} fullWidth />
