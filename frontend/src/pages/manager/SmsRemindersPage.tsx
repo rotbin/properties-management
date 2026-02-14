@@ -6,7 +6,7 @@ import {
   FormControl, InputLabel, Select, IconButton, Tooltip, Stack,
   Checkbox, FormControlLabel, useMediaQuery, useTheme
 } from '@mui/material';
-import { Send, Preview, Delete, Add, Sms } from '@mui/icons-material';
+import { Send, Preview, Delete, Sms } from '@mui/icons-material';
 import { buildingsApi, smsApi } from '../../api/services';
 import type {
   BuildingDto, SmsTemplateDto, SmsCampaignRecipientDto, SmsCampaignDto, SendCampaignResult
