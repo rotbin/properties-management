@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Grid, Card, CardContent, Typography, Box, Button, CircularProgress,
-  TextField, Divider, Chip
+  TextField, Divider, Chip, Alert
 } from '@mui/material';
 import {
   Business, Assignment, WorkOutline, Engineering,
@@ -23,6 +23,7 @@ const DashboardPage: React.FC = () => {
   });
   const [collectionData, setCollectionData] = useState<CollectionSummaryDto[]>([]);
   const [collectionLoading, setCollectionLoading] = useState(false);
+  const [collectionError, setCollectionError] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -37,9 +38,13 @@ const DashboardPage: React.FC = () => {
 
   useEffect(() => {
     setCollectionLoading(true);
+    setCollectionError('');
     reportsApi.dashboardCollection(collectionPeriod)
       .then(r => setCollectionData(r.data))
-      .catch(() => {})
+      .catch((err) => {
+        console.error('Dashboard collection error:', err);
+        setCollectionError(err?.response?.data?.message || err?.message || 'Failed to load collection data');
+      })
       .finally(() => setCollectionLoading(false));
   }, [collectionPeriod]);
 
@@ -101,6 +106,7 @@ const DashboardPage: React.FC = () => {
           size="small" InputLabelProps={{ shrink: true }} />
       </Box>
 
+      {collectionError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setCollectionError('')}>{collectionError}</Alert>}
       {collectionLoading ? <CircularProgress size={24} /> : (
         <>
           <Grid container spacing={2} sx={{ mb: 2 }}>

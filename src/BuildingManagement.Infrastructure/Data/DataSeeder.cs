@@ -80,19 +80,46 @@ public static class DataSeeder
         context.Buildings.Add(building1);
         await context.SaveChangesAsync();
 
+        // ─── Tenant names per unit ──────────────────────────
+        var tenantNames = new Dictionary<string, (string fullName, string phone, string email)>
+        {
+            ["101"] = ("Yossi Cohen", "050-1111001", "yossi@example.com"),
+            ["102"] = ("Sarah Levi", "050-1111002", "sarah.l@example.com"),
+            ["103"] = ("David Mizrahi", "050-1111003", "david.m@example.com"),
+            ["104"] = ("Rachel Green", "050-1111004", "rachel.g@example.com"),
+            ["201"] = ("Moshe Goldberg", "050-1111005", "moshe.g@example.com"),
+            ["202"] = ("Yael Shapiro", "050-1111006", "yael.s@example.com"),
+            ["203"] = ("Avi Ben-David", "050-1111007", "avi.bd@example.com"),
+            ["204"] = ("Noa Friedman", "050-1111008", "noa.f@example.com"),
+            ["301"] = ("Eitan Katz", "050-1111009", "eitan.k@example.com"),
+            ["302"] = ("Michal Peretz", "050-1111010", "michal.p@example.com"),
+            ["303"] = ("Omer Alon", "050-1111011", "omer.a@example.com"),
+            ["304"] = ("Tamar Rosen", "050-1111012", "tamar.r@example.com"),
+            ["401"] = ("Uri Navon", "050-1111013", "uri.n@example.com"),
+            ["402"] = ("Shira Dahan", "050-1111014", "shira.d@example.com"),
+            ["403"] = ("Ron Azulay", "050-1111015", "ron.a@example.com"),
+            ["404"] = ("Liat Baruch", "050-1111016", "liat.b@example.com"),
+            ["501"] = ("Gal Engel", "050-1111017", "gal.e@example.com"),
+            ["502"] = ("Dana Haim", "050-1111018", "dana.h@example.com"),
+            ["503"] = ("Amir Stern", "050-1111019", "amir.s@example.com"),
+            ["504"] = ("Maya Tal", "050-1111020", "maya.t@example.com"),
+        };
+
         // Seed Units
         var units = new List<Unit>();
         for (int floor = 1; floor <= 5; floor++)
         {
             for (int apt = 1; apt <= 4; apt++)
             {
+                var unitNum = $"{floor}0{apt}";
+                var ownerName = tenantNames.TryGetValue(unitNum, out var tn) ? tn.fullName : null;
                 units.Add(new Unit
                 {
                     BuildingId = building1.Id,
-                    UnitNumber = $"{floor}0{apt}",
+                    UnitNumber = unitNum,
                     Floor = floor,
                     SizeSqm = 75 + apt * 10,
-                    OwnerName = floor == 1 && apt == 1 ? "Tenant User" : null
+                    OwnerName = ownerName
                 });
             }
         }
@@ -129,8 +156,8 @@ public static class DataSeeder
             UserName = "tenant@example.com",
             Email = "tenant@example.com",
             EmailConfirmed = true,
-            FullName = "John Tenant",
-            Phone = "050-0000003"
+            FullName = "Yossi Cohen",
+            Phone = "050-1111001"
         };
         await CreateUserWithRole(userManager, tenantUser, devPassword, AppRoles.Tenant, logger);
 
@@ -145,9 +172,38 @@ public static class DataSeeder
         };
         await CreateUserWithRole(userManager, vendorUser, devPassword, AppRoles.Vendor, logger);
 
-        // Link tenant to unit
+        // Create tenant users for each unit and link them
+        var tenantUsers = new Dictionary<string, ApplicationUser>();
+        foreach (var (unitNum, info) in tenantNames)
+        {
+            if (unitNum == "101") continue; // Already created above
+            var tUser = new ApplicationUser
+            {
+                UserName = info.email,
+                Email = info.email,
+                EmailConfirmed = true,
+                FullName = info.fullName,
+                Phone = info.phone
+            };
+            await CreateUserWithRole(userManager, tUser, devPassword, AppRoles.Tenant, logger);
+            tenantUsers[unitNum] = tUser;
+        }
+
+        // Link tenant users to units
         unit1.TenantUserId = tenantUser.Id;
         context.Units.Update(unit1);
+        foreach (var unit in units.Where(u => u.UnitNumber != "101"))
+        {
+            if (tenantUsers.TryGetValue(unit.UnitNumber, out var tu))
+            {
+                var dbUser = await userManager.FindByEmailAsync(tu.Email!);
+                if (dbUser != null)
+                {
+                    unit.TenantUserId = dbUser.Id;
+                    context.Units.Update(unit);
+                }
+            }
+        }
 
         // Link manager to building
         context.BuildingManagers.Add(new BuildingManager
@@ -156,6 +212,9 @@ public static class DataSeeder
             BuildingId = building1.Id
         });
         await context.SaveChangesAsync();
+
+        // ─── Seed HOA Fee Plan + Charges + Payments ─────────
+        await SeedHOAPaymentData(context, building1, units, tenantUser, tenantUsers, userManager, logger);
 
         // Seed Assets
         var elevator = new Asset
@@ -292,6 +351,248 @@ public static class DataSeeder
         }
 
         logger.LogInformation("Database seeded successfully with demo data.");
+    }
+
+    /// <summary>
+    /// Seeds HOA fee plan, unit charges for 3 months, payments, allocations,
+    /// and ledger entries so the dashboard shows a realistic collection status.
+    /// </summary>
+    private static async Task SeedHOAPaymentData(
+        AppDbContext context,
+        Building building,
+        List<Unit> units,
+        ApplicationUser primaryTenant,
+        Dictionary<string, ApplicationUser> tenantUsers,
+        UserManager<ApplicationUser> userManager,
+        ILogger logger)
+    {
+        if (await context.HOAFeePlans.AnyAsync()) return; // already seeded
+
+        var buildingId = building.Id;
+        var now = DateTime.UtcNow;
+        var currentPeriod = now.ToString("yyyy-MM");
+        var prevPeriod1 = now.AddMonths(-1).ToString("yyyy-MM");
+        var prevPeriod2 = now.AddMonths(-2).ToString("yyyy-MM");
+
+        // ── 1. Create HOA Fee Plan ──────────────────────────
+        var hoaPlan = new HOAFeePlan
+        {
+            BuildingId = buildingId,
+            Name = "Monthly HOA 2026",
+            CalculationMethod = HOACalculationMethod.FixedPerUnit,
+            FixedAmountPerUnit = 450m,
+            EffectiveFrom = new DateTime(now.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            IsActive = true,
+            CreatedBy = "seed"
+        };
+        context.HOAFeePlans.Add(hoaPlan);
+        await context.SaveChangesAsync();
+
+        // ── 2. Define payment statuses per unit for current month ─
+        //    Paid=8, Partial=3, Unpaid=5, Overdue=4  → 20 total
+        var currentMonthStatuses = new Dictionary<string, string>
+        {
+            ["101"] = "Paid",    ["102"] = "Paid",
+            ["103"] = "Partial", ["104"] = "Unpaid",
+            ["201"] = "Paid",    ["202"] = "Paid",
+            ["203"] = "Partial", ["204"] = "Unpaid",
+            ["301"] = "Paid",    ["302"] = "Paid",
+            ["303"] = "Partial", ["304"] = "Overdue",
+            ["401"] = "Paid",    ["402"] = "Overdue",
+            ["403"] = "Unpaid",  ["404"] = "Overdue",
+            ["501"] = "Paid",    ["502"] = "Unpaid",
+            ["503"] = "Overdue", ["504"] = "Unpaid",
+        };
+
+        // Previous months: most units paid, a few overdue (simulates aging)
+        var prevMonth1Statuses = new Dictionary<string, string>
+        {
+            ["101"] = "Paid",  ["102"] = "Paid",  ["103"] = "Paid",   ["104"] = "Paid",
+            ["201"] = "Paid",  ["202"] = "Paid",  ["203"] = "Paid",   ["204"] = "Paid",
+            ["301"] = "Paid",  ["302"] = "Paid",  ["303"] = "Paid",   ["304"] = "Overdue",
+            ["401"] = "Paid",  ["402"] = "Overdue",["403"] = "Paid",  ["404"] = "Overdue",
+            ["501"] = "Paid",  ["502"] = "Paid",  ["503"] = "Overdue",["504"] = "Paid",
+        };
+
+        var prevMonth2Statuses = new Dictionary<string, string>
+        {
+            ["101"] = "Paid",  ["102"] = "Paid",  ["103"] = "Paid",  ["104"] = "Paid",
+            ["201"] = "Paid",  ["202"] = "Paid",  ["203"] = "Paid",  ["204"] = "Paid",
+            ["301"] = "Paid",  ["302"] = "Paid",  ["303"] = "Paid",  ["304"] = "Paid",
+            ["401"] = "Paid",  ["402"] = "Paid",  ["403"] = "Paid",  ["404"] = "Overdue",
+            ["501"] = "Paid",  ["502"] = "Paid",  ["503"] = "Paid",  ["504"] = "Paid",
+        };
+
+        var periods = new[]
+        {
+            (period: prevPeriod2, statuses: prevMonth2Statuses, monthsAgo: 2),
+            (period: prevPeriod1, statuses: prevMonth1Statuses, monthsAgo: 1),
+            (period: currentPeriod, statuses: currentMonthStatuses, monthsAgo: 0),
+        };
+
+        decimal amountPerUnit = 450m;
+        var allCharges = new List<UnitCharge>();
+        var allPayments = new List<Payment>();
+        var allAllocations = new List<PaymentAllocation>();
+        var ledgerEntries = new List<LedgerEntry>();
+        decimal runningBalance = 0m;
+
+        foreach (var (period, statuses, monthsAgo) in periods)
+        {
+            var periodDate = now.AddMonths(-monthsAgo);
+            var dueDate = new DateTime(periodDate.Year, periodDate.Month, 10, 0, 0, 0, DateTimeKind.Utc);
+            var chargeDate = new DateTime(periodDate.Year, periodDate.Month, 1, 8, 0, 0, DateTimeKind.Utc);
+
+            foreach (var unit in units)
+            {
+                if (!statuses.TryGetValue(unit.UnitNumber, out var status)) continue;
+
+                // ── Create UnitCharge ──
+                var chargeStatus = status switch
+                {
+                    "Paid" => UnitChargeStatus.Paid,
+                    "Partial" => UnitChargeStatus.PartiallyPaid,
+                    "Overdue" => UnitChargeStatus.Overdue,
+                    _ => UnitChargeStatus.Pending
+                };
+
+                // Unpaid units in current month get a future due date (25th) so they show as "Unpaid"
+                // Overdue units get an early due date (5th) to ensure they're past due
+                var unitDueDate = status switch
+                {
+                    "Unpaid" when monthsAgo == 0 => new DateTime(periodDate.Year, periodDate.Month, 25, 0, 0, 0, DateTimeKind.Utc),
+                    "Overdue" => new DateTime(periodDate.Year, periodDate.Month, 5, 0, 0, 0, DateTimeKind.Utc),
+                    _ => dueDate
+                };
+
+                var charge = new UnitCharge
+                {
+                    UnitId = unit.Id,
+                    HOAFeePlanId = hoaPlan.Id,
+                    Period = period,
+                    AmountDue = amountPerUnit,
+                    DueDate = unitDueDate,
+                    Status = chargeStatus,
+                    CreatedAtUtc = chargeDate
+                };
+                allCharges.Add(charge);
+
+                // ── Ledger: Charge entry ──
+                runningBalance += amountPerUnit;
+                ledgerEntries.Add(new LedgerEntry
+                {
+                    BuildingId = buildingId,
+                    UnitId = unit.Id,
+                    EntryType = LedgerEntryType.Charge,
+                    Category = "HOAMonthlyFees",
+                    Description = $"HOA charge {period} - {unit.UnitNumber}",
+                    Debit = amountPerUnit,
+                    Credit = 0,
+                    BalanceAfter = runningBalance,
+                    CreatedAtUtc = chargeDate
+                });
+            }
+        }
+
+        context.UnitCharges.AddRange(allCharges);
+        await context.SaveChangesAsync(); // need charge IDs
+
+        // ── 3. Create Payments + Allocations for Paid/Partial ─
+        foreach (var (period, statuses, monthsAgo) in periods)
+        {
+            var periodDate = now.AddMonths(-monthsAgo);
+            var payDate = new DateTime(periodDate.Year, periodDate.Month, 8, 14, 0, 0, DateTimeKind.Utc);
+
+            foreach (var unit in units)
+            {
+                if (!statuses.TryGetValue(unit.UnitNumber, out var status)) continue;
+                if (status != "Paid" && status != "Partial") continue;
+
+                var charge = allCharges.First(c => c.UnitId == unit.Id && c.Period == period);
+                var payAmount = status == "Paid"
+                    ? amountPerUnit
+                    : Math.Round(amountPerUnit * (0.4m + (unit.Floor ?? 1) * 0.05m), 2); // 200-325 range
+
+                // Resolve tenant user id
+                string userId;
+                if (unit.UnitNumber == "101")
+                    userId = primaryTenant.Id;
+                else if (tenantUsers.TryGetValue(unit.UnitNumber, out var tu))
+                {
+                    var dbUser = await userManager.FindByEmailAsync(tu.Email!);
+                    userId = dbUser?.Id ?? primaryTenant.Id;
+                }
+                else
+                    userId = primaryTenant.Id;
+
+                var payment = new Payment
+                {
+                    UnitId = unit.Id,
+                    UserId = userId,
+                    Amount = payAmount,
+                    PaymentDateUtc = payDate,
+                    ProviderReference = $"FAKE-{period}-{unit.UnitNumber}",
+                    Status = PaymentStatus.Succeeded,
+                    CreatedAtUtc = payDate
+                };
+                allPayments.Add(payment);
+
+                // Ledger: Payment entry
+                runningBalance -= payAmount;
+                ledgerEntries.Add(new LedgerEntry
+                {
+                    BuildingId = buildingId,
+                    UnitId = unit.Id,
+                    EntryType = LedgerEntryType.Payment,
+                    Category = "HOAMonthlyFees",
+                    Description = $"Payment {period} - {unit.UnitNumber}",
+                    Debit = 0,
+                    Credit = payAmount,
+                    BalanceAfter = runningBalance,
+                    CreatedAtUtc = payDate
+                });
+            }
+        }
+
+        context.Payments.AddRange(allPayments);
+        await context.SaveChangesAsync(); // need payment IDs
+
+        // Create allocations linking payments to charges
+        foreach (var payment in allPayments)
+        {
+            // Find the matching charge for this unit in the same period
+            var periodFromRef = payment.ProviderReference?.Split('-')[1] + "-" + payment.ProviderReference?.Split('-')[2].PadLeft(2, '0');
+            // Actually, let's find by unit and amount match
+            var matchingCharges = allCharges.Where(c => c.UnitId == payment.UnitId).ToList();
+            var charge = matchingCharges.FirstOrDefault(c =>
+            {
+                var payDate = payment.PaymentDateUtc;
+                var chargeDate = c.CreatedAtUtc;
+                return payDate.Year == chargeDate.Year && payDate.Month == chargeDate.Month;
+            });
+
+            if (charge != null)
+            {
+                allAllocations.Add(new PaymentAllocation
+                {
+                    PaymentId = payment.Id,
+                    UnitChargeId = charge.Id,
+                    AllocatedAmount = payment.Amount
+                });
+            }
+        }
+
+        context.PaymentAllocations.AddRange(allAllocations);
+        await context.SaveChangesAsync();
+
+        logger.LogInformation(
+            "Seeded HOA payment data: {Plan} plan, {Charges} charges, {Payments} payments, {Allocations} allocations across 3 months.",
+            1, allCharges.Count, allPayments.Count, allAllocations.Count);
+
+        // ── 4. Add unit-level ledger entries (merged with existing building-level) ─
+        context.LedgerEntries.AddRange(ledgerEntries);
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded {Count} unit-level ledger entries for HOA charges/payments.", ledgerEntries.Count);
     }
 
     private static async Task CreateUserWithRole(UserManager<ApplicationUser> userManager, ApplicationUser user, string password, string role, ILogger logger)

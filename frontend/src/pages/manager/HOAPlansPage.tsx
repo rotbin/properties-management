@@ -49,11 +49,22 @@ const HOAPlansPage: React.FC = () => {
   }, [tab, loadPlans, loadCharges, loadCollectionReport, loadAgingReport]);
 
   const savePlan = async () => {
+    if (!editingPlan.name?.trim()) { setMsg(t('hoa.errorSaving') + ' – Name is required'); return; }
+    if (!selectedBuilding && !editingPlan.buildingId) { setMsg(t('hoa.errorSaving') + ' – Building is required'); return; }
     try {
       if (editingPlan.id) { await hoaApi.updatePlan(editingPlan.id, editingPlan); }
       else { await hoaApi.createPlan({ ...editingPlan, buildingId: selectedBuilding as number }); }
       setPlanDialog(false); setEditingPlan({}); loadPlans(); setMsg(t('hoa.planSaved'));
-    } catch { setMsg(t('hoa.errorSaving')); }
+    } catch (err: unknown) {
+      let detail = '';
+      if (err && typeof err === 'object' && 'response' in err) {
+        const resp = (err as { response?: { data?: { message?: string; title?: string; errors?: Record<string, string[]> } } }).response;
+        if (resp?.data?.message) detail = resp.data.message;
+        else if (resp?.data?.title) detail = resp.data.title;
+        else if (resp?.data?.errors) detail = Object.values(resp.data.errors).flat().join('; ');
+      }
+      setMsg(t('hoa.errorSaving') + (detail ? ` – ${detail}` : ''));
+    }
   };
 
   const generateCharges = async (planId: number) => {
