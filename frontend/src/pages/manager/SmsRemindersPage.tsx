@@ -47,7 +47,10 @@ const SmsRemindersPage: React.FC = () => {
     buildingsApi.getAll().then(r => setBuildings(r.data));
     smsApi.getTemplates().then(r => {
       setTemplates(r.data);
-      if (r.data.length > 0) setSelectedTemplate(r.data[0].id);
+      // Default to Hebrew template
+      const heTemplate = r.data.find(t2 => t2.language === 'he');
+      if (heTemplate) setSelectedTemplate(heTemplate.id);
+      else if (r.data.length > 0) setSelectedTemplate(r.data[0].id);
     });
   }, []);
 
