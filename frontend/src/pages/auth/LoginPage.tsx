@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
 import {
   Box, Card, CardContent, TextField, Button, Typography, Alert, CircularProgress,
-  ToggleButtonGroup, ToggleButton
+  IconButton, Menu, MenuItem, ListItemIcon, ListItemText
 } from '@mui/material';
+import { Settings, Check } from '@mui/icons-material';
 import { useAuth } from '../../auth/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+
+const LANGUAGES = [
+  { code: 'he', label: 'עברית', flag: '🇮🇱' },
+  { code: 'en', label: 'English', flag: '🇺🇸' },
+];
 
 const LoginPage: React.FC = () => {
   const { login, isLoading } = useAuth();
@@ -14,6 +20,7 @@ const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [langAnchor, setLangAnchor] = useState<null | HTMLElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,30 +33,48 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  const handleLanguageChange = (_: React.MouseEvent<HTMLElement>, newLang: string | null) => {
-    if (newLang) {
-      i18n.changeLanguage(newLang);
-      localStorage.setItem('lang', newLang);
-    }
+  const handleLanguageSelect = (code: string) => {
+    i18n.changeLanguage(code);
+    localStorage.setItem('lang', code);
+    setLangAnchor(null);
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: '#f5f5f5', p: 2 }}>
+    <Box sx={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: '#f5f5f5', p: 2, position: 'relative' }}>
+      {/* Language settings button - top corner */}
+      <IconButton
+        onClick={e => setLangAnchor(e.currentTarget)}
+        sx={{
+          position: 'absolute',
+          top: 16,
+          right: 16,
+          bgcolor: 'background.paper',
+          boxShadow: 1,
+          '&:hover': { bgcolor: 'action.hover' },
+        }}
+        size="medium"
+        aria-label="Language settings"
+      >
+        <Settings />
+      </IconButton>
+      <Menu
+        anchorEl={langAnchor}
+        open={Boolean(langAnchor)}
+        onClose={() => setLangAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        {LANGUAGES.map(lang => (
+          <MenuItem key={lang.code} onClick={() => handleLanguageSelect(lang.code)} selected={i18n.language === lang.code}>
+            <ListItemIcon sx={{ fontSize: '1.2rem', minWidth: 32 }}>{lang.flag}</ListItemIcon>
+            <ListItemText>{lang.label}</ListItemText>
+            {i18n.language === lang.code && <Check fontSize="small" sx={{ ml: 1 }} />}
+          </MenuItem>
+        ))}
+      </Menu>
+
       <Card sx={{ maxWidth: 420, width: '100%' }}>
         <CardContent sx={{ p: 4 }}>
-          {/* Language toggle at top of login */}
-          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-            <ToggleButtonGroup
-              value={i18n.language}
-              exclusive
-              onChange={handleLanguageChange}
-              size="small"
-            >
-              <ToggleButton value="he">{t('app.hebrew')}</ToggleButton>
-              <ToggleButton value="en">{t('app.english')}</ToggleButton>
-            </ToggleButtonGroup>
-          </Box>
-
           <Typography variant="h4" align="center" gutterBottom sx={{ fontWeight: 700 }}>
             {t('login.title')}
           </Typography>
