@@ -23,6 +23,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<JobRunLog> JobRunLogs => Set<JobRunLog>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<BuildingManager> BuildingManagers => Set<BuildingManager>();
+    public DbSet<TenantProfile> TenantProfiles => Set<TenantProfile>();
 
     // Finance
     public DbSet<HOAFeePlan> HOAFeePlans => Set<HOAFeePlan>();
@@ -47,6 +48,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<WorkOrder>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<PreventivePlan>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<CleaningPlan>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<TenantProfile>().HasQueryFilter(e => !e.IsDeleted);
 
         // Building -> Units
         builder.Entity<Unit>()
@@ -182,6 +184,23 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             .WithMany()
             .HasForeignKey(u => u.VendorId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // ─── TenantProfile ───────────────────────────────────
+
+        builder.Entity<TenantProfile>()
+            .HasOne(tp => tp.Unit)
+            .WithMany()
+            .HasForeignKey(tp => tp.UnitId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<TenantProfile>()
+            .HasOne(tp => tp.User)
+            .WithMany()
+            .HasForeignKey(tp => tp.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<TenantProfile>()
+            .HasIndex(tp => new { tp.UnitId, tp.IsActive });
 
         // ─── Finance Entities ────────────────────────────────
 

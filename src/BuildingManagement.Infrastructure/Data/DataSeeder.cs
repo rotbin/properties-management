@@ -213,6 +213,35 @@ public static class DataSeeder
         });
         await context.SaveChangesAsync();
 
+        // ─── Seed Tenant Profiles ────────────────────────────
+        logger.LogInformation("Seeding tenant profiles...");
+        var moveInDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        foreach (var unit in units)
+        {
+            if (tenantNames.TryGetValue(unit.UnitNumber, out var info))
+            {
+                var userId = unit.UnitNumber == "101"
+                    ? tenantUser.Id
+                    : (tenantUsers.TryGetValue(unit.UnitNumber, out var tu) ? tu.Id : null);
+
+                context.TenantProfiles.Add(new TenantProfile
+                {
+                    UnitId = unit.Id,
+                    UserId = userId,
+                    FullName = info.fullName,
+                    Phone = info.phone,
+                    Email = info.email,
+                    MoveInDate = moveInDate,
+                    IsActive = true,
+                    Notes = "Seeded tenant",
+                    CreatedBy = "seed"
+                });
+            }
+        }
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded {Count} tenant profiles.", units.Count);
+
         // ─── Seed HOA Fee Plan + Charges + Payments ─────────
         await SeedHOAPaymentData(context, building1, units, tenantUser, tenantUsers, userManager, logger);
 

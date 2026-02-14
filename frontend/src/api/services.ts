@@ -5,7 +5,8 @@ import type {
   CleaningPlanDto, GenerateJobResponse, JobRunLogDto, WorkOrderNoteDto,
   AttachmentDto, HOAFeePlanDto, UnitChargeDto, PaymentMethodDto,
   PaymentDto, CollectionStatusReport, AgingReport,
-  PaymentProviderConfigDto, PaymentSessionResponse, TokenizationResponse
+  PaymentProviderConfigDto, PaymentSessionResponse, TokenizationResponse,
+  TenantProfileDto, CreateTenantRequest, UpdateTenantRequest, EndTenancyRequest
 } from '../types';
 
 // Auth
@@ -148,6 +149,19 @@ export const paymentConfigApi = {
   update: (id: number, data: Partial<PaymentProviderConfigDto>) => apiClient.put(`/api/payment-config/${id}`, data),
   delete: (id: number) => apiClient.delete(`/api/payment-config/${id}`),
   getProviders: () => apiClient.get<string[]>('/api/payment-config/providers'),
+};
+
+// ─── Tenants ──────────────────────────────────────────
+
+export const tenantsApi = {
+  getAll: (params?: { buildingId?: number; unitId?: number; activeOnly?: boolean; includeArchived?: boolean }) =>
+    apiClient.get<TenantProfileDto[]>('/api/tenants', { params }),
+  getById: (id: number) => apiClient.get<TenantProfileDto>(`/api/tenants/${id}`),
+  create: (data: CreateTenantRequest) => apiClient.post<TenantProfileDto>('/api/tenants', data),
+  update: (id: number, data: UpdateTenantRequest) => apiClient.put(`/api/tenants/${id}`, data),
+  endTenancy: (id: number, data: EndTenancyRequest) => apiClient.post(`/api/tenants/${id}/end-tenancy`, data),
+  delete: (id: number) => apiClient.delete(`/api/tenants/${id}`),
+  unitHistory: (unitId: number) => apiClient.get<TenantProfileDto[]>(`/api/tenants/unit/${unitId}/history`),
 };
 
 export const reportsApi = {

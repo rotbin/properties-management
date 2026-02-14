@@ -356,6 +356,54 @@ export const INCOME_CATEGORIES = [
   'HOAMonthlyFees', 'SpecialAssessment', 'LateFees', 'OtherIncome'
 ] as const;
 
+// ─── Tenant Management ─────────────────────────────────
+
+export interface TenantProfileDto {
+  id: number;
+  unitId: number;
+  unitNumber?: string;
+  floor?: number;
+  buildingId: number;
+  buildingName?: string;
+  userId?: string;
+  fullName: string;
+  phone?: string;
+  email?: string;
+  moveInDate?: string;
+  moveOutDate?: string;
+  isActive: boolean;
+  isArchived: boolean;
+  notes?: string;
+  createdAtUtc: string;
+}
+
+export interface CreateTenantRequest {
+  unitId: number;
+  fullName: string;
+  phone?: string;
+  email?: string;
+  moveInDate?: string;
+  isActive: boolean;
+  notes?: string;
+  userId?: string;
+}
+
+export interface UpdateTenantRequest {
+  fullName: string;
+  phone?: string;
+  email?: string;
+  moveInDate?: string;
+  moveOutDate?: string;
+  isActive: boolean;
+  notes?: string;
+}
+
+export interface EndTenancyRequest {
+  moveOutDate: string;
+}
+
+export const TENANT_STATUSES = ['Active', 'Inactive', 'Archived'] as const;
+
 export const HOA_CALC_METHODS = ['BySqm', 'FixedPerUnit', 'ManualPerUnit'] as const;
 export const CHARGE_STATUSES = ['Pending', 'Paid', 'PartiallyPaid', 'Overdue', 'Cancelled'] as const;
 export const PAYMENT_STATUSES = ['Pending', 'Succeeded', 'Failed', 'Refunded'] as const;

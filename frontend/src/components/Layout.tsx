@@ -6,7 +6,7 @@ import {
 import {
   Menu as MenuIcon, Dashboard, Business, Engineering, CleaningServices,
   Assignment, Build, Logout, WorkOutline, Schedule,
-  AccountBalance, Payment, Settings, BarChart, FactCheck
+  AccountBalance, Payment, Settings, BarChart, FactCheck, People
 } from '@mui/icons-material';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -34,6 +34,7 @@ const navItems: NavItem[] = [
   { labelKey: 'nav.paymentProviders', path: '/payment-config', icon: <Settings />, roles: ['Admin', 'Manager'] },
   { labelKey: 'nav.incomeExpenses', path: '/income-expenses', icon: <BarChart />, roles: ['Admin', 'Manager'] },
   { labelKey: 'nav.collectionStatus', path: '/collection-status', icon: <FactCheck />, roles: ['Admin', 'Manager'] },
+  { labelKey: 'nav.tenants', path: '/tenants', icon: <People />, roles: ['Admin', 'Manager'] },
   { labelKey: 'nav.myRequests', path: '/my-requests', icon: <Assignment />, roles: ['Tenant'] },
   { labelKey: 'nav.newRequest', path: '/new-request', icon: <Assignment />, roles: ['Tenant'] },
   { labelKey: 'nav.myCharges', path: '/my-charges', icon: <Payment />, roles: ['Tenant'] },

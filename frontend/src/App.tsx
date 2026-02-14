@@ -25,6 +25,7 @@ import HOAPlansPage from './pages/manager/HOAPlansPage';
 import PaymentProviderConfigPage from './pages/manager/PaymentProviderConfigPage';
 import IncomeExpensesPage from './pages/manager/IncomeExpensesPage';
 import CollectionStatusPage from './pages/manager/CollectionStatusPage';
+import TenantsPage from './pages/manager/TenantsPage';
 import PaymentSuccessPage from './pages/payment/PaymentSuccessPage';
 import PaymentCancelPage from './pages/payment/PaymentCancelPage';
 
@@ -72,6 +73,7 @@ const AppRoutes: React.FC = () => {
         <Route path="payment-config" element={<ProtectedRoute roles={['Admin', 'Manager']}><PaymentProviderConfigPage /></ProtectedRoute>} />
         <Route path="income-expenses" element={<ProtectedRoute roles={['Admin', 'Manager']}><IncomeExpensesPage /></ProtectedRoute>} />
         <Route path="collection-status" element={<ProtectedRoute roles={['Admin', 'Manager']}><CollectionStatusPage /></ProtectedRoute>} />
+        <Route path="tenants" element={<ProtectedRoute roles={['Admin', 'Manager']}><TenantsPage /></ProtectedRoute>} />
         <Route path="payment/success" element={<ProtectedRoute><PaymentSuccessPage /></ProtectedRoute>} />
         <Route path="payment/cancel" element={<ProtectedRoute><PaymentCancelPage /></ProtectedRoute>} />
         <Route path="new-request" element={<ProtectedRoute roles={['Tenant', 'Admin', 'Manager']}><NewRequestPage /></ProtectedRoute>} />
