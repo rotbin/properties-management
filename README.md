@@ -186,7 +186,9 @@ dotnet run
 The API starts on **http://localhost:5219**.  
 Swagger UI: **http://localhost:5219/swagger**
 
-On first run in Development mode, the database is created and seeded automatically with demo data.
+On first run in Development mode, the database is created and seeded automatically with demo data.  
+By default, the app uses an **in-memory database** (no files, no setup). Data resets on each restart.  
+To persist data, set `Database:Provider` to `Sqlite` or `SqlServer` in `appsettings.json` (see [Database Configuration](#database-configuration)).
 
 ### 2. Frontend (React + Vite)
 
@@ -297,15 +299,61 @@ AzureBlob__ContainerName=building-files
 
 ## Database Configuration
 
-### SQLite (default for dev)
-```
-ConnectionStrings__DefaultConnection=Data Source=buildingmgmt.db
+The database provider is controlled by the `Database:Provider` setting in `appsettings.json`. Three providers are supported:
+
+| Provider | Setting Value | Description | Persistence |
+|----------|--------------|-------------|-------------|
+| **InMemory** | `InMemory` | EF Core in-memory database (default) | Data lost on restart |
+| **SQLite** | `Sqlite` | SQLite file-based database | Persistent, local file |
+| **SQL Server** | `SqlServer` | Azure SQL / SQL Server | Persistent, production-ready |
+
+### InMemory (default — zero-cost demo)
+
+No database file or server required. Data is seeded on every startup and lost when the app stops. Ideal for demos, quick testing, and development.
+
+```json
+{
+  "Database": {
+    "Provider": "InMemory"
+  }
+}
 ```
 
-### Azure SQL (production)
+### SQLite (persistent local dev)
+
+Data persists across restarts in a local `.db` file. Requires `ConnectionStrings:DefaultConnection`.
+
+```json
+{
+  "Database": {
+    "Provider": "Sqlite"
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "Data Source=buildingmgmt.db"
+  }
+}
 ```
-ConnectionStrings__DefaultConnection=Server=your-server.database.windows.net;Database=BuildingMgmt;User Id=admin;Password=YOUR_PASSWORD;Encrypt=True;TrustServerCertificate=False;
+
+### SQL Server / Azure SQL (production)
+
+```json
+{
+  "Database": {
+    "Provider": "SqlServer"
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=your-server.database.windows.net;Database=BuildingMgmt;User Id=admin;Password=YOUR_PASSWORD;Encrypt=True;TrustServerCertificate=False;"
+  }
+}
 ```
+
+Or via environment variables:
+```
+Database__Provider=SqlServer
+ConnectionStrings__DefaultConnection=Server=...
+```
+
+> **Note**: EF Core migrations are only applied for `Sqlite` and `SqlServer` providers. The `InMemory` provider uses `EnsureCreated` to build the schema from the model directly.
 
 ## Azure Deployment
 

@@ -15,20 +15,27 @@ using Microsoft.OpenApi.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 // ─── Database ───────────────────────────────────────────
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Data Source=buildingmgmt.db";
+// Supported providers: InMemory (default for demo), Sqlite, SqlServer
+var dbProvider = builder.Configuration["Database:Provider"] ?? "InMemory";
 
-if (connectionString.Contains(".db", StringComparison.OrdinalIgnoreCase)
-    || connectionString.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase)
-       && !connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase))
+if (dbProvider.Equals("InMemory", StringComparison.OrdinalIgnoreCase))
 {
     builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseSqlite(connectionString));
+        options.UseInMemoryDatabase("BuildingManagementDb"));
 }
-else
+else if (dbProvider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
 {
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required for SqlServer provider.");
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseSqlServer(connectionString));
+}
+else // Sqlite (default persistent option)
+{
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? "Data Source=buildingmgmt.db";
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseSqlite(connectionString));
 }
 
 // ─── Identity ───────────────────────────────────────────
@@ -170,17 +177,28 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// ─── Seed Data (Development) ────────────────────────────
-if (app.Environment.IsDevelopment())
+// ─── Database Initialization & Seed Data ────────────────
 {
-    await DataSeeder.SeedAsync(app.Services);
-}
-else
-{
-    // In production, just run migrations
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
+    var isInMemory = dbProvider.Equals("InMemory", StringComparison.OrdinalIgnoreCase);
+    if (isInMemory)
+    {
+        // InMemory doesn't support migrations — just ensure schema is created and seed
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Database.EnsureCreatedAsync();
+    }
+
+    if (app.Environment.IsDevelopment())
+    {
+        await DataSeeder.SeedAsync(app.Services, useInMemory: isInMemory);
+    }
+    else if (!isInMemory)
+    {
+        // In production with a real DB, just run migrations
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Database.MigrateAsync();
+    }
 }
 
 // ─── Middleware Pipeline ────────────────────────────────

@@ -10,7 +10,7 @@ namespace BuildingManagement.Infrastructure.Data;
 
 public static class DataSeeder
 {
-    public static async Task SeedAsync(IServiceProvider serviceProvider)
+    public static async Task SeedAsync(IServiceProvider serviceProvider, bool useInMemory = false)
     {
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -18,8 +18,16 @@ public static class DataSeeder
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<AppDbContext>>();
 
-        // Apply pending migrations
-        await context.Database.MigrateAsync();
+        if (useInMemory)
+        {
+            // InMemory provider: schema already created via EnsureCreatedAsync in Program.cs
+            logger.LogInformation("Using InMemory database provider (no migrations).");
+        }
+        else
+        {
+            // Apply pending migrations for real DB providers
+            await context.Database.MigrateAsync();
+        }
 
         // Seed roles
         foreach (var role in AppRoles.All)
