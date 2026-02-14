@@ -50,7 +50,8 @@
     "newRequest": "קריאה חדשה",
     "myCharges": "החיובים שלי",
     "myWorkOrders": "הזמנות העבודה שלי",
-    "incomeExpenses": "הכנסות והוצאות"
+    "incomeExpenses": "הכנסות והוצאות",
+    "collectionStatus": "סטטוס גבייה"
   },
 
   "login": {
@@ -73,7 +74,14 @@
     "viewServiceRequests": "צפייה בקריאות שירות",
     "viewWorkOrders": "צפייה בהזמנות עבודה",
     "cleaningPlans": "תוכניות ניקיון",
-    "runJobs": "הרצת משימות"
+    "runJobs": "הרצת משימות",
+    "collectionStatus": "סטטוס גבייה",
+    "unpaidUnits": "יחידות לא שולמו",
+    "overdueUnits": "יחידות באיחור",
+    "paidUnits": "יחידות ששולמו",
+    "collectionRate": "אחוז גבייה",
+    "outstanding": "יתרת חוב",
+    "viewCollectionStatus": "צפייה בסטטוס גבייה"
   },
 
   "buildings": {
@@ -619,6 +627,43 @@
     "category": "קטגוריה",
     "amount": "סכום",
     "errorLoading": "שגיאה בטעינת הדוח הכספי.",
+    "errorExport": "שגיאה בייצוא CSV."
+  },
+
+  "collection": {
+    "title": "סטטוס גבייה — מי שילם / מי לא",
+    "building": "מבנה",
+    "period": "תקופה",
+    "includeNotGenerated": "כלול יחידות ללא חיובים",
+    "selectBuilding": "בחר מבנה כדי לצפות בסטטוס הגבייה.",
+    "paidUnits": "שולם",
+    "partialUnits": "חלקי",
+    "unpaidUnits": "לא שולם",
+    "overdueUnits": "באיחור",
+    "collectionRate": "אחוז גבייה",
+    "totalDue": "סה\"כ לתשלום",
+    "totalPaid": "סה\"כ שולם",
+    "outstanding": "חוב",
+    "generatedOf": "{{generated}} מתוך {{total}} יחידות עם חיובים",
+    "search": "חיפוש יחידה או משלם...",
+    "statusFilter": "סטטוס",
+    "allStatuses": "הכל",
+    "statusPaid": "שולם",
+    "statusPartial": "חלקי",
+    "statusUnpaid": "לא שולם",
+    "statusOverdue": "באיחור",
+    "statusNotGenerated": "לא הופק",
+    "unit": "יחידה",
+    "payer": "משלם",
+    "phone": "טלפון",
+    "due": "לתשלום",
+    "paid": "שולם",
+    "dueDate": "תאריך יעד",
+    "status": "סטטוס",
+    "lastPayment": "תשלום אחרון",
+    "floor": "קומה",
+    "noData": "אין נתונים לתקופה זו.",
+    "errorLoading": "שגיאה בטעינת סטטוס הגבייה.",
     "errorExport": "שגיאה בייצוא CSV."
   }
 }

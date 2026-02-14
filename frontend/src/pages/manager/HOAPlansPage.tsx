@@ -68,7 +68,7 @@ const HOAPlansPage: React.FC = () => {
     try {
       const lang = localStorage.getItem('lang') || 'he';
       const r = type === 'collection'
-        ? await reportsApi.collectionStatusCsv(selectedBuilding as number, period, lang)
+        ? await reportsApi.collectionStatusCsv(selectedBuilding as number, period, false, lang)
         : await reportsApi.agingCsv(selectedBuilding as number, lang);
       const url = window.URL.createObjectURL(new Blob([r.data]));
       const a = document.createElement('a'); a.href = url; a.download = `${type}-report-${selectedBuilding}.csv`; a.click();
@@ -222,13 +222,13 @@ const HOAPlansPage: React.FC = () => {
       {tab === 'collection' && selectedBuilding && collectionReport && (
         <Card><CardContent>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
-            <Typography variant="h6">{t('hoa.collectionStatus', { period: collectionReport.period })}</Typography>
+            <Typography variant="h6">{t('hoa.collectionStatus', { period: collectionReport.summary.period })}</Typography>
             <Button startIcon={<Download />} variant="outlined" size="small" onClick={() => downloadCsv('collection')}>{t('app.exportCsv')}</Button>
           </Box>
           <Box sx={{ display: 'flex', gap: isMobile ? 1 : 3, mb: 2, flexWrap: 'wrap' }}>
-            <Card variant="outlined" sx={{ p: isMobile ? 1.5 : 2, minWidth: isMobile ? 'calc(50% - 8px)' : 140, flex: isMobile ? '1 1 calc(50% - 8px)' : undefined }}><Typography variant="body2" color="text.secondary">{t('hoa.expected')}</Typography><Typography variant={isMobile ? 'h6' : 'h5'}>{collectionReport.totalExpected.toFixed(2)}</Typography></Card>
-            <Card variant="outlined" sx={{ p: isMobile ? 1.5 : 2, minWidth: isMobile ? 'calc(50% - 8px)' : 140, flex: isMobile ? '1 1 calc(50% - 8px)' : undefined }}><Typography variant="body2" color="text.secondary">{t('hoa.collected')}</Typography><Typography variant={isMobile ? 'h6' : 'h5'} color="success.main">{collectionReport.totalCollected.toFixed(2)}</Typography></Card>
-            <Card variant="outlined" sx={{ p: isMobile ? 1.5 : 2, minWidth: isMobile ? '100%' : 140 }}><Typography variant="body2" color="text.secondary">{t('hoa.collectionRate')}</Typography><Typography variant={isMobile ? 'h6' : 'h5'} color={collectionReport.collectionRate >= 80 ? 'success.main' : 'warning.main'}>{collectionReport.collectionRate}%</Typography></Card>
+            <Card variant="outlined" sx={{ p: isMobile ? 1.5 : 2, minWidth: isMobile ? 'calc(50% - 8px)' : 140, flex: isMobile ? '1 1 calc(50% - 8px)' : undefined }}><Typography variant="body2" color="text.secondary">{t('hoa.expected')}</Typography><Typography variant={isMobile ? 'h6' : 'h5'}>{collectionReport.summary.totalDue.toFixed(2)}</Typography></Card>
+            <Card variant="outlined" sx={{ p: isMobile ? 1.5 : 2, minWidth: isMobile ? 'calc(50% - 8px)' : 140, flex: isMobile ? '1 1 calc(50% - 8px)' : undefined }}><Typography variant="body2" color="text.secondary">{t('hoa.collected')}</Typography><Typography variant={isMobile ? 'h6' : 'h5'} color="success.main">{collectionReport.summary.totalPaid.toFixed(2)}</Typography></Card>
+            <Card variant="outlined" sx={{ p: isMobile ? 1.5 : 2, minWidth: isMobile ? '100%' : 140 }}><Typography variant="body2" color="text.secondary">{t('hoa.collectionRate')}</Typography><Typography variant={isMobile ? 'h6' : 'h5'} color={collectionReport.summary.collectionRatePercent >= 80 ? 'success.main' : 'warning.main'}>{collectionReport.summary.collectionRatePercent}%</Typography></Card>
           </Box>
           {isMobile ? (
             <Stack spacing={1}>
@@ -236,13 +236,13 @@ const HOAPlansPage: React.FC = () => {
                 <Card key={r.unitId} variant="outlined">
                   <CardContent sx={{ py: 1, px: 2, '&:last-child': { pb: 1 } }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="subtitle2">{r.unitNumber} · {r.residentName}</Typography>
+                      <Typography variant="subtitle2">{r.unitNumber} · {r.payerDisplayName}</Typography>
                       <Chip label={t(`enums.chargeStatus.${r.status}`, r.status)} size="small" color={r.status === 'Paid' ? 'success' : r.status === 'Overdue' ? 'error' : 'default'} />
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
                       <Typography variant="caption">{t('hoa.due')}: {r.amountDue.toFixed(2)}</Typography>
                       <Typography variant="caption">{t('hoa.paid')}: {r.amountPaid.toFixed(2)}</Typography>
-                      <Typography variant="caption" fontWeight="bold" color={r.balance > 0 ? 'error.main' : 'success.main'}>{t('hoa.balance')}: {r.balance.toFixed(2)}</Typography>
+                      <Typography variant="caption" fontWeight="bold" color={r.outstanding > 0 ? 'error.main' : 'success.main'}>{t('hoa.balance')}: {r.outstanding.toFixed(2)}</Typography>
                     </Box>
                   </CardContent>
                 </Card>
@@ -259,9 +259,9 @@ const HOAPlansPage: React.FC = () => {
                 <TableBody>
                   {collectionReport.rows.map(r => (
                     <TableRow key={r.unitId}>
-                      <TableCell>{r.unitNumber}</TableCell><TableCell>{r.floor}</TableCell><TableCell>{r.residentName}</TableCell>
+                      <TableCell>{r.unitNumber}</TableCell><TableCell>{r.floor}</TableCell><TableCell>{r.payerDisplayName}</TableCell>
                       <TableCell align="right">{r.amountDue.toFixed(2)}</TableCell><TableCell align="right">{r.amountPaid.toFixed(2)}</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 'bold', color: r.balance > 0 ? 'error.main' : 'success.main' }}>{r.balance.toFixed(2)}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 'bold', color: r.outstanding > 0 ? 'error.main' : 'success.main' }}>{r.outstanding.toFixed(2)}</TableCell>
                       <TableCell><Chip label={t(`enums.chargeStatus.${r.status}`, r.status)} size="small" color={r.status === 'Paid' ? 'success' : r.status === 'Overdue' ? 'error' : 'default'} /></TableCell>
                     </TableRow>
                   ))}

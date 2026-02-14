@@ -1,4 +1,6 @@
 using BuildingManagement.Core.DTOs;
+using BuildingManagement.Core.Entities;
+using BuildingManagement.Core.Entities.Finance;
 using BuildingManagement.Core.Enums;
 using BuildingManagement.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
@@ -20,49 +22,165 @@ public class ReportsController : ControllerBase
         _db = db;
     }
 
+    // ─── Collection Status (Who Paid / Who Has Not) ─────────
+
     [HttpGet("collection-status/{buildingId}")]
-    public async Task<ActionResult<CollectionStatusReport>> CollectionStatus(int buildingId, [FromQuery] string? period)
+    public async Task<ActionResult<CollectionStatusReport>> CollectionStatus(
+        int buildingId,
+        [FromQuery] string? period,
+        [FromQuery] bool includeNotGenerated = false)
     {
         period ??= DateTime.UtcNow.ToString("yyyy-MM");
 
         var building = await _db.Buildings.FindAsync(buildingId);
         if (building == null) return NotFound();
 
-        var charges = await _db.UnitCharges
+        var report = await BuildCollectionReport(building, period, includeNotGenerated);
+        return Ok(report);
+    }
+
+    [HttpGet("collection-status/{buildingId}/unit/{unitId}")]
+    public async Task<IActionResult> CollectionUnitDetail(
+        int buildingId, int unitId, [FromQuery] string? period)
+    {
+        period ??= DateTime.UtcNow.ToString("yyyy-MM");
+
+        var charge = await _db.UnitCharges
             .Include(uc => uc.Unit).ThenInclude(u => u.TenantUser)
+            .Include(uc => uc.Allocations)
+            .FirstOrDefaultAsync(uc => uc.UnitId == unitId
+                && uc.Unit.BuildingId == buildingId
+                && uc.Period == period);
+
+        if (charge == null) return NotFound(new { message = $"No charge found for unit {unitId} in period {period}" });
+
+        var payments = await _db.Payments
+            .Where(p => p.UnitId == unitId && p.Status == PaymentStatus.Succeeded)
+            .OrderByDescending(p => p.PaymentDateUtc)
+            .Select(p => new { p.Id, p.Amount, p.PaymentDateUtc, p.ProviderReference, p.Status })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            charge = new
+            {
+                charge.Id, charge.UnitId, charge.Period, charge.AmountDue, charge.DueDate, charge.Status,
+                amountPaid = charge.Allocations.Sum(a => a.AllocatedAmount),
+                allocations = charge.Allocations.Select(a => new { a.PaymentId, a.AllocatedAmount })
+            },
+            payments
+        });
+    }
+
+    private async Task<CollectionStatusReport> BuildCollectionReport(Building building, string period, bool includeNotGenerated)
+    {
+        var buildingId = building.Id;
+        var now = DateTime.UtcNow;
+        // Asia/Jerusalem for overdue determination
+        var israelNow = TimeZoneInfo.ConvertTimeFromUtc(now,
+            TimeZoneInfo.FindSystemTimeZoneById("Israel Standard Time"));
+
+        // All units in this building
+        var allUnits = await _db.Units
+            .Include(u => u.TenantUser)
+            .Where(u => u.BuildingId == buildingId)
+            .ToListAsync();
+
+        // Charges for this period
+        var charges = await _db.UnitCharges
             .Include(uc => uc.Allocations)
             .Where(uc => uc.Unit.BuildingId == buildingId && uc.Period == period)
             .ToListAsync();
 
-        var rows = charges.Select(uc =>
+        // Last payment date per unit
+        var lastPaymentDates = await _db.Payments
+            .Where(p => p.Unit.BuildingId == buildingId && p.Status == PaymentStatus.Succeeded)
+            .GroupBy(p => p.UnitId)
+            .Select(g => new { UnitId = g.Key, LastDate = g.Max(p => p.PaymentDateUtc) })
+            .ToDictionaryAsync(x => x.UnitId, x => (DateTime?)x.LastDate);
+
+        var chargeByUnit = charges.ToDictionary(c => c.UnitId);
+        var rows = new List<CollectionRowDto>();
+
+        foreach (var unit in allUnits)
         {
-            var paid = uc.Allocations.Sum(a => a.AllocatedAmount);
-            return new CollectionStatusRow
+            if (chargeByUnit.TryGetValue(unit.Id, out var charge))
             {
-                UnitId = uc.UnitId,
-                UnitNumber = uc.Unit.UnitNumber,
-                Floor = uc.Unit.Floor,
-                ResidentName = uc.Unit.TenantUser?.FullName ?? uc.Unit.OwnerName ?? "—",
-                AmountDue = uc.AmountDue,
-                AmountPaid = paid,
-                Balance = uc.AmountDue - paid,
-                Status = uc.Status.ToString()
-            };
-        }).OrderBy(r => r.UnitNumber).ToList();
+                // Skip cancelled or zero charges
+                if (charge.Status == UnitChargeStatus.Cancelled || charge.AmountDue == 0) continue;
 
-        var totalExpected = rows.Sum(r => r.AmountDue);
-        var totalCollected = rows.Sum(r => r.AmountPaid);
+                var paid = charge.Allocations.Sum(a => a.AllocatedAmount);
+                var outstanding = charge.AmountDue - paid;
 
-        return Ok(new CollectionStatusReport
+                string status;
+                if (paid >= charge.AmountDue || charge.Status == UnitChargeStatus.Paid)
+                    status = "Paid";
+                else if (paid > 0)
+                    status = "Partial";
+                else if (charge.DueDate < israelNow.Date)
+                    status = "Overdue";
+                else
+                    status = "Unpaid";
+
+                rows.Add(new CollectionRowDto
+                {
+                    UnitId = unit.Id,
+                    UnitNumber = unit.UnitNumber,
+                    Floor = unit.Floor,
+                    SizeSqm = unit.SizeSqm,
+                    PayerDisplayName = unit.TenantUser?.FullName ?? unit.OwnerName ?? "—",
+                    PayerPhone = unit.TenantUser?.Phone,
+                    AmountDue = charge.AmountDue,
+                    AmountPaid = paid,
+                    Outstanding = outstanding > 0 ? outstanding : 0,
+                    DueDate = charge.DueDate,
+                    Status = status,
+                    LastPaymentDateUtc = lastPaymentDates.GetValueOrDefault(unit.Id)
+                });
+            }
+            else if (includeNotGenerated)
+            {
+                rows.Add(new CollectionRowDto
+                {
+                    UnitId = unit.Id,
+                    UnitNumber = unit.UnitNumber,
+                    Floor = unit.Floor,
+                    SizeSqm = unit.SizeSqm,
+                    PayerDisplayName = unit.TenantUser?.FullName ?? unit.OwnerName ?? "—",
+                    PayerPhone = unit.TenantUser?.Phone,
+                    AmountDue = 0,
+                    AmountPaid = 0,
+                    Outstanding = 0,
+                    DueDate = null,
+                    Status = "NotGenerated",
+                    LastPaymentDateUtc = lastPaymentDates.GetValueOrDefault(unit.Id)
+                });
+            }
+        }
+
+        rows = rows.OrderBy(r => r.UnitNumber).ToList();
+        var generated = rows.Where(r => r.Status != "NotGenerated").ToList();
+
+        var summary = new CollectionSummaryDto
         {
             BuildingId = buildingId,
             BuildingName = building.Name,
             Period = period,
-            TotalExpected = totalExpected,
-            TotalCollected = totalCollected,
-            CollectionRate = totalExpected > 0 ? Math.Round(totalCollected / totalExpected * 100, 1) : 0,
-            Rows = rows
-        });
+            TotalUnits = allUnits.Count,
+            GeneratedCount = generated.Count,
+            PaidCount = rows.Count(r => r.Status == "Paid"),
+            PartialCount = rows.Count(r => r.Status == "Partial"),
+            UnpaidCount = rows.Count(r => r.Status == "Unpaid"),
+            OverdueCount = rows.Count(r => r.Status == "Overdue"),
+            TotalDue = generated.Sum(r => r.AmountDue),
+            TotalPaid = generated.Sum(r => r.AmountPaid),
+            TotalOutstanding = generated.Sum(r => r.Outstanding),
+            CollectionRatePercent = generated.Sum(r => r.AmountDue) > 0
+                ? Math.Round(generated.Sum(r => r.AmountPaid) / generated.Sum(r => r.AmountDue) * 100, 1)
+                : 0
+        };
+
+        return new CollectionStatusReport { Summary = summary, Rows = rows };
     }
 
     [HttpGet("aging/{buildingId}")]
@@ -278,25 +396,30 @@ public class ReportsController : ControllerBase
     }
 
     [HttpGet("collection-status/{buildingId}/csv")]
-    public async Task<IActionResult> CollectionStatusCsv(int buildingId, [FromQuery] string? period, [FromQuery] string? lang)
+    public async Task<IActionResult> CollectionStatusCsv(
+        int buildingId,
+        [FromQuery] string? period,
+        [FromQuery] bool includeNotGenerated = false,
+        [FromQuery] string? lang = null)
     {
-        var result = await CollectionStatus(buildingId, period);
-        if (result.Result is not OkObjectResult ok || ok.Value is not CollectionStatusReport report)
-            return NotFound();
+        var building = await _db.Buildings.FindAsync(buildingId);
+        if (building == null) return NotFound();
+
+        period ??= DateTime.UtcNow.ToString("yyyy-MM");
+        var report = await BuildCollectionReport(building, period, includeNotGenerated);
 
         var h = GetHeaders(lang);
         var sb = new StringBuilder();
-        // UTF-8 BOM for proper Hebrew display in Excel
         sb.Append('\uFEFF');
         sb.AppendLine($"{h["Unit"]},{h["Floor"]},{h["Resident"]},{h["AmountDue"]},{h["AmountPaid"]},{h["Balance"]},{h["Status"]}");
         foreach (var r in report.Rows)
-            sb.AppendLine($"\"{r.UnitNumber}\",{r.Floor},\"{r.ResidentName}\",{r.AmountDue:F2},{r.AmountPaid:F2},{r.Balance:F2},{r.Status}");
+            sb.AppendLine($"\"{r.UnitNumber}\",{r.Floor},\"{r.PayerDisplayName}\",{r.AmountDue:F2},{r.AmountPaid:F2},{r.Outstanding:F2},{r.Status}");
         sb.AppendLine();
-        sb.AppendLine($"{h["TotalExpected"]},{report.TotalExpected:F2}");
-        sb.AppendLine($"{h["TotalCollected"]},{report.TotalCollected:F2}");
-        sb.AppendLine($"{h["CollectionRate"]},{report.CollectionRate}%");
+        sb.AppendLine($"{h["TotalExpected"]},{report.Summary.TotalDue:F2}");
+        sb.AppendLine($"{h["TotalCollected"]},{report.Summary.TotalPaid:F2}");
+        sb.AppendLine($"{h["CollectionRate"]},{report.Summary.CollectionRatePercent}%");
 
-        return File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", $"collection-status-{buildingId}-{period ?? "current"}.csv");
+        return File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", $"collection-status-{buildingId}-{period}.csv");
     }
 
     [HttpGet("aging/{buildingId}/csv")]
@@ -316,5 +439,24 @@ public class ReportsController : ControllerBase
         sb.AppendLine($"{h["GrandTotal"]},{report.GrandTotal:F2}");
 
         return File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", $"aging-report-{buildingId}.csv");
+    }
+
+    // ─── Dashboard Collection Summary ────────────────────
+
+    [HttpGet("dashboard/collection")]
+    public async Task<ActionResult<List<CollectionSummaryDto>>> DashboardCollection([FromQuery] string? period)
+    {
+        period ??= DateTime.UtcNow.ToString("yyyy-MM");
+
+        var buildings = await _db.Buildings.ToListAsync();
+        var summaries = new List<CollectionSummaryDto>();
+
+        foreach (var building in buildings)
+        {
+            var report = await BuildCollectionReport(building, period, false);
+            summaries.Add(report.Summary);
+        }
+
+        return Ok(summaries);
     }
 }

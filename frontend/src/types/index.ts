@@ -253,6 +253,43 @@ export interface PaymentDto {
   createdAtUtc: string;
 }
 
+export interface CollectionRowDto {
+  unitId: number;
+  unitNumber: string;
+  floor?: number;
+  sizeSqm?: number;
+  payerDisplayName?: string;
+  payerPhone?: string;
+  amountDue: number;
+  amountPaid: number;
+  outstanding: number;
+  dueDate?: string;
+  status: string; // Paid | Partial | Unpaid | Overdue | NotGenerated
+  lastPaymentDateUtc?: string;
+}
+
+export interface CollectionSummaryDto {
+  buildingId: number;
+  buildingName?: string;
+  period: string;
+  totalUnits: number;
+  generatedCount: number;
+  paidCount: number;
+  partialCount: number;
+  unpaidCount: number;
+  overdueCount: number;
+  totalDue: number;
+  totalPaid: number;
+  totalOutstanding: number;
+  collectionRatePercent: number;
+}
+
+export interface CollectionStatusReport {
+  summary: CollectionSummaryDto;
+  rows: CollectionRowDto[];
+}
+
+// Legacy alias kept for backward compat
 export interface CollectionStatusRow {
   unitId: number;
   unitNumber: string;
@@ -262,16 +299,6 @@ export interface CollectionStatusRow {
   amountPaid: number;
   balance: number;
   status: string;
-}
-
-export interface CollectionStatusReport {
-  buildingId: number;
-  buildingName?: string;
-  period: string;
-  totalExpected: number;
-  totalCollected: number;
-  collectionRate: number;
-  rows: CollectionStatusRow[];
 }
 
 export interface AgingBucket {

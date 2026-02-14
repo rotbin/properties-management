@@ -151,16 +151,20 @@ export const paymentConfigApi = {
 };
 
 export const reportsApi = {
-  collectionStatus: (buildingId: number, period?: string) =>
-    apiClient.get<CollectionStatusReport>(`/api/reports/collection-status/${buildingId}`, { params: { period } }),
+  collectionStatus: (buildingId: number, period?: string, includeNotGenerated?: boolean) =>
+    apiClient.get<CollectionStatusReport>(`/api/reports/collection-status/${buildingId}`, { params: { period, includeNotGenerated } }),
+  collectionUnitDetail: (buildingId: number, unitId: number, period?: string) =>
+    apiClient.get(`/api/reports/collection-status/${buildingId}/unit/${unitId}`, { params: { period } }),
   aging: (buildingId: number) =>
     apiClient.get<AgingReport>(`/api/reports/aging/${buildingId}`),
-  collectionStatusCsv: (buildingId: number, period?: string, lang?: string) =>
-    apiClient.get(`/api/reports/collection-status/${buildingId}/csv`, { params: { period, lang }, responseType: 'blob' }),
+  collectionStatusCsv: (buildingId: number, period?: string, includeNotGenerated?: boolean, lang?: string) =>
+    apiClient.get(`/api/reports/collection-status/${buildingId}/csv`, { params: { period, includeNotGenerated, lang }, responseType: 'blob' }),
   agingCsv: (buildingId: number, lang?: string) =>
     apiClient.get(`/api/reports/aging/${buildingId}/csv`, { params: { lang }, responseType: 'blob' }),
   incomeExpenses: (buildingId: number, from?: string, to?: string) =>
     apiClient.get<import('../types').IncomeExpensesReport>(`/api/reports/income-expenses/${buildingId}`, { params: { from, to } }),
   incomeExpensesCsv: (buildingId: number, from?: string, to?: string, lang?: string) =>
     apiClient.get(`/api/reports/income-expenses/${buildingId}/csv`, { params: { from, to, lang }, responseType: 'blob' }),
+  dashboardCollection: (period?: string) =>
+    apiClient.get<import('../types').CollectionSummaryDto[]>(`/api/reports/dashboard/collection`, { params: { period } }),
 };

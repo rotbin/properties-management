@@ -181,8 +181,48 @@ public record PayChargeRequest
     public decimal? Amount { get; init; }
 }
 
-// ─── Reports ────────────────────────────────────────────
+// ─── Reports: Collection Status (Who Paid / Who Has Not) ─────
 
+public record CollectionRowDto
+{
+    public int UnitId { get; init; }
+    public string UnitNumber { get; init; } = string.Empty;
+    public int? Floor { get; init; }
+    public decimal? SizeSqm { get; init; }
+    public string? PayerDisplayName { get; init; }
+    public string? PayerPhone { get; init; }
+    public decimal AmountDue { get; init; }
+    public decimal AmountPaid { get; init; }
+    public decimal Outstanding { get; init; }
+    public DateTime? DueDate { get; init; }
+    public string Status { get; init; } = string.Empty; // Paid, Partial, Unpaid, Overdue, NotGenerated
+    public DateTime? LastPaymentDateUtc { get; init; }
+}
+
+public record CollectionSummaryDto
+{
+    public int BuildingId { get; init; }
+    public string? BuildingName { get; init; }
+    public string Period { get; init; } = string.Empty;
+    public int TotalUnits { get; init; }
+    public int GeneratedCount { get; init; }
+    public int PaidCount { get; init; }
+    public int PartialCount { get; init; }
+    public int UnpaidCount { get; init; }
+    public int OverdueCount { get; init; }
+    public decimal TotalDue { get; init; }
+    public decimal TotalPaid { get; init; }
+    public decimal TotalOutstanding { get; init; }
+    public decimal CollectionRatePercent { get; init; }
+}
+
+public record CollectionStatusReport
+{
+    public CollectionSummaryDto Summary { get; init; } = null!;
+    public List<CollectionRowDto> Rows { get; init; } = [];
+}
+
+// Legacy DTO kept for backward compat (used by old CSV)
 public record CollectionStatusRow
 {
     public int UnitId { get; init; }
@@ -193,17 +233,6 @@ public record CollectionStatusRow
     public decimal AmountPaid { get; init; }
     public decimal Balance { get; init; }
     public string Status { get; init; } = string.Empty;
-}
-
-public record CollectionStatusReport
-{
-    public int BuildingId { get; init; }
-    public string? BuildingName { get; init; }
-    public string Period { get; init; } = string.Empty;
-    public decimal TotalExpected { get; init; }
-    public decimal TotalCollected { get; init; }
-    public decimal CollectionRate { get; init; }
-    public List<CollectionStatusRow> Rows { get; init; } = [];
 }
 
 public record AgingBucket

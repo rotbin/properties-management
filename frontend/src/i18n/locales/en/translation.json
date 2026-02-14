@@ -50,7 +50,8 @@
     "newRequest": "New Request",
     "myCharges": "My Charges",
     "myWorkOrders": "My Work Orders",
-    "incomeExpenses": "Income & Expenses"
+    "incomeExpenses": "Income & Expenses",
+    "collectionStatus": "Collection Status"
   },
 
   "login": {
@@ -73,7 +74,14 @@
     "viewServiceRequests": "View Service Requests",
     "viewWorkOrders": "View Work Orders",
     "cleaningPlans": "Cleaning Plans",
-    "runJobs": "Run Jobs"
+    "runJobs": "Run Jobs",
+    "collectionStatus": "Collection Status",
+    "unpaidUnits": "Unpaid Units",
+    "overdueUnits": "Overdue Units",
+    "paidUnits": "Paid Units",
+    "collectionRate": "Collection Rate",
+    "outstanding": "Outstanding",
+    "viewCollectionStatus": "View Collection Status"
   },
 
   "buildings": {
@@ -619,6 +627,43 @@
     "category": "Category",
     "amount": "Amount",
     "errorLoading": "Failed to load financial report.",
+    "errorExport": "Failed to export CSV."
+  },
+
+  "collection": {
+    "title": "Collection Status — Who Paid / Who Has Not",
+    "building": "Building",
+    "period": "Period",
+    "includeNotGenerated": "Include units without charges",
+    "selectBuilding": "Select a building to view collection status.",
+    "paidUnits": "Paid",
+    "partialUnits": "Partial",
+    "unpaidUnits": "Unpaid",
+    "overdueUnits": "Overdue",
+    "collectionRate": "Collection Rate",
+    "totalDue": "Total Due",
+    "totalPaid": "Total Paid",
+    "outstanding": "Outstanding",
+    "generatedOf": "{{generated}} of {{total}} units have charges",
+    "search": "Search unit or payer...",
+    "statusFilter": "Status",
+    "allStatuses": "All",
+    "statusPaid": "Paid",
+    "statusPartial": "Partial",
+    "statusUnpaid": "Unpaid",
+    "statusOverdue": "Overdue",
+    "statusNotGenerated": "Not Generated",
+    "unit": "Unit",
+    "payer": "Payer",
+    "phone": "Phone",
+    "due": "Due",
+    "paid": "Paid",
+    "dueDate": "Due Date",
+    "status": "Status",
+    "lastPayment": "Last Payment",
+    "floor": "Floor",
+    "noData": "No data for this period.",
+    "errorLoading": "Failed to load collection status.",
     "errorExport": "Failed to export CSV."
   }
 }
