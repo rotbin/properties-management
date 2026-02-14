@@ -113,8 +113,9 @@ const LoginPage: React.FC = () => {
               onChange={e => setEmail(e.target.value)} required
               sx={{ mb: 2 }}
               size="medium"
+              InputLabelProps={{ shrink: true }}
               slotProps={{
-                htmlInput: { dir: 'ltr', style: { textAlign: 'left' } },
+                htmlInput: { dir: 'ltr', style: { textAlign: 'left', paddingInlineEnd: 40 } },
               }}
             />
             <TextField
@@ -122,8 +123,9 @@ const LoginPage: React.FC = () => {
               onChange={e => setPassword(e.target.value)} required
               sx={{ mb: 3 }}
               size="medium"
+              InputLabelProps={{ shrink: true }}
               slotProps={{
-                htmlInput: { dir: 'ltr', style: { textAlign: 'left' } },
+                htmlInput: { dir: 'ltr', style: { textAlign: 'left', paddingInlineEnd: 40 } },
               }}
             />
             <Button

@@ -622,6 +622,72 @@ public static class DataSeeder
         context.LedgerEntries.AddRange(ledgerEntries);
         await context.SaveChangesAsync();
         logger.LogInformation("Seeded {Count} unit-level ledger entries for HOA charges/payments.", ledgerEntries.Count);
+
+        // ── 5. Seed Vendor Invoices & Payments ─────────────────────────
+        if (!context.VendorInvoices.Any())
+        {
+            var seedBuilding = context.Buildings.First();
+            var seedVendor = context.Vendors.First();
+
+            var invoice1 = new VendorInvoice
+            {
+                BuildingId = seedBuilding.Id,
+                VendorId = seedVendor.Id,
+                Category = "Repairs",
+                Description = "Monthly elevator maintenance",
+                InvoiceNumber = "INV-2026-001",
+                InvoiceDate = DateTime.UtcNow.AddDays(-30),
+                Amount = 3500,
+                DueDate = DateTime.UtcNow.AddDays(-15),
+                Status = VendorInvoiceStatus.Approved,
+                CreatedBy = "seeder"
+            };
+
+            var invoice2 = new VendorInvoice
+            {
+                BuildingId = seedBuilding.Id,
+                VendorId = seedVendor.Id,
+                Category = "Cleaning",
+                Description = "Deep cleaning common areas",
+                InvoiceNumber = "INV-2026-002",
+                InvoiceDate = DateTime.UtcNow.AddDays(-10),
+                Amount = 1200,
+                DueDate = DateTime.UtcNow.AddDays(20),
+                Status = VendorInvoiceStatus.Draft,
+                CreatedBy = "seeder"
+            };
+
+            context.VendorInvoices.AddRange(invoice1, invoice2);
+            await context.SaveChangesAsync();
+
+            // Add a payment to invoice1 (partial)
+            context.VendorPayments.Add(new VendorPayment
+            {
+                VendorInvoiceId = invoice1.Id,
+                PaidAmount = 2000,
+                PaidAtUtc = DateTime.UtcNow.AddDays(-10),
+                PaymentMethod = VendorPaymentMethod.BankTransfer,
+                Reference = "TXN-98765"
+            });
+            await context.SaveChangesAsync();
+
+            // Ledger for approved invoice
+            context.LedgerEntries.Add(new LedgerEntry
+            {
+                BuildingId = seedBuilding.Id,
+                EntryType = LedgerEntryType.Expense,
+                Category = "Repairs",
+                Description = $"Vendor invoice INV-2026-001: Monthly elevator maintenance",
+                ReferenceId = invoice1.Id,
+                Debit = 3500,
+                Credit = 0,
+                BalanceAfter = 0,
+                CreatedAtUtc = DateTime.UtcNow.AddDays(-30)
+            });
+            await context.SaveChangesAsync();
+
+            logger.LogInformation("Seeded 2 vendor invoices + 1 payment.");
+        }
     }
 
     private static async Task CreateUserWithRole(UserManager<ApplicationUser> userManager, ApplicationUser user, string password, string role, ILogger logger)

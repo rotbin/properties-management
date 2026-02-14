@@ -52,7 +52,8 @@
     "myWorkOrders": "My Work Orders",
     "incomeExpenses": "Income & Expenses",
     "collectionStatus": "Collection Status",
-    "tenants": "Tenants"
+    "tenants": "Tenants",
+    "vendorInvoices": "Vendor Payments"
   },
 
   "login": {
@@ -191,7 +192,11 @@
     "woCreated": "Work order created!",
     "failedLoad": "Failed to load",
     "failedUpdateStatus": "Failed to update status",
-    "failedCreateWo": "Failed to create work order"
+    "failedCreateWo": "Failed to create work order",
+    "createSr": "Create Service Request",
+    "srCreated": "Service request created!",
+    "failedCreateSr": "Failed to create service request",
+    "missingFields": "Building and description are required"
   },
 
   "workOrders": {
@@ -569,6 +574,15 @@
       "SolarPanel": "Solar Panel",
       "Other": "Other"
     },
+    "finCategory": {
+      "Cleaning": "Cleaning",
+      "Gardening": "Gardening",
+      "PestControl": "Pest Control",
+      "Repairs": "Repairs",
+      "Elevator": "Elevator",
+      "Electricity": "Electricity",
+      "Other": "Other"
+    },
     "frequency": {
       "Daily": "Daily",
       "Weekly": "Weekly",
@@ -714,5 +728,59 @@
     "noData": "No data for this period.",
     "errorLoading": "Failed to load collection status.",
     "errorExport": "Failed to export CSV."
+  },
+
+  "vendorInvoices": {
+    "title": "Vendor Invoices & Payments",
+    "addInvoice": "Add Invoice",
+    "editInvoice": "Edit Invoice",
+    "building": "Building",
+    "vendor": "Vendor",
+    "category": "Category",
+    "description": "Description",
+    "invoiceNumber": "Invoice Number",
+    "invoiceDate": "Invoice Date",
+    "dueDate": "Due Date",
+    "amount": "Amount",
+    "paidAmount": "Paid",
+    "balance": "Balance",
+    "status": "Status",
+    "notes": "Notes",
+    "linkedWo": "Linked Work Order",
+    "approve": "Approve",
+    "cancelInvoice": "Cancel Invoice",
+    "addPayment": "Add Payment",
+    "viewPayments": "View Payments",
+    "paidDate": "Paid Date",
+    "paymentMethod": "Payment Method",
+    "reference": "Reference",
+    "paymentsFor": "Payments — {{vendor}} #{{num}}",
+    "noInvoices": "No vendor invoices found",
+    "noPayments": "No payments recorded",
+    "missingFields": "Building, vendor, and amount are required",
+    "stDraft": "Draft",
+    "stApproved": "Approved",
+    "stPaid": "Paid",
+    "stCancelled": "Cancelled",
+    "pmBankTransfer": "Bank Transfer",
+    "pmCreditCard": "Credit Card",
+    "pmCash": "Cash",
+    "pmCheck": "Check",
+    "pmOther": "Other",
+    "paid": "Paid",
+    "created": "Invoice created",
+    "updated": "Invoice updated",
+    "approved": "Invoice approved",
+    "cancelled": "Invoice cancelled",
+    "deleted": "Invoice deleted",
+    "paymentAdded": "Payment recorded",
+    "failedLoad": "Failed to load invoices",
+    "failedSave": "Failed to save invoice",
+    "failedApprove": "Failed to approve",
+    "failedCancel": "Failed to cancel",
+    "failedDelete": "Failed to delete",
+    "failedPayment": "Failed to record payment",
+    "failedLoadPayments": "Failed to load payments",
+    "failedDeletePayment": "Failed to delete payment"
   }
 }

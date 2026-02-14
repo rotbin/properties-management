@@ -415,3 +415,43 @@ export const PROVIDER_FEATURES = {
   Refunds: 8,
   Webhooks: 16,
 } as const;
+
+// ─── Vendor Invoices & Payments ─────────────────────────
+
+export interface VendorInvoiceDto {
+  id: number;
+  buildingId: number;
+  buildingName?: string;
+  vendorId: number;
+  vendorName?: string;
+  workOrderId?: number;
+  serviceRequestId?: number;
+  category?: string;
+  description?: string;
+  invoiceNumber?: string;
+  invoiceDate: string;
+  amount: number;
+  paidAmount: number;
+  balance: number;
+  dueDate?: string;
+  status: string;
+  notes?: string;
+  createdAtUtc: string;
+}
+
+export interface VendorPaymentDto {
+  id: number;
+  vendorInvoiceId: number;
+  paidAmount: number;
+  paidAtUtc: string;
+  paymentMethod: string;
+  reference?: string;
+  notes?: string;
+  createdAtUtc: string;
+}
+
+export const VENDOR_INVOICE_STATUSES = ['Draft', 'Approved', 'Paid', 'Cancelled'] as const;
+export const VENDOR_PAYMENT_METHODS = ['BankTransfer', 'CreditCard', 'Cash', 'Check', 'Other'] as const;
+export const VENDOR_INVOICE_CATEGORIES = [
+  'Cleaning', 'Gardening', 'PestControl', 'Repairs', 'Elevator', 'Electricity', 'Other'
+] as const;

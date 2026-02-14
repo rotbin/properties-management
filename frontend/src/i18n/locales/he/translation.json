@@ -52,7 +52,8 @@
     "myWorkOrders": "הזמנות העבודה שלי",
     "incomeExpenses": "הכנסות והוצאות",
     "collectionStatus": "סטטוס גבייה",
-    "tenants": "דיירים"
+    "tenants": "דיירים",
+    "vendorInvoices": "תשלומי ספקים"
   },
 
   "login": {
@@ -191,7 +192,11 @@
     "woCreated": "הזמנת עבודה נוצרה!",
     "failedLoad": "טעינה נכשלה",
     "failedUpdateStatus": "עדכון סטטוס נכשל",
-    "failedCreateWo": "יצירת הזמנת עבודה נכשלה"
+    "failedCreateWo": "יצירת הזמנת עבודה נכשלה",
+    "createSr": "יצירת קריאת שירות",
+    "srCreated": "קריאת שירות נוצרה!",
+    "failedCreateSr": "יצירת קריאת שירות נכשלה",
+    "missingFields": "מבנה ותיאור הם שדות חובה"
   },
 
   "workOrders": {
@@ -569,6 +574,15 @@
       "SolarPanel": "פאנל סולארי",
       "Other": "אחר"
     },
+    "finCategory": {
+      "Cleaning": "ניקיון",
+      "Gardening": "גינון",
+      "PestControl": "הדברה",
+      "Repairs": "תיקונים",
+      "Elevator": "מעלית",
+      "Electricity": "חשמל",
+      "Other": "אחר"
+    },
     "frequency": {
       "Daily": "יומי",
       "Weekly": "שבועי",
@@ -714,5 +728,59 @@
     "noData": "אין נתונים לתקופה זו.",
     "errorLoading": "שגיאה בטעינת סטטוס הגבייה.",
     "errorExport": "שגיאה בייצוא CSV."
+  },
+
+  "vendorInvoices": {
+    "title": "חשבוניות ותשלומי ספקים",
+    "addInvoice": "הוסף חשבונית",
+    "editInvoice": "עריכת חשבונית",
+    "building": "מבנה",
+    "vendor": "ספק",
+    "category": "קטגוריה",
+    "description": "תיאור",
+    "invoiceNumber": "מספר חשבונית",
+    "invoiceDate": "תאריך חשבונית",
+    "dueDate": "תאריך יעד",
+    "amount": "סכום",
+    "paidAmount": "שולם",
+    "balance": "יתרה",
+    "status": "סטטוס",
+    "notes": "הערות",
+    "linkedWo": "הזמנת עבודה מקושרת",
+    "approve": "אישור",
+    "cancelInvoice": "ביטול חשבונית",
+    "addPayment": "הוסף תשלום",
+    "viewPayments": "צפייה בתשלומים",
+    "paidDate": "תאריך תשלום",
+    "paymentMethod": "אמצעי תשלום",
+    "reference": "מזהה",
+    "paymentsFor": "תשלומים — {{vendor}} #{{num}}",
+    "noInvoices": "לא נמצאו חשבוניות ספקים",
+    "noPayments": "לא נרשמו תשלומים",
+    "missingFields": "מבנה, ספק וסכום הם שדות חובה",
+    "stDraft": "טיוטה",
+    "stApproved": "מאושר",
+    "stPaid": "שולם",
+    "stCancelled": "בוטל",
+    "pmBankTransfer": "העברה בנקאית",
+    "pmCreditCard": "כרטיס אשראי",
+    "pmCash": "מזומן",
+    "pmCheck": "צ'ק",
+    "pmOther": "אחר",
+    "paid": "שולם",
+    "created": "חשבונית נוצרה",
+    "updated": "חשבונית עודכנה",
+    "approved": "חשבונית אושרה",
+    "cancelled": "חשבונית בוטלה",
+    "deleted": "חשבונית נמחקה",
+    "paymentAdded": "תשלום נרשם",
+    "failedLoad": "טעינת חשבוניות נכשלה",
+    "failedSave": "שמירת חשבונית נכשלה",
+    "failedApprove": "אישור נכשל",
+    "failedCancel": "ביטול נכשל",
+    "failedDelete": "מחיקה נכשלה",
+    "failedPayment": "רישום תשלום נכשל",
+    "failedLoadPayments": "טעינת תשלומים נכשלה",
+    "failedDeletePayment": "מחיקת תשלום נכשלה"
   }
 }

@@ -6,7 +6,8 @@ import type {
   AttachmentDto, HOAFeePlanDto, UnitChargeDto, PaymentMethodDto,
   PaymentDto, CollectionStatusReport, AgingReport,
   PaymentProviderConfigDto, PaymentSessionResponse, TokenizationResponse,
-  TenantProfileDto, CreateTenantRequest, UpdateTenantRequest, EndTenancyRequest
+  TenantProfileDto, CreateTenantRequest, UpdateTenantRequest, EndTenancyRequest,
+  VendorInvoiceDto, VendorPaymentDto
 } from '../types';
 
 // Auth
@@ -162,6 +163,23 @@ export const tenantsApi = {
   endTenancy: (id: number, data: EndTenancyRequest) => apiClient.post(`/api/tenants/${id}/end-tenancy`, data),
   delete: (id: number) => apiClient.delete(`/api/tenants/${id}`),
   unitHistory: (unitId: number) => apiClient.get<TenantProfileDto[]>(`/api/tenants/unit/${unitId}/history`),
+};
+
+// ─── Vendor Invoices ──────────────────────────────────
+
+export const vendorInvoicesApi = {
+  getAll: (params?: { buildingId?: number; vendorId?: number; status?: string; from?: string; to?: string }) =>
+    apiClient.get<VendorInvoiceDto[]>('/api/vendor-invoices', { params }),
+  getById: (id: number) => apiClient.get<VendorInvoiceDto>(`/api/vendor-invoices/${id}`),
+  create: (data: any) => apiClient.post<VendorInvoiceDto>('/api/vendor-invoices', data),
+  update: (id: number, data: any) => apiClient.put(`/api/vendor-invoices/${id}`, data),
+  approve: (id: number) => apiClient.post(`/api/vendor-invoices/${id}/approve`),
+  cancel: (id: number) => apiClient.post(`/api/vendor-invoices/${id}/cancel`),
+  delete: (id: number) => apiClient.delete(`/api/vendor-invoices/${id}`),
+  getPayments: (invoiceId: number) => apiClient.get<VendorPaymentDto[]>(`/api/vendor-invoices/${invoiceId}/payments`),
+  addPayment: (invoiceId: number, data: any) => apiClient.post<VendorPaymentDto>(`/api/vendor-invoices/${invoiceId}/payments`, data),
+  updatePayment: (paymentId: number, data: any) => apiClient.put(`/api/vendor-invoices/payments/${paymentId}`, data),
+  deletePayment: (paymentId: number) => apiClient.delete(`/api/vendor-invoices/payments/${paymentId}`),
 };
 
 export const reportsApi = {

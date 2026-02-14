@@ -175,6 +175,23 @@ public enum ProviderFeatures
     Webhooks = 16
 }
 
+public enum VendorInvoiceStatus
+{
+    Draft = 0,
+    Approved = 1,
+    Paid = 2,
+    Cancelled = 3
+}
+
+public enum VendorPaymentMethod
+{
+    BankTransfer = 0,
+    CreditCard = 1,
+    Cash = 2,
+    Check = 3,
+    Other = 99
+}
+
 public static class AppRoles
 {
     public const string Admin = "Admin";

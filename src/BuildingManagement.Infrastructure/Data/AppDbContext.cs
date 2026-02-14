@@ -34,6 +34,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<LedgerEntry> LedgerEntries => Set<LedgerEntry>();
     public DbSet<PaymentProviderConfig> PaymentProviderConfigs => Set<PaymentProviderConfig>();
     public DbSet<WebhookEventLog> WebhookEventLogs => Set<WebhookEventLog>();
+    public DbSet<VendorInvoice> VendorInvoices => Set<VendorInvoice>();
+    public DbSet<VendorPayment> VendorPayments => Set<VendorPayment>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -49,6 +51,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<PreventivePlan>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<CleaningPlan>().HasQueryFilter(e => !e.IsDeleted);
         builder.Entity<TenantProfile>().HasQueryFilter(e => !e.IsDeleted);
+        builder.Entity<VendorInvoice>().HasQueryFilter(e => !e.IsDeleted);
 
         // Building -> Units
         builder.Entity<Unit>()
@@ -291,6 +294,38 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         // WebhookEventLog unique on provider+eventId
         builder.Entity<WebhookEventLog>()
             .HasIndex(w => new { w.ProviderType, w.EventId }).IsUnique();
+
+        // ─── Vendor Invoices & Payments ───────────────────────
+
+        builder.Entity<VendorInvoice>()
+            .HasOne(vi => vi.Building)
+            .WithMany()
+            .HasForeignKey(vi => vi.BuildingId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<VendorInvoice>()
+            .HasOne(vi => vi.Vendor)
+            .WithMany()
+            .HasForeignKey(vi => vi.VendorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<VendorInvoice>()
+            .HasOne(vi => vi.WorkOrder)
+            .WithMany()
+            .HasForeignKey(vi => vi.WorkOrderId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<VendorInvoice>()
+            .Property(vi => vi.Amount).HasColumnType("decimal(18,2)");
+
+        builder.Entity<VendorPayment>()
+            .HasOne(vp => vp.VendorInvoice)
+            .WithMany(vi => vi.Payments)
+            .HasForeignKey(vp => vp.VendorInvoiceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<VendorPayment>()
+            .Property(vp => vp.PaidAmount).HasColumnType("decimal(18,2)");
     }
 
     public override int SaveChanges()
