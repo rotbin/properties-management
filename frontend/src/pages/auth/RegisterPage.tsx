@@ -182,10 +182,15 @@ const RegisterPage: React.FC = () => {
 
           <Divider sx={{ my: 2 }} />
 
-          <Typography variant="body2" align="center" color="text.secondary">
+          <Typography variant="body2" align="center" color="text.secondary" sx={{ mb: 1 }}>
             {t('register.haveAccount')}{' '}
             <Typography component={Link} to="/login" variant="body2" color="primary" sx={{ fontWeight: 600, textDecoration: 'none' }}>
               {t('register.signIn')}
+            </Typography>
+          </Typography>
+          <Typography variant="body2" align="center" color="text.secondary">
+            <Typography component={Link} to="/register-tenant" variant="body2" color="primary" sx={{ fontWeight: 600, textDecoration: 'none' }}>
+              {t('login.signUpTenant')}
             </Typography>
           </Typography>
         </CardContent>

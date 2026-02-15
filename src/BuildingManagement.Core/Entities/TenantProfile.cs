@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using BuildingManagement.Core.Enums;
 
 namespace BuildingManagement.Core.Entities;
 
@@ -30,4 +31,16 @@ public class TenantProfile : BaseEntity
 
     [MaxLength(1000)]
     public string? Notes { get; set; }
+
+    /// <summary>Owner / Landlord / Renter</summary>
+    public PropertyRole PropertyRole { get; set; } = PropertyRole.Renter;
+
+    /// <summary>Whether the tenant is also a house committee member.</summary>
+    public bool IsCommitteeMember { get; set; }
+
+    /// <summary>Marketing consent – happy to stay in touch.</summary>
+    public bool MarketingConsent { get; set; }
+
+    /// <summary>When the tenant accepted the terms of use.</summary>
+    public DateTime? TermsAcceptedAtUtc { get; set; }
 }

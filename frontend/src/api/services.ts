@@ -16,6 +16,14 @@ export const authApi = {
   login: (data: LoginRequest) => apiClient.post<LoginResponse>('/api/auth/login', data),
   register: (data: { fullName: string; email: string; password: string; phone?: string }) =>
     apiClient.post<LoginResponse>('/api/auth/register', data),
+  registerTenant: (data: {
+    firstName: string; lastName: string; email: string; password: string;
+    phone?: string; marketingConsent: boolean; termsAccepted: boolean;
+    buildingId: number; floor?: number; apartmentNumber: string;
+    propertyRole: number; isCommitteeMember: boolean;
+  }) => apiClient.post<LoginResponse>('/api/auth/register-tenant', data),
+  searchBuildings: (q: string) =>
+    apiClient.get<{ id: number; name: string; addressLine?: string; city?: string }[]>('/api/auth/buildings/search', { params: { q } }),
   refresh: (refreshToken: string) => apiClient.post<LoginResponse>('/api/auth/refresh', { refreshToken }),
   logout: (refreshToken?: string) => apiClient.post('/api/auth/logout', { refreshToken }),
   me: () => apiClient.get('/api/auth/me'),

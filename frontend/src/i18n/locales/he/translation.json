@@ -66,7 +66,9 @@
     "failed": "ההתחברות נכשלה. אנא בדוק את הפרטים.",
     "demoTitle": "חשבונות הדגמה (פיתוח בלבד):",
     "noAccount": "אין לך חשבון?",
-    "signUp": "הרשמה"
+    "signUp": "הרשמה",
+    "signUpTenant": "הרשמה כדייר",
+    "signUpManager": "הרשמה כמנהל"
   },
 
   "register": {
@@ -82,6 +84,38 @@
     "passwordMismatch": "הסיסמאות אינן תואמות",
     "haveAccount": "כבר יש לך חשבון?",
     "signIn": "התחבר"
+  },
+
+  "registerTenant": {
+    "title": "הרשמה כדייר",
+    "subtitle": "צור חשבון דייר חדש",
+    "stepPersonal": "פרטים אישיים",
+    "stepAddress": "כתובת ונכס",
+    "firstName": "שם פרטי",
+    "lastName": "שם משפחה",
+    "phone": "טלפון",
+    "email": "אימייל",
+    "password": "סיסמה",
+    "confirmPassword": "אימות סיסמה",
+    "marketingConsent": "אשמח להישאר בקשר ולקבל עדכונים",
+    "iAccept": "אני מאשר/ת את",
+    "termsOfUse": "תקנון השימוש",
+    "mustAcceptTerms": "יש לאשר את תקנון השימוש",
+    "fillRequired": "יש למלא את כל השדות הנדרשים",
+    "next": "הבא",
+    "back": "חזרה",
+    "address": "כתובת (הקלד לחיפוש)",
+    "typeToSearch": "הקלד לפחות 2 תווים לחיפוש",
+    "noResults": "לא נמצאו תוצאות",
+    "selectBuilding": "יש לבחור בניין",
+    "floor": "קומה",
+    "apartmentNumber": "מספר דירה",
+    "propertyRole": "מעמד בנכס",
+    "roleOwner": "בעלים",
+    "roleLandlord": "משכיר",
+    "roleRenter": "שוכר",
+    "isCommitteeMember": "אני גם ועד הבית",
+    "signUp": "הרשמה"
   },
 
   "dashboard": {

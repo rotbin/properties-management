@@ -142,12 +142,17 @@ const LoginPage: React.FC = () => {
 
           <Divider sx={{ my: 2 }} />
 
-          <Typography variant="body2" align="center" color="text.secondary" sx={{ mb: 2 }}>
-            {t('login.noAccount')}{' '}
-            <Typography component={Link} to="/register" variant="body2" color="primary" sx={{ fontWeight: 600, textDecoration: 'none' }}>
-              {t('login.signUp')}
-            </Typography>
+          <Typography variant="body2" align="center" color="text.secondary" sx={{ mb: 1 }}>
+            {t('login.noAccount')}
           </Typography>
+          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', mb: 2 }}>
+            <Button component={Link} to="/register-tenant" variant="outlined" size="small" sx={{ textTransform: 'none', fontWeight: 600 }}>
+              {t('login.signUpTenant')}
+            </Button>
+            <Button component={Link} to="/register" variant="outlined" size="small" sx={{ textTransform: 'none', fontWeight: 600 }}>
+              {t('login.signUpManager')}
+            </Button>
+          </Box>
 
           <Box sx={{ p: 1.5, bgcolor: 'rgba(26,86,160,0.04)', borderRadius: 2, border: '1px solid rgba(26,86,160,0.08)' }}>
             <Typography variant="caption" color="text.secondary" component="div">

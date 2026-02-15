@@ -66,7 +66,9 @@
     "failed": "Login failed. Please check your credentials.",
     "demoTitle": "Demo Accounts (dev only):",
     "noAccount": "Don't have an account?",
-    "signUp": "Sign Up"
+    "signUp": "Sign Up",
+    "signUpTenant": "Sign Up as Tenant",
+    "signUpManager": "Sign Up as Manager"
   },
 
   "register": {
@@ -82,6 +84,38 @@
     "passwordMismatch": "Passwords do not match",
     "haveAccount": "Already have an account?",
     "signIn": "Sign In"
+  },
+
+  "registerTenant": {
+    "title": "Tenant Registration",
+    "subtitle": "Create a new tenant account",
+    "stepPersonal": "Personal Details",
+    "stepAddress": "Address & Property",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "phone": "Phone",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "marketingConsent": "I'd like to stay in touch and receive updates",
+    "iAccept": "I accept the",
+    "termsOfUse": "Terms of Use",
+    "mustAcceptTerms": "You must accept the Terms of Use",
+    "fillRequired": "Please fill in all required fields",
+    "next": "Next",
+    "back": "Back",
+    "address": "Address (type to search)",
+    "typeToSearch": "Type at least 2 characters to search",
+    "noResults": "No results found",
+    "selectBuilding": "Please select a building",
+    "floor": "Floor",
+    "apartmentNumber": "Apartment Number",
+    "propertyRole": "Property Role",
+    "roleOwner": "Owner",
+    "roleLandlord": "Landlord",
+    "roleRenter": "Renter / Tenant",
+    "isCommitteeMember": "I'm also on the house committee",
+    "signUp": "Sign Up"
   },
 
   "dashboard": {

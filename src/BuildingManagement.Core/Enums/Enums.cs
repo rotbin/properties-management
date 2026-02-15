@@ -198,6 +198,13 @@ public enum VendorPaymentMethod
     Other = 99
 }
 
+public enum PropertyRole
+{
+    Owner = 0,       // בעלים
+    Landlord = 1,    // משכיר
+    Renter = 2       // שוכר
+}
+
 public static class AppRoles
 {
     public const string Admin = "Admin";
