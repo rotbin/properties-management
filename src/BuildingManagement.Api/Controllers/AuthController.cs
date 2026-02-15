@@ -236,11 +236,12 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(q) || q.Length < 2)
             return Ok(new List<BuildingSearchResult>());
 
+        var qLower = q.ToLower();
         var results = await _db.Buildings
             .Where(b => !b.IsDeleted &&
-                (b.AddressLine != null && b.AddressLine.Contains(q)) ||
-                (b.City != null && b.City.Contains(q)) ||
-                b.Name.Contains(q))
+                ((b.AddressLine != null && b.AddressLine.ToLower().Contains(qLower)) ||
+                 (b.City != null && b.City.ToLower().Contains(qLower)) ||
+                 b.Name.ToLower().Contains(qLower)))
             .Take(15)
             .Select(b => new BuildingSearchResult
             {
