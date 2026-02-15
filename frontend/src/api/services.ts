@@ -14,6 +14,8 @@ import type {
 // Auth
 export const authApi = {
   login: (data: LoginRequest) => apiClient.post<LoginResponse>('/api/auth/login', data),
+  register: (data: { fullName: string; email: string; password: string; phone?: string }) =>
+    apiClient.post<LoginResponse>('/api/auth/register', data),
   refresh: (refreshToken: string) => apiClient.post<LoginResponse>('/api/auth/refresh', { refreshToken }),
   logout: (refreshToken?: string) => apiClient.post('/api/auth/logout', { refreshToken }),
   me: () => apiClient.get('/api/auth/me'),

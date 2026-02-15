@@ -64,7 +64,24 @@
     "password": "סיסמה",
     "signIn": "כניסה",
     "failed": "ההתחברות נכשלה. אנא בדוק את הפרטים.",
-    "demoTitle": "חשבונות הדגמה (פיתוח בלבד):"
+    "demoTitle": "חשבונות הדגמה (פיתוח בלבד):",
+    "noAccount": "אין לך חשבון?",
+    "signUp": "הרשמה"
+  },
+
+  "register": {
+    "title": "הרשמה כמנהל",
+    "subtitle": "צור חשבון מנהל חדש לניהול נכסים",
+    "fullName": "שם מלא",
+    "email": "אימייל",
+    "phone": "טלפון",
+    "password": "סיסמה",
+    "confirmPassword": "אימות סיסמה",
+    "signUp": "הרשמה",
+    "failed": "ההרשמה נכשלה. נסה שוב.",
+    "passwordMismatch": "הסיסמאות אינן תואמות",
+    "haveAccount": "כבר יש לך חשבון?",
+    "signIn": "התחבר"
   },
 
   "dashboard": {

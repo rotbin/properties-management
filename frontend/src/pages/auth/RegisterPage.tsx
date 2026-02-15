@@ -4,32 +4,57 @@ import {
   IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Divider
 } from '@mui/material';
 import { Language, Check } from '@mui/icons-material';
-import { useAuth } from '../../auth/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { authApi } from '../../api/services';
+import { setTokens } from '../../api/client';
+import { useAuth } from '../../auth/AuthContext';
 
 const LANGUAGES = [
   { code: 'he', label: 'עברית', flag: '🇮🇱' },
   { code: 'en', label: 'English', flag: '🇺🇸' },
 ];
 
-const LoginPage: React.FC = () => {
-  const { login, isLoading } = useAuth();
+const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  const { login } = useAuth();
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [langAnchor, setLangAnchor] = useState<null | HTMLElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (password !== confirmPassword) {
+      setError(t('register.passwordMismatch'));
+      return;
+    }
+
+    setLoading(true);
     try {
+      const response = await authApi.register({
+        fullName,
+        email,
+        password,
+        phone: phone || undefined,
+      });
+      // Auto-login with returned tokens
+      setTokens(response.data.accessToken, response.data.refreshToken);
+      // Use login to set user context (re-login with credentials)
       await login(email, password);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.message || t('login.failed'));
+      const msg = err.response?.data?.message || t('register.failed');
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -49,14 +74,12 @@ const LoginPage: React.FC = () => {
       p: 2,
       position: 'relative',
     }}>
-      {/* Decorative accent */}
       <Box sx={{
         position: 'absolute', top: 0, left: 0, right: 0, height: '40%',
         background: 'linear-gradient(180deg, rgba(245,145,30,0.15) 0%, transparent 100%)',
         pointerEvents: 'none',
       }} />
 
-      {/* Language button */}
       <IconButton
         onClick={e => setLangAnchor(e.currentTarget)}
         sx={{
@@ -91,7 +114,6 @@ const LoginPage: React.FC = () => {
         boxShadow: '0 20px 60px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.1)',
       }}>
         <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
-          {/* Logo */}
           <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
             <Box
               component="img"
@@ -101,67 +123,74 @@ const LoginPage: React.FC = () => {
             />
           </Box>
 
+          <Typography variant="h6" align="center" sx={{ mb: 0.5, fontWeight: 700 }}>
+            {t('register.title')}
+          </Typography>
           <Typography variant="body2" align="center" color="text.secondary" sx={{ mb: 3 }}>
-            {t('login.subtitle')}
+            {t('register.subtitle')}
           </Typography>
 
           {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>}
 
           <form onSubmit={handleSubmit}>
             <TextField
-              fullWidth label={t('login.email')} type="email" value={email}
-              onChange={e => setEmail(e.target.value)} required
-              sx={{ mb: 2 }}
-              size="medium"
+              fullWidth label={t('register.fullName')} value={fullName}
+              onChange={e => setFullName(e.target.value)} required
+              sx={{ mb: 2 }} size="medium"
               InputLabelProps={{ shrink: true }}
-              slotProps={{
-                htmlInput: { dir: 'ltr', style: { textAlign: 'left', paddingInlineEnd: 40 } },
-              }}
             />
             <TextField
-              fullWidth label={t('login.password')} type="password" value={password}
-              onChange={e => setPassword(e.target.value)} required
-              sx={{ mb: 3 }}
-              size="medium"
+              fullWidth label={t('register.email')} type="email" value={email}
+              onChange={e => setEmail(e.target.value)} required
+              sx={{ mb: 2 }} size="medium"
               InputLabelProps={{ shrink: true }}
-              slotProps={{
-                htmlInput: { dir: 'ltr', style: { textAlign: 'left', paddingInlineEnd: 40 } },
-              }}
+              slotProps={{ htmlInput: { dir: 'ltr', style: { textAlign: 'left' } } }}
+            />
+            <TextField
+              fullWidth label={t('register.phone')} value={phone}
+              onChange={e => setPhone(e.target.value)}
+              sx={{ mb: 2 }} size="medium"
+              InputLabelProps={{ shrink: true }}
+              slotProps={{ htmlInput: { dir: 'ltr', style: { textAlign: 'left' } } }}
+              placeholder="050-1234567"
+            />
+            <TextField
+              fullWidth label={t('register.password')} type="password" value={password}
+              onChange={e => setPassword(e.target.value)} required
+              sx={{ mb: 2 }} size="medium"
+              InputLabelProps={{ shrink: true }}
+              slotProps={{ htmlInput: { dir: 'ltr', style: { textAlign: 'left' } } }}
+            />
+            <TextField
+              fullWidth label={t('register.confirmPassword')} type="password" value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)} required
+              sx={{ mb: 3 }} size="medium"
+              InputLabelProps={{ shrink: true }}
+              slotProps={{ htmlInput: { dir: 'ltr', style: { textAlign: 'left' } } }}
             />
             <Button
-              fullWidth variant="contained" size="large" type="submit" disabled={isLoading}
+              fullWidth variant="contained" size="large" type="submit" disabled={loading}
               sx={{
                 py: 1.5, fontSize: '1rem',
                 background: 'linear-gradient(135deg, #1a56a0 0%, #2d6fbe 100%)',
                 '&:hover': { background: 'linear-gradient(135deg, #123d73 0%, #1a56a0 100%)' },
               }}
             >
-              {isLoading ? <CircularProgress size={24} color="inherit" /> : t('login.signIn')}
+              {loading ? <CircularProgress size={24} color="inherit" /> : t('register.signUp')}
             </Button>
           </form>
 
           <Divider sx={{ my: 2 }} />
 
-          <Typography variant="body2" align="center" color="text.secondary" sx={{ mb: 2 }}>
-            {t('login.noAccount')}{' '}
-            <Typography component={Link} to="/register" variant="body2" color="primary" sx={{ fontWeight: 600, textDecoration: 'none' }}>
-              {t('login.signUp')}
+          <Typography variant="body2" align="center" color="text.secondary">
+            {t('register.haveAccount')}{' '}
+            <Typography component={Link} to="/login" variant="body2" color="primary" sx={{ fontWeight: 600, textDecoration: 'none' }}>
+              {t('register.signIn')}
             </Typography>
           </Typography>
-
-          <Box sx={{ p: 1.5, bgcolor: 'rgba(26,86,160,0.04)', borderRadius: 2, border: '1px solid rgba(26,86,160,0.08)' }}>
-            <Typography variant="caption" color="text.secondary" component="div">
-              <strong>{t('login.demoTitle')}</strong><br />
-              admin@example.com / Demo@123!<br />
-              manager@example.com / Demo@123!<br />
-              tenant@example.com / Demo@123!<br />
-              vendor@example.com / Demo@123!
-            </Typography>
-          </Box>
         </CardContent>
       </Card>
 
-      {/* Footer */}
       <Typography
         variant="caption"
         sx={{ position: 'absolute', bottom: 16, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}
@@ -172,4 +201,4 @@ const LoginPage: React.FC = () => {
   );
 };
 
-export default LoginPage;
+export default RegisterPage;

@@ -32,3 +32,18 @@ public record LogoutRequest
 {
     public string? RefreshToken { get; init; }
 }
+
+public record RegisterManagerRequest
+{
+    [Required, MaxLength(200)]
+    public string FullName { get; init; } = string.Empty;
+
+    [Required, EmailAddress]
+    public string Email { get; init; } = string.Empty;
+
+    [Required, MinLength(8)]
+    public string Password { get; init; } = string.Empty;
+
+    [MaxLength(30)]
+    public string? Phone { get; init; }
+}

@@ -1,5 +1,6 @@
 using BuildingManagement.Core.DTOs;
 using BuildingManagement.Core.Entities;
+using BuildingManagement.Core.Enums;
 using BuildingManagement.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -48,6 +49,52 @@ public class AuthController : ControllerBase
         _refreshTokens[refreshToken] = user.Id;
 
         _logger.LogInformation("User {Email} logged in successfully", request.Email);
+
+        return Ok(new LoginResponse
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
+            ExpiresIn = expiresIn,
+            Roles = roles.ToList(),
+            FullName = user.FullName,
+            Email = user.Email ?? "",
+            UserId = user.Id
+        });
+    }
+
+    [HttpPost("register")]
+    public async Task<ActionResult<LoginResponse>> Register([FromBody] RegisterManagerRequest request)
+    {
+        // Check if email already exists
+        var existing = await _userManager.FindByEmailAsync(request.Email);
+        if (existing != null)
+            return BadRequest(new { message = "Email is already registered." });
+
+        var user = new ApplicationUser
+        {
+            UserName = request.Email,
+            Email = request.Email,
+            EmailConfirmed = true,
+            FullName = request.FullName,
+            Phone = request.Phone
+        };
+
+        var createResult = await _userManager.CreateAsync(user, request.Password);
+        if (!createResult.Succeeded)
+        {
+            var errors = string.Join("; ", createResult.Errors.Select(e => e.Description));
+            return BadRequest(new { message = errors });
+        }
+
+        // Assign Manager role
+        await _userManager.AddToRoleAsync(user, AppRoles.Manager);
+
+        // Auto-login after registration
+        var (accessToken, refreshToken, expiresIn) = await _jwtTokenService.GenerateTokensAsync(user);
+        var roles = await _userManager.GetRolesAsync(user);
+        _refreshTokens[refreshToken] = user.Id;
+
+        _logger.LogInformation("New manager registered: {Email}", request.Email);
 
         return Ok(new LoginResponse
         {

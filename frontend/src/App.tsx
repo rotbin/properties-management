@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import Layout from './components/Layout';
 import LoginPage from './pages/auth/LoginPage';
+import RegisterPage from './pages/auth/RegisterPage';
 import DashboardPage from './pages/manager/DashboardPage';
 import BuildingsPage from './pages/manager/BuildingsPage';
 import VendorsPage from './pages/manager/VendorsPage';
@@ -61,6 +62,7 @@ const AppRoutes: React.FC = () => {
   return (
     <Routes>
       <Route path="/login" element={isAuthenticated ? <Navigate to={getDefaultRoute()} /> : <LoginPage />} />
+      <Route path="/register" element={isAuthenticated ? <Navigate to={getDefaultRoute()} /> : <RegisterPage />} />
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Navigate to={getDefaultRoute()} replace />} />
         <Route path="dashboard" element={<ProtectedRoute roles={['Admin', 'Manager']}><DashboardPage /></ProtectedRoute>} />

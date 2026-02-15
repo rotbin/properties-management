@@ -64,7 +64,24 @@
     "password": "Password",
     "signIn": "Sign In",
     "failed": "Login failed. Please check your credentials.",
-    "demoTitle": "Demo Accounts (dev only):"
+    "demoTitle": "Demo Accounts (dev only):",
+    "noAccount": "Don't have an account?",
+    "signUp": "Sign Up"
+  },
+
+  "register": {
+    "title": "Manager Registration",
+    "subtitle": "Create a new manager account for property management",
+    "fullName": "Full Name",
+    "email": "Email",
+    "phone": "Phone",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "signUp": "Sign Up",
+    "failed": "Registration failed. Please try again.",
+    "passwordMismatch": "Passwords do not match",
+    "haveAccount": "Already have an account?",
+    "signIn": "Sign In"
   },
 
   "dashboard": {
