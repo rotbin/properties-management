@@ -35,6 +35,14 @@
     "english": "English"
   },
 
+  "validation": {
+    "passwordMinLength": "הסיסמה חייבת להכיל לפחות 8 תווים",
+    "passwordRequireDigit": "הסיסמה חייבת להכיל לפחות ספרה אחת",
+    "passwordRequireUpper": "הסיסמה חייבת להכיל לפחות אות גדולה באנגלית",
+    "passwordRequireLower": "הסיסמה חייבת להכיל לפחות אות קטנה באנגלית",
+    "passwordRequireSpecial": "הסיסמה חייבת להכיל לפחות תו מיוחד (למשל !@#$%)"
+  },
+
   "nav": {
     "dashboard": "לוח בקרה",
     "buildings": "מבנים",

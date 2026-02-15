@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { authApi } from '../../api/services';
 import { setTokens } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
+import { validatePassword } from '../../utils/passwordValidation';
 
 const LANGUAGES = [
   { code: 'he', label: 'עברית', flag: '🇮🇱' },
@@ -94,6 +95,11 @@ const RegisterTenantPage: React.FC = () => {
   const validateStep1 = (): boolean => {
     if (!firstName.trim() || !lastName.trim() || !email.trim() || !password) {
       setError(t('registerTenant.fillRequired'));
+      return false;
+    }
+    const pwCheck = validatePassword(password, t);
+    if (pwCheck.hasError) {
+      setError(pwCheck.message);
       return false;
     }
     if (password !== confirmPassword) {

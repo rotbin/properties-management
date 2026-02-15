@@ -35,6 +35,14 @@
     "english": "English"
   },
 
+  "validation": {
+    "passwordMinLength": "Password must be at least 8 characters",
+    "passwordRequireDigit": "Password must contain at least one digit",
+    "passwordRequireUpper": "Password must contain at least one uppercase letter",
+    "passwordRequireLower": "Password must contain at least one lowercase letter",
+    "passwordRequireSpecial": "Password must contain at least one special character (e.g. !@#$%)"
+  },
+
   "nav": {
     "dashboard": "Dashboard",
     "buildings": "Buildings",

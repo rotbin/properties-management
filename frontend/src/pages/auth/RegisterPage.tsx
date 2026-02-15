@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { authApi } from '../../api/services';
 import { setTokens } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
+import { validatePassword } from '../../utils/passwordValidation';
 
 const LANGUAGES = [
   { code: 'he', label: 'עברית', flag: '🇮🇱' },
@@ -31,6 +32,12 @@ const RegisterPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    const pwCheck = validatePassword(password, t);
+    if (pwCheck.hasError) {
+      setError(pwCheck.message);
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError(t('register.passwordMismatch'));
