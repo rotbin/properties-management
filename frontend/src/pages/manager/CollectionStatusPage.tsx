@@ -47,7 +47,7 @@ const CollectionStatusPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => { buildingsApi.getAll().then(r => setBuildings(r.data)); }, []);
+  useEffect(() => { buildingsApi.getAll().then(r => { setBuildings(r.data); if (r.data.length > 0) setSelectedBuilding(r.data[0].id); }); }, []);
 
   const loadReport = useCallback(async () => {
     if (!selectedBuilding) return;

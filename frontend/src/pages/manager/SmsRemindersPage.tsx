@@ -44,7 +44,7 @@ const SmsRemindersPage: React.FC = () => {
   const [sendResultOpen, setSendResultOpen] = useState(false);
 
   useEffect(() => {
-    buildingsApi.getAll().then(r => setBuildings(r.data));
+    buildingsApi.getAll().then(r => { setBuildings(r.data); if (r.data.length > 0) setSelectedBuilding(r.data[0].id); });
     smsApi.getTemplates().then(r => {
       setTemplates(r.data);
       // Default to Hebrew template

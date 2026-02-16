@@ -20,7 +20,11 @@ const CleaningPlansPage: React.FC = () => {
 
   useEffect(() => {
     Promise.all([buildingsApi.getAll(), vendorsApi.getAll()])
-      .then(([b, v]) => { setBuildings(b.data); setVendors(v.data.filter(vd => vd.serviceType === 'Cleaning' || vd.serviceType === 'General')); })
+      .then(([b, v]) => {
+        setBuildings(b.data);
+        if (b.data.length > 0) setSelectedBuilding(b.data[0].id);
+        setVendors(v.data.filter(vd => vd.serviceType === 'Cleaning' || vd.serviceType === 'General'));
+      })
       .catch(() => setError(t('cleaning.failedLoad')))
       .finally(() => setLoading(false));
   }, []);

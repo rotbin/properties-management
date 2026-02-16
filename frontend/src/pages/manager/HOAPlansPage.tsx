@@ -51,7 +51,7 @@ const HOAPlansPage: React.FC = () => {
   const [editPayId, setEditPayId] = useState(0);
   const [editPayForm, setEditPayForm] = useState({ paidAmount: '', paidAt: '', method: 'BankTransfer' as string, reference: '', notes: '' });
 
-  useEffect(() => { buildingsApi.getAll().then(r => setBuildings(r.data)); }, []);
+  useEffect(() => { buildingsApi.getAll().then(r => { setBuildings(r.data); if (r.data.length > 0) setSelectedBuilding(r.data[0].id); }); }, []);
 
   const loadPlans = useCallback(async () => { if (!selectedBuilding) return; setLoading(true); try { const r = await hoaApi.getPlans(selectedBuilding as number); setPlans(r.data); } finally { setLoading(false); } }, [selectedBuilding]);
   const loadCharges = useCallback(async () => { if (!selectedBuilding) return; setLoading(true); try { const r = await hoaApi.getCharges({ buildingId: selectedBuilding as number, period }); setCharges(r.data); } finally { setLoading(false); } }, [selectedBuilding, period]);

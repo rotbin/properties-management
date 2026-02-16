@@ -32,7 +32,7 @@ const IncomeExpensesPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => { buildingsApi.getAll().then(r => setBuildings(r.data)); }, []);
+  useEffect(() => { buildingsApi.getAll().then(r => { setBuildings(r.data); if (r.data.length > 0) setSelectedBuilding(r.data[0].id); }); }, []);
 
   const loadReport = useCallback(async () => {
     if (!selectedBuilding) return;
