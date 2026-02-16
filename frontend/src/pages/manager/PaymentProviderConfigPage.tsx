@@ -3,9 +3,9 @@ import {
   Box, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody,
   Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
   MenuItem, Select, FormControl, InputLabel, Chip, IconButton, Alert,
-  FormGroup, FormControlLabel, Checkbox
+  FormGroup, FormControlLabel, Checkbox, Tooltip
 } from '@mui/material';
-import { Add, Edit, Delete, Security } from '@mui/icons-material';
+import { Add, Edit, Delete, Security, Lock } from '@mui/icons-material';
 import { paymentConfigApi, buildingsApi } from '../../api/services';
 import type { PaymentProviderConfigDto, BuildingDto } from '../../types';
 import { PAYMENT_PROVIDERS, PROVIDER_FEATURES } from '../../types';
@@ -31,14 +31,36 @@ const PaymentProviderConfigPage: React.FC = () => {
 
   const handleSave = async () => {
     try {
-      const data = { buildingId: form.buildingId ? parseInt(form.buildingId) : undefined, providerType: form.providerType, merchantIdRef: form.merchantIdRef || undefined, terminalIdRef: form.terminalIdRef || undefined, apiUserRef: form.apiUserRef || undefined, apiPasswordRef: form.apiPasswordRef || undefined, webhookSecretRef: form.webhookSecretRef || undefined, supportedFeatures: form.supportedFeatures, currency: form.currency, baseUrl: form.baseUrl || undefined };
+      const features = form.supportedFeatures | getMandatoryFeatures(form.providerType);
+      const data = { buildingId: form.buildingId ? parseInt(form.buildingId) : undefined, providerType: form.providerType, merchantIdRef: form.merchantIdRef || undefined, terminalIdRef: form.terminalIdRef || undefined, apiUserRef: form.apiUserRef || undefined, apiPasswordRef: form.apiPasswordRef || undefined, webhookSecretRef: form.webhookSecretRef || undefined, supportedFeatures: features, currency: form.currency, baseUrl: form.baseUrl || undefined };
       if (editId) await paymentConfigApi.update(editId, data); else await paymentConfigApi.create(data);
       setDialogOpen(false); resetForm(); load();
     } catch (e: any) { setError(e?.response?.data?.message || t('paymentConfig.failedSave')); }
   };
 
   const handleDelete = async (id: number) => { if (!confirm(t('paymentConfig.deleteConfirm'))) return; await paymentConfigApi.delete(id); load(); };
-  const toggleFeature = (feat: number) => { setForm(f => ({ ...f, supportedFeatures: f.supportedFeatures ^ feat })); };
+
+  // Mandatory features per provider — always on and locked
+  const getMandatoryFeatures = (provider: string): number => {
+    if (provider === 'Fake') return 0;
+    // All real providers require: HostedPaymentPage, Webhooks, Refunds
+    const base = PROVIDER_FEATURES.HostedPaymentPage | PROVIDER_FEATURES.Webhooks | PROVIDER_FEATURES.Refunds;
+    if (provider === 'PayPal') return base | PROVIDER_FEATURES.StandingOrders;
+    return base;
+  };
+
+  const mandatoryFeatures = getMandatoryFeatures(form.providerType);
+
+  const toggleFeature = (feat: number) => {
+    if ((mandatoryFeatures & feat) !== 0) return; // can't toggle mandatory
+    setForm(f => ({ ...f, supportedFeatures: f.supportedFeatures ^ feat }));
+  };
+
+  const handleProviderChange = (provider: string) => {
+    const mandatory = getMandatoryFeatures(provider);
+    setForm(f => ({ ...f, providerType: provider, supportedFeatures: f.supportedFeatures | mandatory }));
+  };
+
   const providerColor = (p: string) => { switch (p) { case 'Fake': return 'default'; case 'Meshulam': return 'primary'; case 'Pelecard': return 'secondary'; case 'Tranzila': return 'warning'; case 'PayPal': return 'info'; default: return 'default'; } };
   const isRealProvider = form.providerType !== 'Fake';
 
@@ -92,7 +114,7 @@ const PaymentProviderConfigPage: React.FC = () => {
           </FormControl>
           <FormControl fullWidth sx={{ mt: 2 }}>
             <InputLabel>{t('paymentConfig.provider')}</InputLabel>
-            <Select value={form.providerType} onChange={(e: any) => setForm(f => ({ ...f, providerType: e.target.value }))} label={t('paymentConfig.provider')}>
+            <Select value={form.providerType} onChange={(e: any) => handleProviderChange(e.target.value)} label={t('paymentConfig.provider')}>
               {PAYMENT_PROVIDERS.map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
             </Select>
           </FormControl>
@@ -109,11 +131,25 @@ const PaymentProviderConfigPage: React.FC = () => {
 
           <TextField fullWidth label={t('paymentConfig.currency')} value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))} sx={{ mt: 2 }} />
           <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>{t('paymentConfig.supportedFeatures')}</Typography>
+          {isRealProvider && <Alert severity="info" sx={{ mb: 1 }}>{t('paymentConfig.mandatoryFeaturesNote')}</Alert>}
           <FormGroup row>
-            {FEATURE_LIST.map(([name, val]) => (
-              <FormControlLabel key={name} label={t(`enums.providerFeature.${name}`, name)}
-                control={<Checkbox checked={(form.supportedFeatures & val) !== 0} onChange={() => toggleFeature(val)} />} />
-            ))}
+            {FEATURE_LIST.map(([name, val]) => {
+              const isMandatory = (mandatoryFeatures & val) !== 0;
+              const isChecked = (form.supportedFeatures & val) !== 0;
+              return (
+                <Tooltip key={name} title={isMandatory ? t('paymentConfig.mandatoryFeature') : ''} arrow>
+                  <FormControlLabel
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        {t(`enums.providerFeature.${name}`, name)}
+                        {isMandatory && <Lock sx={{ fontSize: 14, color: 'text.secondary' }} />}
+                      </Box>
+                    }
+                    control={<Checkbox checked={isChecked} disabled={isMandatory} onChange={() => toggleFeature(val)} />}
+                  />
+                </Tooltip>
+              );
+            })}
           </FormGroup>
         </DialogContent>
         <DialogActions>

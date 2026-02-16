@@ -430,6 +430,8 @@
     "baseUrl": "Base URL Override",
     "baseUrlHelp": "Leave empty for default. Use sandbox URL for testing.",
     "supportedFeatures": "Supported Features",
+    "mandatoryFeaturesNote": "Features marked with a lock icon are required for this provider and cannot be disabled. They ensure transaction verification and proper payment flow.",
+    "mandatoryFeature": "Required — cannot be disabled for this provider",
     "deleteConfirm": "Delete this provider configuration?",
     "failedSave": "Failed to save"
   },
