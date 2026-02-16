@@ -255,6 +255,7 @@ public static class DataSeeder
             SerialNumber = "ELV-2023-001",
             InstallDate = new DateTime(2023, 1, 15, 0, 0, 0, DateTimeKind.Utc),
             WarrantyUntil = new DateTime(2028, 1, 15, 0, 0, 0, DateTimeKind.Utc),
+            VendorId = cleaningVendor.Id, // assign vendor for preventive maintenance
             Notes = "Monthly maintenance required"
         };
         var generator = new Asset
@@ -265,19 +266,34 @@ public static class DataSeeder
             LocationDescription = "Basement, room B-2",
             SerialNumber = "GEN-2022-005",
             InstallDate = new DateTime(2022, 6, 1, 0, 0, 0, DateTimeKind.Utc),
-            WarrantyUntil = new DateTime(2027, 6, 1, 0, 0, 0, DateTimeKind.Utc)
+            WarrantyUntil = new DateTime(2027, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            VendorId = cleaningVendor.Id
         };
         context.Assets.AddRange(elevator, generator);
         await context.SaveChangesAsync();
 
-        // Seed PreventivePlan
+        // Seed Cleaning Plan so "Generate Cleaning" creates work orders for the vendor
+        context.CleaningPlans.Add(new CleaningPlan
+        {
+            BuildingId = building1.Id,
+            CleaningVendorId = cleaningVendor.Id,
+            StairwellsPerWeek = 3,
+            ParkingPerWeek = 1,
+            CorridorLobbyPerWeek = 3,
+            GarbageRoomPerWeek = 3,
+            EffectiveFrom = new DateTime(DateTime.UtcNow.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+        });
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded cleaning plan for Sunset Towers with CleanCo Services.");
+
+        // Seed PreventivePlan (NextDueDate in the past so Generate Preventive creates work orders)
         context.PreventivePlans.Add(new PreventivePlan
         {
             AssetId = elevator.Id,
             Title = "Monthly Elevator Maintenance",
             FrequencyType = FrequencyType.Monthly,
             Interval = 1,
-            NextDueDate = DateTime.UtcNow.AddDays(7),
+            NextDueDate = DateTime.UtcNow.AddDays(-1),
             ChecklistText = "1. Check cables\n2. Lubricate mechanisms\n3. Test emergency stop\n4. Inspect doors\n5. Update log"
         });
         await context.SaveChangesAsync();
