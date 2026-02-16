@@ -83,6 +83,22 @@ public class PaymentsController : ControllerBase
         if (result.Success)
         {
             payment.ProviderReference = result.ProviderReference;
+
+            // For Fake gateway: auto-confirm the payment immediately so the
+            // full flow works in development without needing a real webhook callback.
+            if (gateway.ProviderType == PaymentProviderType.Fake)
+            {
+                payment.Status = PaymentStatus.Succeeded;
+                // Reload charge with allocations to get accurate totals
+                charge = await _db.UnitCharges
+                    .Include(uc => uc.Unit).ThenInclude(u => u.TenantUser)
+                    .Include(uc => uc.Allocations)
+                    .FirstAsync(uc => uc.Id == unitChargeId);
+                await AllocatePaymentAsync(payment, charge, remaining);
+                _logger.LogInformation("FAKE: Auto-confirmed payment {PaymentId} for charge {ChargeId}, amount {Amount} ILS",
+                    payment.Id, unitChargeId, remaining);
+            }
+
             await _db.SaveChangesAsync();
         }
 
