@@ -32,7 +32,7 @@ const MyChargesPage: React.FC = () => {
   const [payAmount, setPayAmount] = useState('');
   const [payMode, setPayMode] = useState<'token' | 'hosted'>('token');
   const [methodDialog, setMethodDialog] = useState(false);
-  const [newMethod, setNewMethod] = useState({ methodType: 'CreditCard', cardNumber: '', expiry: '', cvv: '', isDefault: true });
+  const [newMethod, setNewMethod] = useState({ methodType: 'CreditCard', cardNumber: '', expiry: '', cvv: '', bankName: '', branchNumber: '', accountNumber: '', accountHolder: '', isDefault: true });
 
   const loadAll = async () => {
     setLoading(true);
@@ -70,7 +70,7 @@ const MyChargesPage: React.FC = () => {
   };
 
   const handleSetupMethodDirect = async () => {
-    try { await paymentsApi.setupMethod(newMethod); setMsg(t('myCharges.methodAdded')); setMsgSeverity('success'); setMethodDialog(false); setNewMethod({ methodType: 'CreditCard', cardNumber: '', expiry: '', cvv: '', isDefault: true }); loadAll(); } catch { setMsg(t('myCharges.errorAddMethod')); setMsgSeverity('error'); }
+    try { await paymentsApi.setupMethod(newMethod); setMsg(t('myCharges.methodAdded')); setMsgSeverity('success'); setMethodDialog(false); setNewMethod({ methodType: 'CreditCard', cardNumber: '', expiry: '', cvv: '', bankName: '', branchNumber: '', accountNumber: '', accountHolder: '', isDefault: true }); loadAll(); } catch { setMsg(t('myCharges.errorAddMethod')); setMsgSeverity('error'); }
   };
 
   const handleDeleteMethod = async (id: number) => {
@@ -387,11 +387,21 @@ const MyChargesPage: React.FC = () => {
               <MenuItem value="BankAccount">{t('myCharges.bankAccount')}</MenuItem>
             </Select>
           </FormControl>
-          <TextField label={t('myCharges.cardNumber')} value={newMethod.cardNumber} onChange={e => setNewMethod(m => ({ ...m, cardNumber: e.target.value }))} placeholder="4111111111111111" helperText={t('myCharges.fakeWarning')} />
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <TextField label={t('myCharges.expiryField')} value={newMethod.expiry} onChange={e => setNewMethod(m => ({ ...m, expiry: e.target.value }))} placeholder="12/28" />
-            <TextField label={t('myCharges.cvv')} value={newMethod.cvv} onChange={e => setNewMethod(m => ({ ...m, cvv: e.target.value }))} placeholder="123" />
-          </Box>
+          {newMethod.methodType === 'CreditCard' ? (<>
+            <TextField label={t('myCharges.cardNumber')} value={newMethod.cardNumber} onChange={e => setNewMethod(m => ({ ...m, cardNumber: e.target.value }))} placeholder="4111111111111111" helperText={t('myCharges.fakeWarning')} />
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField label={t('myCharges.expiryField')} value={newMethod.expiry} onChange={e => setNewMethod(m => ({ ...m, expiry: e.target.value }))} placeholder="12/28" />
+              <TextField label={t('myCharges.cvv')} value={newMethod.cvv} onChange={e => setNewMethod(m => ({ ...m, cvv: e.target.value }))} placeholder="123" />
+            </Box>
+          </>) : (<>
+            <TextField label={t('myCharges.accountHolder')} value={newMethod.accountHolder} onChange={e => setNewMethod(m => ({ ...m, accountHolder: e.target.value }))} placeholder={t('myCharges.accountHolderPlaceholder')} />
+            <TextField label={t('myCharges.bankName')} value={newMethod.bankName} onChange={e => setNewMethod(m => ({ ...m, bankName: e.target.value }))} placeholder={t('myCharges.bankNamePlaceholder')} />
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField label={t('myCharges.branchNumber')} value={newMethod.branchNumber} onChange={e => setNewMethod(m => ({ ...m, branchNumber: e.target.value }))} placeholder="123" />
+              <TextField label={t('myCharges.accountNumber')} value={newMethod.accountNumber} onChange={e => setNewMethod(m => ({ ...m, accountNumber: e.target.value }))} placeholder="12345678" />
+            </Box>
+            <Alert severity="warning" sx={{ mt: 1 }}>{t('myCharges.bankFakeWarning')}</Alert>
+          </>)}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setMethodDialog(false)}>{t('app.cancel')}</Button>
