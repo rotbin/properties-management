@@ -167,7 +167,8 @@ public enum PaymentProviderType
     Fake = 0,
     Meshulam = 1,
     Pelecard = 2,
-    Tranzila = 3
+    Tranzila = 3,
+    PayPal = 4
 }
 
 [Flags]
@@ -178,7 +179,17 @@ public enum ProviderFeatures
     Tokenization = 2,
     RecurringCharges = 4,
     Refunds = 8,
-    Webhooks = 16
+    Webhooks = 16,
+    StandingOrders = 32
+}
+
+public enum StandingOrderStatus
+{
+    Active = 0,
+    Paused = 1,
+    Cancelled = 2,
+    Expired = 3,
+    PaymentFailed = 4
 }
 
 public enum VendorInvoiceStatus

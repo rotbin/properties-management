@@ -6,9 +6,9 @@ import {
   TextField, MenuItem, FormControl, InputLabel, Select, IconButton, Tooltip,
   Stack, useMediaQuery, useTheme
 } from '@mui/material';
-import { Payment, CreditCard, Add, Delete, Star, StarBorder, OpenInNew } from '@mui/icons-material';
+import { Payment, CreditCard, Add, Delete, Star, StarBorder, OpenInNew, Repeat, Pause, PlayArrow, Cancel } from '@mui/icons-material';
 import { hoaApi, paymentsApi } from '../../api/services';
-import type { UnitChargeDto, PaymentMethodDto, PaymentDto } from '../../types';
+import type { UnitChargeDto, PaymentMethodDto, PaymentDto, StandingOrderDto } from '../../types';
 import { formatDateLocal } from '../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
 
@@ -19,10 +19,13 @@ const MyChargesPage: React.FC = () => {
   const [charges, setCharges] = useState<UnitChargeDto[]>([]);
   const [methods, setMethods] = useState<PaymentMethodDto[]>([]);
   const [payments, setPayments] = useState<PaymentDto[]>([]);
+  const [standingOrders, setStandingOrders] = useState<StandingOrderDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
   const [msgSeverity, setMsgSeverity] = useState<'success' | 'error' | 'info'>('info');
-  const [tab, setTab] = useState<'charges' | 'payments' | 'methods'>('charges');
+  const [tab, setTab] = useState<'charges' | 'payments' | 'methods' | 'standingOrders'>('charges');
+  const [soDialog, setSoDialog] = useState(false);
+  const [soAmount, setSoAmount] = useState('');
   const [payDialog, setPayDialog] = useState(false);
   const [payChargeId, setPayChargeId] = useState(0);
   const [payMethodId, setPayMethodId] = useState<number | ''>('');
@@ -34,8 +37,8 @@ const MyChargesPage: React.FC = () => {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [c, m, p] = await Promise.all([hoaApi.getMyCharges(), paymentsApi.getMethods(), paymentsApi.getMyPayments()]);
-      setCharges(c.data); setMethods(m.data); setPayments(p.data);
+      const [c, m, p, so] = await Promise.all([hoaApi.getMyCharges(), paymentsApi.getMethods(), paymentsApi.getMyPayments(), paymentsApi.getStandingOrders()]);
+      setCharges(c.data); setMethods(m.data); setPayments(p.data); setStandingOrders(so.data);
     } catch { setMsg(t('myCharges.errorLoading')); setMsgSeverity('error'); } finally { setLoading(false); }
   };
 
@@ -81,7 +84,56 @@ const MyChargesPage: React.FC = () => {
 
   if (loading) return <CircularProgress />;
 
-  const tabLabels: Record<string, string> = { charges: t('myCharges.tabCharges'), payments: t('myCharges.tabPayments'), methods: t('myCharges.tabMethods') };
+  const tabLabels: Record<string, string> = { charges: t('myCharges.tabCharges'), payments: t('myCharges.tabPayments'), methods: t('myCharges.tabMethods'), standingOrders: t('myCharges.tabStandingOrders') };
+
+  const handleCreateStandingOrder = async () => {
+    if (!charges.length) return;
+    const firstCharge = charges.find(c => c.balance > 0);
+    if (!firstCharge) { setMsg(t('myCharges.noCharges')); setMsgSeverity('error'); return; }
+    try {
+      const r = await paymentsApi.createStandingOrder({
+        buildingId: firstCharge.unitId, // will be resolved from unit
+        unitId: firstCharge.unitId,
+        amount: parseFloat(soAmount) || firstCharge.amountDue,
+      });
+      if (r.data.approvalUrl) {
+        window.location.href = r.data.approvalUrl;
+      } else if (r.data.error) {
+        setMsg(r.data.error); setMsgSeverity('error');
+      } else {
+        setMsg(t('myCharges.soCreated')); setMsgSeverity('success');
+        setSoDialog(false); loadAll();
+      }
+    } catch (e: any) {
+      setMsg(e?.response?.data?.message || t('myCharges.soError')); setMsgSeverity('error');
+    }
+  };
+
+  const handleCancelSO = async (id: number) => {
+    if (!window.confirm(t('myCharges.soCancelConfirm'))) return;
+    try { await paymentsApi.cancelStandingOrder(id); setMsg(t('myCharges.soCancelled')); setMsgSeverity('success'); loadAll(); }
+    catch { setMsg(t('myCharges.soError')); setMsgSeverity('error'); }
+  };
+
+  const handlePauseSO = async (id: number) => {
+    try { await paymentsApi.pauseStandingOrder(id); setMsg(t('myCharges.soPaused')); setMsgSeverity('success'); loadAll(); }
+    catch { setMsg(t('myCharges.soError')); setMsgSeverity('error'); }
+  };
+
+  const handleResumeSO = async (id: number) => {
+    try { await paymentsApi.resumeStandingOrder(id); setMsg(t('myCharges.soResumed')); setMsgSeverity('success'); loadAll(); }
+    catch { setMsg(t('myCharges.soError')); setMsgSeverity('error'); }
+  };
+
+  const soStatusColor = (s: string) => {
+    switch (s) {
+      case 'Active': return 'success';
+      case 'Paused': return 'warning';
+      case 'Cancelled': return 'default';
+      case 'PaymentFailed': return 'error';
+      default: return 'default';
+    }
+  };
 
   return (
     <Box>
@@ -94,12 +146,15 @@ const MyChargesPage: React.FC = () => {
             <Typography variant="body2" color="text.secondary">{t('myCharges.outstandingBalance')}</Typography>
             <Typography variant={isMobile ? 'h5' : 'h4'} color={totalBalance > 0 ? 'error.main' : 'success.main'}>{totalBalance.toFixed(2)} ₪</Typography>
           </Box>
-          <Button variant="contained" startIcon={<CreditCard />} onClick={() => setMethodDialog(true)} size={isMobile ? 'small' : 'medium'}>{t('myCharges.addPaymentMethod')}</Button>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Button variant="contained" startIcon={<CreditCard />} onClick={() => setMethodDialog(true)} size={isMobile ? 'small' : 'medium'}>{t('myCharges.addPaymentMethod')}</Button>
+            <Button variant="outlined" startIcon={<Repeat />} onClick={() => setSoDialog(true)} size={isMobile ? 'small' : 'medium'}>{t('myCharges.setupStandingOrder')}</Button>
+          </Box>
         </CardContent>
       </Card>
 
-      <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-        {(['charges', 'payments', 'methods'] as const).map(t2 => (
+      <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+        {(['charges', 'payments', 'methods', 'standingOrders'] as const).map(t2 => (
           <Button key={t2} variant={tab === t2 ? 'contained' : 'outlined'} size="small" onClick={() => setTab(t2)}>{tabLabels[t2]}</Button>
         ))}
       </Box>
@@ -225,6 +280,74 @@ const MyChargesPage: React.FC = () => {
           {methods.length === 0 && <Typography color="text.secondary">{t('myCharges.noMethods')}</Typography>}
         </Box>
       )}
+
+      {tab === 'standingOrders' && (
+        <Box>
+          <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+            <Button startIcon={<Repeat />} variant="contained" onClick={() => setSoDialog(true)}>{t('myCharges.setupStandingOrder')}</Button>
+          </Box>
+          {standingOrders.length === 0 ? (
+            <Alert severity="info">{t('myCharges.noStandingOrders')}</Alert>
+          ) : (
+            <Stack spacing={1.5}>
+              {standingOrders.map(so => (
+                <Card key={so.id} variant="outlined">
+                  <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Repeat color="primary" />
+                        <Typography variant="subtitle1" fontWeight="bold">{so.amount.toFixed(2)} {so.currency}</Typography>
+                        <Typography variant="body2" color="text.secondary">/ {t(`myCharges.freq${so.frequency}`, so.frequency)}</Typography>
+                      </Box>
+                      <Chip label={t(`myCharges.soStatus${so.status}`, so.status)} size="small" color={soStatusColor(so.status) as any} />
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 1 }}>
+                      <Typography variant="body2">{t('myCharges.unit')}: {so.unitNumber || so.unitId}</Typography>
+                      <Typography variant="body2">{t('myCharges.soProvider')}: {so.providerType}</Typography>
+                      {so.nextChargeDate && <Typography variant="body2">{t('myCharges.soNextCharge')}: {formatDateLocal(so.nextChargeDate)}</Typography>}
+                      {so.lastChargedAtUtc && <Typography variant="body2">{t('myCharges.soLastCharged')}: {formatDateLocal(so.lastChargedAtUtc)}</Typography>}
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      <Typography variant="body2" color="text.secondary">
+                        {t('myCharges.soChargeCount', { success: so.successfulCharges, failed: so.failedCharges })}
+                      </Typography>
+                    </Box>
+                    {so.approvalUrl && so.status !== 'Cancelled' && (
+                      <Button size="small" variant="outlined" color="primary" startIcon={<OpenInNew />} href={so.approvalUrl} target="_blank" sx={{ mt: 1 }}>
+                        {t('myCharges.soApprove')}
+                      </Button>
+                    )}
+                    <Box sx={{ display: 'flex', gap: 0.5, mt: 1 }}>
+                      {so.status === 'Active' && (
+                        <Button size="small" startIcon={<Pause />} variant="outlined" onClick={() => handlePauseSO(so.id)}>{t('myCharges.soPause')}</Button>
+                      )}
+                      {so.status === 'Paused' && (
+                        <Button size="small" startIcon={<PlayArrow />} variant="outlined" color="success" onClick={() => handleResumeSO(so.id)}>{t('myCharges.soResume')}</Button>
+                      )}
+                      {(so.status === 'Active' || so.status === 'Paused') && (
+                        <Button size="small" startIcon={<Cancel />} variant="outlined" color="error" onClick={() => handleCancelSO(so.id)}>{t('myCharges.soCancel')}</Button>
+                      )}
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Stack>
+          )}
+        </Box>
+      )}
+
+      {/* Standing Order Setup Dialog */}
+      <Dialog open={soDialog} onClose={() => setSoDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>{t('myCharges.soSetupTitle')}</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+          <Alert severity="info">{t('myCharges.soSetupNote')}</Alert>
+          <TextField label={t('myCharges.soAmountMonthly')} type="number" value={soAmount} onChange={e => setSoAmount(e.target.value)} placeholder={charges.length > 0 ? charges[0].amountDue.toString() : '500'} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSoDialog(false)}>{t('app.cancel')}</Button>
+          <Button variant="contained" color="primary" startIcon={<Repeat />} onClick={handleCreateStandingOrder}>{t('myCharges.soSetup')}</Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={payDialog} onClose={() => setPayDialog(false)} maxWidth="xs" fullWidth fullScreen={isMobile}>
         <DialogTitle>{payMode === 'hosted' ? t('myCharges.payOnlineTitle') : t('myCharges.payWithCard')}</DialogTitle>

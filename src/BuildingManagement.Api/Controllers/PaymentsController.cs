@@ -446,6 +446,239 @@ public class PaymentsController : ControllerBase
     [AllowAnonymous]
     public Task<IActionResult> WebhookLegacy() => Webhook("Fake");
 
+    // ─── Standing Orders (PayPal Subscriptions) ─────────
+
+    [HttpPost("standing-orders")]
+    [Authorize(Roles = $"{AppRoles.Tenant},{AppRoles.Admin},{AppRoles.Manager}")]
+    public async Task<ActionResult<CreateStandingOrderResponse>> CreateStandingOrder([FromBody] CreateStandingOrderRequest request)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+
+        var unit = await _db.Units.Include(u => u.Building)
+            .FirstOrDefaultAsync(u => u.Id == request.UnitId);
+        if (unit == null) return NotFound(new { message = "Unit not found" });
+
+        if (User.IsInRole(AppRoles.Tenant) && unit.TenantUserId != userId)
+            return Forbid();
+
+        // Check for existing active standing order
+        var existing = await _db.StandingOrders
+            .AnyAsync(so => so.UserId == userId && so.UnitId == request.UnitId
+                && so.Status == StandingOrderStatus.Active);
+        if (existing)
+            return BadRequest(new { message = "An active standing order already exists for this unit." });
+
+        var gateway = await _gatewayFactory.GetGatewayAsync(request.BuildingId);
+        var frontendBase = Request.Headers["Origin"].FirstOrDefault() ?? "http://localhost:5173";
+
+        var standingOrder = new StandingOrder
+        {
+            UserId = userId,
+            UnitId = request.UnitId,
+            BuildingId = request.BuildingId,
+            ProviderType = gateway.ProviderType,
+            Amount = request.Amount,
+            Currency = request.Currency,
+            Frequency = request.Frequency,
+            Status = StandingOrderStatus.Active,
+            StartDate = DateTime.UtcNow,
+            NextChargeDate = DateTime.UtcNow.AddMonths(1)
+        };
+
+        // For PayPal: create a subscription via the PayPal API
+        if (gateway is BuildingManagement.Infrastructure.Services.Gateways.PayPalGateway paypalGateway)
+        {
+            // In production, credentials would come from Key Vault via PaymentProviderConfig
+            var config = await _db.PaymentProviderConfigs
+                .FirstOrDefaultAsync(c => c.ProviderType == PaymentProviderType.PayPal
+                    && (c.BuildingId == request.BuildingId || c.BuildingId == null)
+                    && c.IsActive && !c.IsDeleted);
+
+            if (config == null)
+                return BadRequest(new { message = "PayPal not configured for this building." });
+
+            // Create a billing plan
+            var planResult = await paypalGateway.CreateBillingPlanAsync(
+                productId: "PROD-HOA-PAYMENT",
+                amount: request.Amount,
+                currency: request.Currency,
+                description: $"HOA - {unit.Building.Name} Unit {unit.UnitNumber}",
+                clientId: config.MerchantIdRef,
+                clientSecret: config.ApiPasswordRef,
+                baseUrl: config.BaseUrl);
+
+            if (!planResult.Success)
+                return BadRequest(new { message = planResult.Error });
+
+            standingOrder.ProviderPlanId = planResult.PlanId;
+
+            // Create subscription
+            var subResult = await paypalGateway.CreateSubscriptionAsync(
+                planId: planResult.PlanId!,
+                returnUrl: $"{frontendBase}/payment/success?type=standing-order",
+                cancelUrl: $"{frontendBase}/payment/cancel?type=standing-order",
+                clientId: config.MerchantIdRef,
+                clientSecret: config.ApiPasswordRef,
+                baseUrl: config.BaseUrl);
+
+            if (!subResult.Success)
+                return BadRequest(new { message = subResult.Error });
+
+            standingOrder.ProviderSubscriptionId = subResult.SubscriptionId;
+            standingOrder.ApprovalUrl = subResult.ApprovalUrl;
+        }
+        else if (gateway.ProviderType == PaymentProviderType.Fake)
+        {
+            // For Fake gateway: auto-activate standing order
+            standingOrder.ProviderSubscriptionId = $"fake_sub_{Guid.NewGuid():N}";
+            standingOrder.Status = StandingOrderStatus.Active;
+            _logger.LogInformation("FAKE: Created standing order for user {UserId}, unit {UnitId}, amount {Amount}",
+                userId, request.UnitId, request.Amount);
+        }
+        else
+        {
+            return BadRequest(new { message = $"Standing orders not yet supported for {gateway.ProviderName}." });
+        }
+
+        _db.StandingOrders.Add(standingOrder);
+        await _db.SaveChangesAsync();
+
+        return Ok(new CreateStandingOrderResponse
+        {
+            StandingOrderId = standingOrder.Id,
+            ApprovalUrl = standingOrder.ApprovalUrl
+        });
+    }
+
+    [HttpGet("standing-orders")]
+    [Authorize(Roles = $"{AppRoles.Tenant},{AppRoles.Admin},{AppRoles.Manager}")]
+    public async Task<ActionResult<List<StandingOrderDto>>> GetStandingOrders()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+        var isTenant = User.IsInRole(AppRoles.Tenant);
+
+        var query = _db.StandingOrders
+            .Include(so => so.Unit).ThenInclude(u => u.Building)
+            .AsQueryable();
+
+        if (isTenant)
+            query = query.Where(so => so.UserId == userId);
+
+        var orders = await query
+            .OrderByDescending(so => so.CreatedAtUtc)
+            .Select(so => new StandingOrderDto
+            {
+                Id = so.Id,
+                UserId = so.UserId,
+                UnitId = so.UnitId,
+                UnitNumber = so.Unit.UnitNumber,
+                BuildingId = so.BuildingId,
+                BuildingName = so.Unit.Building.Name,
+                ProviderType = so.ProviderType.ToString(),
+                ProviderSubscriptionId = so.ProviderSubscriptionId,
+                Amount = so.Amount,
+                Currency = so.Currency,
+                Frequency = so.Frequency.ToString(),
+                Status = so.Status,
+                StartDate = so.StartDate,
+                EndDate = so.EndDate,
+                NextChargeDate = so.NextChargeDate,
+                LastChargedAtUtc = so.LastChargedAtUtc,
+                ApprovalUrl = so.ApprovalUrl,
+                SuccessfulCharges = so.SuccessfulCharges,
+                FailedCharges = so.FailedCharges,
+                CreatedAtUtc = so.CreatedAtUtc
+            })
+            .ToListAsync();
+
+        return Ok(orders);
+    }
+
+    [HttpPost("standing-orders/{id}/cancel")]
+    [Authorize(Roles = $"{AppRoles.Tenant},{AppRoles.Admin},{AppRoles.Manager}")]
+    public async Task<IActionResult> CancelStandingOrder(int id)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+
+        var order = await _db.StandingOrders.FindAsync(id);
+        if (order == null) return NotFound();
+
+        if (User.IsInRole(AppRoles.Tenant) && order.UserId != userId)
+            return Forbid();
+
+        if (order.Status == StandingOrderStatus.Cancelled)
+            return BadRequest(new { message = "Standing order is already cancelled." });
+
+        // Cancel on the provider side if PayPal
+        if (order.ProviderType == PaymentProviderType.PayPal && order.ProviderSubscriptionId != null)
+        {
+            var gateway = _gatewayFactory.GetGateway(PaymentProviderType.PayPal);
+            if (gateway is BuildingManagement.Infrastructure.Services.Gateways.PayPalGateway paypalGateway)
+            {
+                var config = await _db.PaymentProviderConfigs
+                    .FirstOrDefaultAsync(c => c.ProviderType == PaymentProviderType.PayPal
+                        && (c.BuildingId == order.BuildingId || c.BuildingId == null)
+                        && c.IsActive && !c.IsDeleted);
+
+                if (config != null)
+                {
+                    await paypalGateway.CancelSubscriptionAsync(
+                        order.ProviderSubscriptionId,
+                        "Cancelled by user",
+                        config.MerchantIdRef,
+                        config.ApiPasswordRef,
+                        config.BaseUrl);
+                }
+            }
+        }
+
+        order.Status = StandingOrderStatus.Cancelled;
+        order.EndDate = DateTime.UtcNow;
+        order.UpdatedAtUtc = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Standing order {Id} cancelled by user {UserId}", id, userId);
+        return NoContent();
+    }
+
+    [HttpPost("standing-orders/{id}/pause")]
+    [Authorize(Roles = $"{AppRoles.Tenant},{AppRoles.Admin},{AppRoles.Manager}")]
+    public async Task<IActionResult> PauseStandingOrder(int id)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+        var order = await _db.StandingOrders.FindAsync(id);
+        if (order == null) return NotFound();
+
+        if (User.IsInRole(AppRoles.Tenant) && order.UserId != userId) return Forbid();
+        if (order.Status != StandingOrderStatus.Active)
+            return BadRequest(new { message = "Only active standing orders can be paused." });
+
+        order.Status = StandingOrderStatus.Paused;
+        order.UpdatedAtUtc = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    [HttpPost("standing-orders/{id}/resume")]
+    [Authorize(Roles = $"{AppRoles.Tenant},{AppRoles.Admin},{AppRoles.Manager}")]
+    public async Task<IActionResult> ResumeStandingOrder(int id)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+        var order = await _db.StandingOrders.FindAsync(id);
+        if (order == null) return NotFound();
+
+        if (User.IsInRole(AppRoles.Tenant) && order.UserId != userId) return Forbid();
+        if (order.Status != StandingOrderStatus.Paused)
+            return BadRequest(new { message = "Only paused standing orders can be resumed." });
+
+        order.Status = StandingOrderStatus.Active;
+        order.UpdatedAtUtc = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
     // ─── Helpers ────────────────────────────────────────
 
     private async Task AllocatePaymentAsync(Payment payment, UnitCharge charge, decimal amount)

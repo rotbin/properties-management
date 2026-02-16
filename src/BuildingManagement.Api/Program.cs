@@ -105,10 +105,12 @@ builder.Services.AddSingleton<IEmailService, LoggingEmailService>();
 builder.Services.AddHttpClient<MeshulamGateway>();
 builder.Services.AddHttpClient<PelecardGateway>();
 builder.Services.AddHttpClient<TranzilaGateway>();
+builder.Services.AddHttpClient<PayPalGateway>();
 builder.Services.AddSingleton<FakePaymentGateway>();
 builder.Services.AddSingleton<MeshulamGateway>();
 builder.Services.AddSingleton<PelecardGateway>();
 builder.Services.AddSingleton<TranzilaGateway>();
+builder.Services.AddSingleton<PayPalGateway>();
 builder.Services.AddSingleton<IPaymentGatewayFactory, PaymentGatewayFactory>();
 
 // HOA Fee Service

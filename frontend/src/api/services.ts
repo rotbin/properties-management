@@ -8,7 +8,8 @@ import type {
   PaymentProviderConfigDto, PaymentSessionResponse, TokenizationResponse,
   TenantProfileDto, CreateTenantRequest, UpdateTenantRequest, EndTenancyRequest,
   VendorInvoiceDto, VendorPaymentDto,
-  SmsTemplateDto, SmsCampaignDto, CreateCampaignResult, SendCampaignResult, SmsCampaignRecipientDto
+  SmsTemplateDto, SmsCampaignDto, CreateCampaignResult, SendCampaignResult, SmsCampaignRecipientDto,
+  StandingOrderDto, CreateStandingOrderRequest, CreateStandingOrderResponse
 } from '../types';
 
 // Auth
@@ -160,6 +161,16 @@ export const paymentsApi = {
     apiClient.post<PaymentSessionResponse>(`/api/payments/session/${unitChargeId}`),
   getMyPayments: () => apiClient.get<PaymentDto[]>('/api/payments/my'),
   getPaymentsForUnit: (unitId: number) => apiClient.get<PaymentDto[]>(`/api/payments/unit/${unitId}`),
+  // Standing Orders
+  getStandingOrders: () => apiClient.get<StandingOrderDto[]>('/api/payments/standing-orders'),
+  createStandingOrder: (data: CreateStandingOrderRequest) =>
+    apiClient.post<CreateStandingOrderResponse>('/api/payments/standing-orders', data),
+  cancelStandingOrder: (id: number) =>
+    apiClient.post(`/api/payments/standing-orders/${id}/cancel`),
+  pauseStandingOrder: (id: number) =>
+    apiClient.post(`/api/payments/standing-orders/${id}/pause`),
+  resumeStandingOrder: (id: number) =>
+    apiClient.post(`/api/payments/standing-orders/${id}/resume`),
 };
 
 // ─── Payment Provider Config ───────────────────────────

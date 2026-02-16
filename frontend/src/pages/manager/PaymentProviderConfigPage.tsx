@@ -39,7 +39,7 @@ const PaymentProviderConfigPage: React.FC = () => {
 
   const handleDelete = async (id: number) => { if (!confirm(t('paymentConfig.deleteConfirm'))) return; await paymentConfigApi.delete(id); load(); };
   const toggleFeature = (feat: number) => { setForm(f => ({ ...f, supportedFeatures: f.supportedFeatures ^ feat })); };
-  const providerColor = (p: string) => { switch (p) { case 'Fake': return 'default'; case 'Meshulam': return 'primary'; case 'Pelecard': return 'secondary'; case 'Tranzila': return 'warning'; default: return 'default'; } };
+  const providerColor = (p: string) => { switch (p) { case 'Fake': return 'default'; case 'Meshulam': return 'primary'; case 'Pelecard': return 'secondary'; case 'Tranzila': return 'warning'; case 'PayPal': return 'info'; default: return 'default'; } };
   const isRealProvider = form.providerType !== 'Fake';
 
   return (

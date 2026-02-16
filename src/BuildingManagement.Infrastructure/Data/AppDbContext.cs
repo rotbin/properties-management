@@ -37,6 +37,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<WebhookEventLog> WebhookEventLogs => Set<WebhookEventLog>();
     public DbSet<VendorInvoice> VendorInvoices => Set<VendorInvoice>();
     public DbSet<VendorPayment> VendorPayments => Set<VendorPayment>();
+    public DbSet<StandingOrder> StandingOrders => Set<StandingOrder>();
 
     // Notifications
     public DbSet<SmsTemplate> SmsTemplates => Set<SmsTemplate>();
@@ -352,6 +353,32 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             .WithMany(c => c.Recipients)
             .HasForeignKey(r => r.CampaignId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // ─── Standing Orders ──────────────────────────────────
+
+        builder.Entity<StandingOrder>()
+            .HasOne(so => so.User)
+            .WithMany()
+            .HasForeignKey(so => so.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<StandingOrder>()
+            .HasOne(so => so.Unit)
+            .WithMany()
+            .HasForeignKey(so => so.UnitId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<StandingOrder>()
+            .HasOne(so => so.Building)
+            .WithMany()
+            .HasForeignKey(so => so.BuildingId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<StandingOrder>()
+            .Property(so => so.Amount).HasColumnType("decimal(18,2)");
+
+        builder.Entity<StandingOrder>()
+            .HasIndex(so => new { so.UserId, so.UnitId, so.Status });
     }
 
     public override int SaveChanges()

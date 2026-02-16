@@ -300,6 +300,56 @@ public record AgingReport
     public decimal GrandTotal { get; init; }
 }
 
+// ─── Standing Orders ────────────────────────────────────
+
+public record StandingOrderDto
+{
+    public int Id { get; init; }
+    public string UserId { get; init; } = string.Empty;
+    public int UnitId { get; init; }
+    public string? UnitNumber { get; init; }
+    public int BuildingId { get; init; }
+    public string? BuildingName { get; init; }
+    public string ProviderType { get; init; } = string.Empty;
+    public string? ProviderSubscriptionId { get; init; }
+    public decimal Amount { get; init; }
+    public string Currency { get; init; } = "ILS";
+    public string Frequency { get; init; } = "Monthly";
+    public StandingOrderStatus Status { get; init; }
+    public DateTime StartDate { get; init; }
+    public DateTime? EndDate { get; init; }
+    public DateTime? NextChargeDate { get; init; }
+    public DateTime? LastChargedAtUtc { get; init; }
+    public string? ApprovalUrl { get; init; }
+    public int SuccessfulCharges { get; init; }
+    public int FailedCharges { get; init; }
+    public DateTime CreatedAtUtc { get; init; }
+}
+
+public record CreateStandingOrderRequest
+{
+    [Required]
+    public int BuildingId { get; init; }
+
+    [Required]
+    public int UnitId { get; init; }
+
+    [Required]
+    public decimal Amount { get; init; }
+
+    public string Currency { get; init; } = "ILS";
+
+    /// <summary>Monthly, Quarterly, Yearly</summary>
+    public FrequencyType Frequency { get; init; } = FrequencyType.Monthly;
+}
+
+public record CreateStandingOrderResponse
+{
+    public int StandingOrderId { get; init; }
+    public string? ApprovalUrl { get; init; }
+    public string? Error { get; init; }
+}
+
 // ─── Income vs Expenses Report ─────────────────────────
 
 public record CategoryAmount

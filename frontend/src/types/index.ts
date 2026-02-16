@@ -437,13 +437,14 @@ export const TENANT_STATUSES = ['Active', 'Inactive', 'Archived'] as const;
 export const HOA_CALC_METHODS = ['BySqm', 'FixedPerUnit', 'ManualPerUnit'] as const;
 export const CHARGE_STATUSES = ['Pending', 'Paid', 'PartiallyPaid', 'Overdue', 'Cancelled'] as const;
 export const PAYMENT_STATUSES = ['Pending', 'Succeeded', 'Failed', 'Refunded'] as const;
-export const PAYMENT_PROVIDERS = ['Fake', 'Meshulam', 'Pelecard', 'Tranzila'] as const;
+export const PAYMENT_PROVIDERS = ['Fake', 'Meshulam', 'Pelecard', 'Tranzila', 'PayPal'] as const;
 export const PROVIDER_FEATURES = {
   HostedPaymentPage: 1,
   Tokenization: 2,
   RecurringCharges: 4,
   Refunds: 8,
   Webhooks: 16,
+  StandingOrders: 32,
 } as const;
 
 // ─── Vendor Invoices & Payments ─────────────────────────
@@ -542,3 +543,44 @@ export interface SendCampaignResult {
   failedCount: number;
   skippedCount: number;
 }
+
+// ─── Standing Orders ────────────────────────────────────
+
+export interface StandingOrderDto {
+  id: number;
+  userId: string;
+  unitId: number;
+  unitNumber?: string;
+  buildingId: number;
+  buildingName?: string;
+  providerType: string;
+  providerSubscriptionId?: string;
+  amount: number;
+  currency: string;
+  frequency: string;
+  status: string;
+  startDate: string;
+  endDate?: string;
+  nextChargeDate?: string;
+  lastChargedAtUtc?: string;
+  approvalUrl?: string;
+  successfulCharges: number;
+  failedCharges: number;
+  createdAtUtc: string;
+}
+
+export interface CreateStandingOrderRequest {
+  buildingId: number;
+  unitId: number;
+  amount: number;
+  currency?: string;
+  frequency?: string;
+}
+
+export interface CreateStandingOrderResponse {
+  standingOrderId: number;
+  approvalUrl?: string;
+  error?: string;
+}
+
+export const STANDING_ORDER_STATUSES = ['Active', 'Paused', 'Cancelled', 'Expired', 'PaymentFailed'] as const;

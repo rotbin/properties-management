@@ -53,6 +53,7 @@ public class PaymentGatewayFactory : IPaymentGatewayFactory
             PaymentProviderType.Meshulam => _serviceProvider.GetRequiredService<MeshulamGateway>(),
             PaymentProviderType.Pelecard => _serviceProvider.GetRequiredService<PelecardGateway>(),
             PaymentProviderType.Tranzila => _serviceProvider.GetRequiredService<TranzilaGateway>(),
+            PaymentProviderType.PayPal => _serviceProvider.GetRequiredService<PayPalGateway>(),
             _ => throw new ArgumentException($"Unknown payment provider: {providerType}")
         };
     }
