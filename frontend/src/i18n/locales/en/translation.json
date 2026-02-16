@@ -430,6 +430,7 @@
     "baseUrl": "Base URL Override",
     "baseUrlHelp": "Leave empty for default. Use sandbox URL for testing.",
     "supportedFeatures": "Supported Features",
+    "featuresSavingsNote": "Enabling these features can significantly reduce your collection costs and manual work. We recommend keeping all options enabled for the best results.",
     "mandatoryFeaturesNote": "Features marked with a lock icon are required for this provider and cannot be disabled. They ensure transaction verification and proper payment flow.",
     "mandatoryFeature": "Required — cannot be disabled for this provider",
     "deleteConfirm": "Delete this provider configuration?",
@@ -748,12 +749,20 @@
       "ManualPerUnit": "Manual per Unit"
     },
     "providerFeature": {
-      "HostedPaymentPage": "Hosted Payment Page",
-      "Tokenization": "Tokenization",
-      "RecurringCharges": "Recurring Charges",
+      "HostedPaymentPage": "Secure Payment Page",
+      "Tokenization": "Save Card for Future Payments",
+      "RecurringCharges": "Auto-Collect Monthly Payments",
       "Refunds": "Refunds",
-      "Webhooks": "Webhooks",
+      "Webhooks": "Payment Verification",
       "StandingOrders": "Standing Orders"
+    },
+    "providerFeatureDesc": {
+      "HostedPaymentPage": "Tenants pay on the provider's secure page — no card data touches your system.",
+      "Tokenization": "Tenants save their card once and pay with one click next time. Reduces friction and increases collection rates.",
+      "RecurringCharges": "Automatically charges tenants who have a saved card. No manual follow-up needed — saves time and improves cash flow.",
+      "Refunds": "Process refunds directly through the provider when needed.",
+      "Webhooks": "Automatically verifies every transaction with the provider. Required for reliable payment tracking.",
+      "StandingOrders": "Tenants set up automatic recurring payments (e.g. via PayPal). Ensures consistent monthly collection."
     },
     "finCategory": {
       "HOAMonthlyFees": "HOA Monthly Fees",

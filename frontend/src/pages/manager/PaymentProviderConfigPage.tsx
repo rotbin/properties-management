@@ -12,6 +12,7 @@ import { PAYMENT_PROVIDERS, PROVIDER_FEATURES } from '../../types';
 import { useTranslation } from 'react-i18next';
 
 const FEATURE_LIST = Object.entries(PROVIDER_FEATURES) as [string, number][];
+const ALL_FEATURES = FEATURE_LIST.reduce((sum, [, v]) => sum | v, 0);
 
 const PaymentProviderConfigPage: React.FC = () => {
   const { t } = useTranslation();
@@ -19,13 +20,13 @@ const PaymentProviderConfigPage: React.FC = () => {
   const [buildings, setBuildings] = useState<BuildingDto[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const [form, setForm] = useState({ buildingId: '' as string, providerType: 'Fake', merchantIdRef: '', terminalIdRef: '', apiUserRef: '', apiPasswordRef: '', webhookSecretRef: '', supportedFeatures: 0, currency: 'ILS', baseUrl: '' });
+  const [form, setForm] = useState({ buildingId: '' as string, providerType: 'Fake', merchantIdRef: '', terminalIdRef: '', apiUserRef: '', apiPasswordRef: '', webhookSecretRef: '', supportedFeatures: ALL_FEATURES, currency: 'ILS', baseUrl: '' });
   const [error, setError] = useState('');
 
   const load = async () => { const [c, b] = await Promise.all([paymentConfigApi.getAll(), buildingsApi.getAll()]); setConfigs(c.data); setBuildings(b.data); };
   useEffect(() => { load(); }, []);
 
-  const resetForm = () => { setForm({ buildingId: '', providerType: 'Fake', merchantIdRef: '', terminalIdRef: '', apiUserRef: '', apiPasswordRef: '', webhookSecretRef: '', supportedFeatures: 0, currency: 'ILS', baseUrl: '' }); setEditId(null); setError(''); };
+  const resetForm = () => { setForm({ buildingId: '', providerType: 'Fake', merchantIdRef: '', terminalIdRef: '', apiUserRef: '', apiPasswordRef: '', webhookSecretRef: '', supportedFeatures: ALL_FEATURES, currency: 'ILS', baseUrl: '' }); setEditId(null); setError(''); };
   const openCreate = () => { resetForm(); setDialogOpen(true); };
   const openEdit = (c: PaymentProviderConfigDto) => { setForm({ buildingId: c.buildingId?.toString() ?? '', providerType: c.providerType, merchantIdRef: c.merchantIdRef ?? '', terminalIdRef: c.terminalIdRef ?? '', apiUserRef: c.apiUserRef ?? '', apiPasswordRef: c.apiPasswordRef ?? '', webhookSecretRef: c.webhookSecretRef ?? '', supportedFeatures: c.supportedFeatures, currency: c.currency, baseUrl: c.baseUrl ?? '' }); setEditId(c.id); setDialogOpen(true); };
 
@@ -131,23 +132,29 @@ const PaymentProviderConfigPage: React.FC = () => {
 
           <TextField fullWidth label={t('paymentConfig.currency')} value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))} sx={{ mt: 2 }} />
           <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>{t('paymentConfig.supportedFeatures')}</Typography>
+          <Alert severity="success" sx={{ mb: 1 }}>{t('paymentConfig.featuresSavingsNote')}</Alert>
           {isRealProvider && <Alert severity="info" sx={{ mb: 1 }}>{t('paymentConfig.mandatoryFeaturesNote')}</Alert>}
-          <FormGroup row>
+          <FormGroup>
             {FEATURE_LIST.map(([name, val]) => {
               const isMandatory = (mandatoryFeatures & val) !== 0;
               const isChecked = (form.supportedFeatures & val) !== 0;
               return (
-                <Tooltip key={name} title={isMandatory ? t('paymentConfig.mandatoryFeature') : ''} arrow>
-                  <FormControlLabel
-                    label={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        {t(`enums.providerFeature.${name}`, name)}
-                        {isMandatory && <Lock sx={{ fontSize: 14, color: 'text.secondary' }} />}
-                      </Box>
-                    }
-                    control={<Checkbox checked={isChecked} disabled={isMandatory} onChange={() => toggleFeature(val)} />}
-                  />
-                </Tooltip>
+                <Box key={name} sx={{ mb: 1.5, pl: 1, borderLeft: isChecked ? '3px solid' : '3px solid transparent', borderColor: isChecked ? 'primary.main' : 'transparent', borderRadius: 1, transition: 'all 0.2s' }}>
+                  <Tooltip title={isMandatory ? t('paymentConfig.mandatoryFeature') : ''} arrow>
+                    <FormControlLabel
+                      label={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant="body1" fontWeight={500}>{t(`enums.providerFeature.${name}`, name)}</Typography>
+                          {isMandatory && <Lock sx={{ fontSize: 14, color: 'text.secondary' }} />}
+                        </Box>
+                      }
+                      control={<Checkbox checked={isChecked} disabled={isMandatory} onChange={() => toggleFeature(val)} />}
+                    />
+                  </Tooltip>
+                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4, mt: -0.5 }}>
+                    {t(`enums.providerFeatureDesc.${name}`, '')}
+                  </Typography>
+                </Box>
               );
             })}
           </FormGroup>
