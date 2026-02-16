@@ -133,7 +133,8 @@ public class PaymentsController : ControllerBase
 
         if (result.Success && result.Token != null)
         {
-            // Fake gateway returns token directly (no redirect needed)
+            // Gateway returned a token directly (e.g. Fake gateway) — save card now,
+            // no redirect needed.
             if (request.IsDefault)
             {
                 var existing = await _db.PaymentMethods.Where(pm => pm.UserId == userId && pm.IsDefault).ToListAsync();
@@ -154,6 +155,13 @@ public class PaymentsController : ControllerBase
                 IsActive = true
             });
             await _db.SaveChangesAsync();
+
+            // Card saved directly — return success with no redirect
+            return Ok(new StartTokenizationResponse
+            {
+                RedirectUrl = null,
+                Error = null
+            });
         }
 
         return Ok(new StartTokenizationResponse
