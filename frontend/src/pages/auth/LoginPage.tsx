@@ -158,12 +158,14 @@ const LoginPage: React.FC = () => {
             <Typography variant="caption" color="text.secondary" component="div" sx={{ mb: 0.5 }}>
               <strong>{t('login.demoTitle')}</strong>
             </Typography>
-            <Typography variant="caption" color="text.secondary" component="div" sx={{ direction: 'ltr', textAlign: 'left' }}>
-              admin@example.com / Demo@123!<br />
-              manager@example.com / Demo@123!<br />
-              tenant@example.com / Demo@123!<br />
-              vendor@example.com / Demo@123!
-            </Typography>
+            <div dir="ltr" style={{ textAlign: 'left', unicodeBidi: 'embed' }}>
+              <Typography variant="caption" color="text.secondary" component="div">
+                admin@example.com / Demo@123!<br />
+                manager@example.com / Demo@123!<br />
+                tenant@example.com / Demo@123!<br />
+                vendor@example.com / Demo@123!
+              </Typography>
+            </div>
           </Box>
         </CardContent>
       </Card>
