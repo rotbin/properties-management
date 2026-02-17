@@ -63,7 +63,8 @@ public class AuthController : ControllerBase
             Roles = roles.ToList(),
             FullName = user.FullName,
             Email = user.Email ?? "",
-            UserId = user.Id
+            UserId = user.Id,
+            Phone = user.Phone
         });
     }
 
@@ -109,7 +110,8 @@ public class AuthController : ControllerBase
             Roles = roles.ToList(),
             FullName = user.FullName,
             Email = user.Email ?? "",
-            UserId = user.Id
+            UserId = user.Id,
+            Phone = user.Phone
         });
     }
 
@@ -224,7 +226,8 @@ public class AuthController : ControllerBase
             Roles = roles.ToList(),
             FullName = user.FullName,
             Email = user.Email ?? "",
-            UserId = user.Id
+            UserId = user.Id,
+            Phone = user.Phone
         });
     }
 
@@ -280,7 +283,8 @@ public class AuthController : ControllerBase
             Roles = roles.ToList(),
             FullName = user.FullName,
             Email = user.Email ?? "",
-            UserId = user.Id
+            UserId = user.Id,
+            Phone = user.Phone
         });
     }
 
