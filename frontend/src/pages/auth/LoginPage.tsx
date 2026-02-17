@@ -154,7 +154,7 @@ const LoginPage: React.FC = () => {
             </Button>
           </Box>
 
-          <Box sx={{ p: 1.5, bgcolor: 'rgba(26,86,160,0.04)', borderRadius: 2, border: '1px solid rgba(26,86,160,0.08)' }}>
+          <Box sx={{ p: 1.5, bgcolor: 'rgba(26,86,160,0.04)', borderRadius: 2, border: '1px solid rgba(26,86,160,0.08)', direction: 'ltr', textAlign: 'left' }}>
             <Typography variant="caption" color="text.secondary" component="div">
               <strong>{t('login.demoTitle')}</strong><br />
               admin@example.com / Demo@123!<br />
