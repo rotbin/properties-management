@@ -11,7 +11,7 @@ namespace BuildingManagement.Api.Controllers;
 
 [ApiController]
 [Route("api/tenants")]
-[Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Manager}")]
+[Authorize]
 public class TenantsController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -36,6 +36,7 @@ public class TenantsController : ControllerBase
     // ─── LIST ────────────────────────────────────────────
 
     [HttpGet]
+    [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Manager}")]
     public async Task<ActionResult<List<TenantProfileDto>>> GetAll(
         [FromQuery] int? buildingId,
         [FromQuery] int? unitId,
@@ -67,6 +68,7 @@ public class TenantsController : ControllerBase
     // ─── GET BY ID ───────────────────────────────────────
 
     [HttpGet("{id}")]
+    [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Manager}")]
     public async Task<ActionResult<TenantProfileDto>> GetById(int id)
     {
         var tp = await _db.TenantProfiles
@@ -81,6 +83,7 @@ public class TenantsController : ControllerBase
     // ─── CREATE ──────────────────────────────────────────
 
     [HttpPost]
+    [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Manager}")]
     public async Task<ActionResult<TenantProfileDto>> Create([FromBody] CreateTenantRequest request)
     {
         var unit = await _db.Units.Include(u => u.Building).FirstOrDefaultAsync(u => u.Id == request.UnitId);
@@ -132,6 +135,7 @@ public class TenantsController : ControllerBase
     // ─── UPDATE ──────────────────────────────────────────
 
     [HttpPut("{id}")]
+    [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Manager}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateTenantRequest request)
     {
         var tenant = await _db.TenantProfiles
@@ -167,6 +171,7 @@ public class TenantsController : ControllerBase
     // ─── END TENANCY ─────────────────────────────────────
 
     [HttpPost("{id}/end-tenancy")]
+    [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Manager}")]
     public async Task<IActionResult> EndTenancy(int id, [FromBody] EndTenancyRequest request)
     {
         var tenant = await _db.TenantProfiles
@@ -191,6 +196,7 @@ public class TenantsController : ControllerBase
     // ─── DELETE (soft or hard) ───────────────────────────
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Manager}")]
     public async Task<IActionResult> Delete(int id)
     {
         var tenant = await _db.TenantProfiles.FindAsync(id);
@@ -225,6 +231,7 @@ public class TenantsController : ControllerBase
     // ─── UNIT TENANT HISTORY ─────────────────────────────
 
     [HttpGet("unit/{unitId}/history")]
+    [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Manager}")]
     public async Task<ActionResult<List<TenantProfileDto>>> UnitHistory(int unitId)
     {
         // Include archived tenants by ignoring the soft-delete query filter
