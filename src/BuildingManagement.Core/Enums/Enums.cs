@@ -192,6 +192,13 @@ public enum StandingOrderStatus
     PaymentFailed = 4
 }
 
+public enum ReminderChannel
+{
+    Sms = 0,
+    Email = 1,
+    Both = 2
+}
+
 public enum VendorInvoiceStatus
 {
     Draft = 0,

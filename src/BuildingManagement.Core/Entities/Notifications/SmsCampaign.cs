@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using BuildingManagement.Core.Enums;
 
 namespace BuildingManagement.Core.Entities.Notifications;
 
@@ -29,6 +30,8 @@ public class SmsCampaign
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     public SmsCampaignStatus Status { get; set; } = SmsCampaignStatus.Draft;
+
+    public ReminderChannel Channel { get; set; } = ReminderChannel.Sms;
 
     [MaxLength(1000)]
     public string? Notes { get; set; }

@@ -12,9 +12,13 @@ public class SmsTemplate
     [Required, MaxLength(5)]
     public string Language { get; set; } = "he";
 
-    /// <summary>SMS body with placeholders: {{FullName}}, {{BuildingName}}, {{Period}}, {{AmountDue}}, {{Outstanding}}, {{PayLink}}</summary>
+    /// <summary>Message body with placeholders: {{FullName}}, {{BuildingName}}, {{Period}}, {{AmountDue}}, {{Outstanding}}, {{PayLink}}</summary>
     [Required, MaxLength(1000)]
     public string Body { get; set; } = string.Empty;
+
+    /// <summary>Email subject line with placeholders (used when sending via email)</summary>
+    [MaxLength(300)]
+    public string? EmailSubject { get; set; }
 
     public bool IsActive { get; set; } = true;
 

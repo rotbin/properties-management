@@ -124,6 +124,9 @@ else
     builder.Services.AddSingleton<ISmsSender, BuildingManagement.Infrastructure.Services.Sms.FakeSmsSender>();
 builder.Services.AddSingleton(new BuildingManagement.Infrastructure.Services.Sms.SmsRateLimiter(30));
 
+// Email sender
+builder.Services.AddSingleton<IEmailSender, BuildingManagement.Infrastructure.Services.Email.FakeEmailSender>();
+
 // Background Jobs
 builder.Services.AddSingleton<MaintenanceJobService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<MaintenanceJobService>());

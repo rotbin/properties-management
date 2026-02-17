@@ -19,12 +19,14 @@ public class SmsNotificationsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ISmsSender _smsSender;
+    private readonly IEmailSender _emailSender;
     private readonly SmsRateLimiter _rateLimiter;
 
-    public SmsNotificationsController(AppDbContext db, ISmsSender smsSender, SmsRateLimiter rateLimiter)
+    public SmsNotificationsController(AppDbContext db, ISmsSender smsSender, IEmailSender emailSender, SmsRateLimiter rateLimiter)
     {
         _db = db;
         _smsSender = smsSender;
+        _emailSender = emailSender;
         _rateLimiter = rateLimiter;
     }
 
@@ -40,7 +42,8 @@ public class SmsNotificationsController : ControllerBase
         var templates = await q.OrderBy(t => t.Language).ThenBy(t => t.Name)
             .Select(t => new SmsTemplateDto
             {
-                Id = t.Id, Name = t.Name, Language = t.Language, Body = t.Body, IsActive = t.IsActive
+                Id = t.Id, Name = t.Name, Language = t.Language, Body = t.Body,
+                EmailSubject = t.EmailSubject, IsActive = t.IsActive
             }).ToListAsync();
         return Ok(templates);
     }
@@ -80,7 +83,6 @@ public class SmsNotificationsController : ControllerBase
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
 
-        // Validate building access
         if (!User.IsInRole(AppRoles.Admin))
         {
             var hasAccess = await _db.BuildingManagers.AnyAsync(bm => bm.UserId == userId && bm.BuildingId == request.BuildingId);
@@ -93,30 +95,28 @@ public class SmsNotificationsController : ControllerBase
         var building = await _db.Buildings.FindAsync(request.BuildingId);
         if (building == null) return BadRequest(new { message = "Building not found." });
 
-        // Create campaign
         var campaign = new SmsCampaign
         {
             BuildingId = request.BuildingId,
             Period = request.Period,
             TemplateId = request.TemplateId,
             CreatedByUserId = userId,
+            Channel = request.Channel,
             Notes = request.Notes
         };
         _db.SmsCampaigns.Add(campaign);
         await _db.SaveChangesAsync();
 
-        // Generate recipients from collection status
         var recipients = await GenerateRecipients(campaign, request.IncludePartial);
         campaign.TotalSelected = recipients.Count(r => r.IsSelected);
 
-        // Audit
         _db.AuditLogs.Add(new AuditLog
         {
-            Action = "CreateSmsCampaign",
+            Action = "CreateReminderCampaign",
             EntityName = "SmsCampaign",
             EntityId = campaign.Id.ToString(),
             PerformedBy = userId,
-            Details = $"Created SMS campaign for building {building.Name}, period {request.Period}. Recipients: {recipients.Count}, Selected: {campaign.TotalSelected}"
+            Details = $"Created {campaign.Channel} reminder campaign for building {building.Name}, period {request.Period}. Recipients: {recipients.Count}, Selected: {campaign.TotalSelected}"
         });
         await _db.SaveChangesAsync();
 
@@ -137,7 +137,6 @@ public class SmsNotificationsController : ControllerBase
         if (campaign.Status != SmsCampaignStatus.Draft)
             return BadRequest(new { message = "Can only update recipients of a draft campaign." });
 
-        // Update selections
         if (request.Updates != null)
         {
             foreach (var update in request.Updates)
@@ -148,7 +147,6 @@ public class SmsNotificationsController : ControllerBase
             }
         }
 
-        // Remove recipients
         if (request.RemoveRecipientIds != null)
         {
             var toRemove = campaign.Recipients.Where(r => request.RemoveRecipientIds.Contains(r.Id)).ToList();
@@ -156,12 +154,10 @@ public class SmsNotificationsController : ControllerBase
                 _db.SmsCampaignRecipients.Remove(r);
         }
 
-        // Add new units
         if (request.AddUnitIds != null)
         {
             foreach (var unitId in request.AddUnitIds)
             {
-                // Prevent duplicates
                 if (campaign.Recipients.Any(r => r.UnitId == unitId)) continue;
 
                 var tenant = await _db.TenantProfiles
@@ -173,10 +169,18 @@ public class SmsNotificationsController : ControllerBase
                 if (unit == null) continue;
 
                 var phone = tenant?.Phone ?? unit.TenantUser?.Phone;
-                if (string.IsNullOrWhiteSpace(phone))
-                    continue; // skip units without phone
+                var email = tenant?.Email ?? unit.TenantUser?.Email;
 
-                // Get charge info
+                // For SMS channel, skip units without phone; for Email, skip without email
+                var hasContact = campaign.Channel switch
+                {
+                    ReminderChannel.Sms => !string.IsNullOrWhiteSpace(phone),
+                    ReminderChannel.Email => !string.IsNullOrWhiteSpace(email),
+                    ReminderChannel.Both => !string.IsNullOrWhiteSpace(phone) || !string.IsNullOrWhiteSpace(email),
+                    _ => !string.IsNullOrWhiteSpace(phone)
+                };
+                if (!hasContact) continue;
+
                 var charge = await _db.UnitCharges
                     .Include(uc => uc.Allocations)
                     .Where(uc => uc.UnitId == unitId && uc.Period == campaign.Period)
@@ -192,11 +196,12 @@ public class SmsNotificationsController : ControllerBase
                     TenantProfileId = tenant?.Id,
                     FullNameSnapshot = tenant?.FullName ?? unit.OwnerName ?? "—",
                     PhoneSnapshot = phone,
+                    EmailSnapshot = email,
                     AmountDueSnapshot = amountDue,
                     AmountPaidSnapshot = amountPaid,
                     OutstandingSnapshot = amountDue - amountPaid,
                     ChargeStatusSnapshot = charge == null ? "NotGenerated" : charge.Status.ToString(),
-                    IsSelected = false // Manual additions start unchecked
+                    IsSelected = false
                 });
             }
         }
@@ -220,7 +225,10 @@ public class SmsNotificationsController : ControllerBase
         if (recipient == null) return NotFound();
 
         var message = RenderTemplate(campaign.Template.Body, campaign, recipient);
-        return Ok(new { message });
+        var subject = campaign.Template.EmailSubject != null
+            ? RenderTemplate(campaign.Template.EmailSubject, campaign, recipient)
+            : null;
+        return Ok(new { message, subject });
     }
 
     // ─── Send Campaign ──────────────────────────────────
@@ -245,41 +253,93 @@ public class SmsNotificationsController : ControllerBase
 
         foreach (var recipient in selectedRecipients)
         {
-            // Normalize & validate phone
-            var e164 = PhoneNormalizer.NormalizeIsraeli(recipient.PhoneSnapshot);
-            if (string.IsNullOrEmpty(e164) || !PhoneNormalizer.IsValidIsraeliMobile(e164))
-            {
-                recipient.SendStatus = SmsSendStatus.Skipped;
-                recipient.ErrorMessage = "Invalid or missing phone number";
-                skippedCount++;
-                continue;
-            }
-
             var message = RenderTemplate(campaign.Template.Body, campaign, recipient);
+            var subject = campaign.Template.EmailSubject != null
+                ? RenderTemplate(campaign.Template.EmailSubject, campaign, recipient)
+                : "Payment Reminder";
 
-            try
+            bool smsSent = false, emailSent = false;
+            string? lastError = null;
+
+            // Send SMS if channel is Sms or Both
+            if (campaign.Channel is ReminderChannel.Sms or ReminderChannel.Both)
             {
-                await _rateLimiter.WaitForSlotAsync();
-                var result = await _smsSender.SendAsync(e164, message);
-
-                if (result.Success)
+                var e164 = PhoneNormalizer.NormalizeIsraeli(recipient.PhoneSnapshot);
+                if (!string.IsNullOrEmpty(e164) && PhoneNormalizer.IsValidIsraeliMobile(e164))
                 {
-                    recipient.SendStatus = SmsSendStatus.Sent;
-                    recipient.ProviderMessageId = result.MessageId;
-                    recipient.SentAtUtc = DateTime.UtcNow;
-                    sentCount++;
+                    try
+                    {
+                        await _rateLimiter.WaitForSlotAsync();
+                        var smsResult = await _smsSender.SendAsync(e164, message);
+                        if (smsResult.Success)
+                        {
+                            smsSent = true;
+                            recipient.ProviderMessageId = smsResult.MessageId;
+                        }
+                        else
+                        {
+                            lastError = smsResult.Error ?? "SMS send failed";
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        lastError = $"SMS: {ex.Message}";
+                    }
                 }
-                else
+                else if (campaign.Channel == ReminderChannel.Sms)
                 {
-                    recipient.SendStatus = SmsSendStatus.Failed;
-                    recipient.ErrorMessage = result.Error ?? "Send failed";
-                    failedCount++;
+                    recipient.SendStatus = SmsSendStatus.Skipped;
+                    recipient.ErrorMessage = "Invalid or missing phone number";
+                    skippedCount++;
+                    continue;
                 }
             }
-            catch (Exception ex)
+
+            // Send Email if channel is Email or Both
+            if (campaign.Channel is ReminderChannel.Email or ReminderChannel.Both)
+            {
+                var email = recipient.EmailSnapshot;
+                if (!string.IsNullOrWhiteSpace(email))
+                {
+                    try
+                    {
+                        var htmlBody = $"<div dir=\"rtl\" style=\"font-family:Arial,sans-serif;font-size:14px;line-height:1.6\">{message.Replace("\n", "<br/>")}</div>";
+                        var emailResult = await _emailSender.SendAsync(email, subject, htmlBody);
+                        if (emailResult.Success)
+                        {
+                            emailSent = true;
+                            recipient.ProviderMessageId ??= emailResult.MessageId;
+                        }
+                        else
+                        {
+                            lastError = emailResult.Error ?? "Email send failed";
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        lastError = $"Email: {ex.Message}";
+                    }
+                }
+                else if (campaign.Channel == ReminderChannel.Email)
+                {
+                    recipient.SendStatus = SmsSendStatus.Skipped;
+                    recipient.ErrorMessage = "Missing email address";
+                    skippedCount++;
+                    continue;
+                }
+            }
+
+            // Determine final status
+            if (smsSent || emailSent)
+            {
+                recipient.SendStatus = SmsSendStatus.Sent;
+                recipient.SentAtUtc = DateTime.UtcNow;
+                sentCount++;
+            }
+            else
             {
                 recipient.SendStatus = SmsSendStatus.Failed;
-                recipient.ErrorMessage = ex.Message;
+                recipient.ErrorMessage = lastError ?? "No contact info available";
                 failedCount++;
             }
         }
@@ -291,14 +351,13 @@ public class SmsNotificationsController : ControllerBase
         campaign.SkippedCount = skippedCount;
         campaign.SentAtUtc = DateTime.UtcNow;
 
-        // Audit
         _db.AuditLogs.Add(new AuditLog
         {
-            Action = "SendSmsCampaign",
+            Action = "SendReminderCampaign",
             EntityName = "SmsCampaign",
             EntityId = campaign.Id.ToString(),
             PerformedBy = userId,
-            Details = $"Sent SMS campaign #{campaign.Id}. Selected: {selectedRecipients.Count}, Sent: {sentCount}, Failed: {failedCount}, Skipped: {skippedCount}"
+            Details = $"Sent {campaign.Channel} reminder campaign #{campaign.Id}. Selected: {selectedRecipients.Count}, Sent: {sentCount}, Failed: {failedCount}, Skipped: {skippedCount}"
         });
 
         await _db.SaveChangesAsync();
@@ -324,15 +383,23 @@ public class SmsNotificationsController : ControllerBase
 
         foreach (var unit in units)
         {
-            // Get active tenant
             var tenant = await _db.TenantProfiles
                 .Where(tp => tp.UnitId == unit.Id && tp.IsActive && !tp.IsDeleted)
                 .FirstOrDefaultAsync();
 
             var phone = tenant?.Phone;
-            if (string.IsNullOrWhiteSpace(phone)) continue; // skip units without phone
+            var email = tenant?.Email;
 
-            // Get charge
+            // Check if we have the required contact info for the chosen channel
+            var hasContact = campaign.Channel switch
+            {
+                ReminderChannel.Sms => !string.IsNullOrWhiteSpace(phone),
+                ReminderChannel.Email => !string.IsNullOrWhiteSpace(email),
+                ReminderChannel.Both => !string.IsNullOrWhiteSpace(phone) || !string.IsNullOrWhiteSpace(email),
+                _ => !string.IsNullOrWhiteSpace(phone)
+            };
+            if (!hasContact) continue;
+
             var charge = await _db.UnitCharges
                 .Include(uc => uc.Allocations)
                 .Where(uc => uc.UnitId == unit.Id && uc.Period == campaign.Period)
@@ -342,7 +409,6 @@ public class SmsNotificationsController : ControllerBase
             var amountPaid = charge?.Allocations?.Sum(a => a.AllocatedAmount) ?? 0;
             var outstanding = amountDue - amountPaid;
 
-            // Determine status
             string status;
             if (charge == null)
                 status = "NotGenerated";
@@ -355,7 +421,6 @@ public class SmsNotificationsController : ControllerBase
             else
                 status = "Unpaid";
 
-            // Selection logic
             bool selected = status switch
             {
                 "Unpaid" => true,
@@ -371,6 +436,7 @@ public class SmsNotificationsController : ControllerBase
                 TenantProfileId = tenant?.Id,
                 FullNameSnapshot = tenant?.FullName ?? unit.OwnerName ?? "—",
                 PhoneSnapshot = phone,
+                EmailSnapshot = email,
                 AmountDueSnapshot = amountDue,
                 AmountPaidSnapshot = amountPaid,
                 OutstandingSnapshot = outstanding,
@@ -388,7 +454,7 @@ public class SmsNotificationsController : ControllerBase
 
     private static string RenderTemplate(string templateBody, SmsCampaign campaign, SmsCampaignRecipient recipient)
     {
-        var payLink = "https://app.homehero.co.il/my-charges"; // MVP placeholder
+        var payLink = "https://app.homehero.co.il/my-charges";
 
         return templateBody
             .Replace("{{FullName}}", recipient.FullNameSnapshot)
@@ -410,6 +476,7 @@ public class SmsNotificationsController : ControllerBase
         CreatedByUserId = c.CreatedByUserId,
         CreatedAtUtc = c.CreatedAtUtc,
         Status = c.Status,
+        Channel = c.Channel,
         Notes = c.Notes,
         TotalSelected = c.TotalSelected,
         SentCount = c.SentCount,
@@ -425,6 +492,7 @@ public class SmsNotificationsController : ControllerBase
         TenantProfileId = r.TenantProfileId,
         FullNameSnapshot = r.FullNameSnapshot,
         PhoneSnapshot = r.PhoneSnapshot,
+        EmailSnapshot = r.EmailSnapshot,
         AmountDueSnapshot = r.AmountDueSnapshot,
         AmountPaidSnapshot = r.AmountPaidSnapshot,
         OutstandingSnapshot = r.OutstandingSnapshot,

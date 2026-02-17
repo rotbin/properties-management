@@ -62,7 +62,7 @@
     "collectionStatus": "Collection Status",
     "tenants": "Tenants",
     "vendorInvoices": "Vendor Payments",
-    "smsReminders": "SMS Reminders"
+    "sendReminders": "Send Reminders"
   },
 
   "login": {
@@ -945,13 +945,19 @@
     "failedDeletePayment": "Failed to delete payment"
   },
 
-  "sms": {
-    "title": "SMS Payment Reminders",
+  "reminders": {
+    "title": "Send Payment Reminders",
     "setup": "Campaign Setup",
     "building": "Building",
     "period": "Period",
     "template": "Message Template",
     "includePartial": "Include partial payers",
+    "channelLabel": "Send via",
+    "channel": {
+      "Sms": "SMS",
+      "Email": "Email",
+      "Both": "SMS + Email"
+    },
     "campaignNotes": "Campaign notes",
     "generateList": "Generate Recipient List",
     "totalRecipients": "Total Recipients",
@@ -959,17 +965,19 @@
     "campaignStatus": "Campaign Status",
     "sendResults": "Send Results",
     "recipientsList": "Recipient List",
-    "sendSms": "Send SMS",
+    "sendReminders": "Send Reminders",
     "unitCol": "Unit",
     "tenantName": "Tenant Name",
     "phone": "Phone",
+    "email": "Email",
+    "emailSubject": "Subject",
     "chargeStatus": "Charge Status",
     "outstanding": "Outstanding",
     "sendStatusCol": "Send Status",
     "preview": "Preview",
     "previewTitle": "Preview — {{name}}",
-    "confirmSendTitle": "Confirm SMS Send",
-    "confirmSendBody": "Send SMS to {{count}} recipients?",
+    "confirmSendTitle": "Confirm Send",
+    "confirmSendBody": "Send reminders via {{channel}} to {{count}} recipients?",
     "confirmSend": "Send",
     "sendResultTitle": "Send Results",
     "sent": "Sent",
@@ -982,7 +990,7 @@
     "errorGenerating": "Error generating list",
     "errorUpdating": "Error updating recipients",
     "errorPreview": "Error loading preview",
-    "errorSending": "Error sending SMS",
+    "errorSending": "Error sending reminders",
     "status": {
       "Draft": "Draft",
       "Sent": "Sent",

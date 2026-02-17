@@ -404,6 +404,7 @@ public static class DataSeeder
                     Name = "תזכורת תשלום ועד בית",
                     Language = "he",
                     Body = "שלום {{FullName}}, תזכורת: דמי ועד בית עבור {{BuildingName}} לתקופה {{Period}} טרם שולמו. יתרה לתשלום: {{Outstanding}} ₪. לתשלום: {{PayLink}}",
+                    EmailSubject = "תזכורת תשלום ועד בית – {{BuildingName}} – {{Period}}",
                     IsActive = true
                 },
                 new Core.Entities.Notifications.SmsTemplate
@@ -411,11 +412,12 @@ public static class DataSeeder
                     Name = "HOA Payment Reminder",
                     Language = "en",
                     Body = "Hello {{FullName}}, reminder: HOA fees for {{BuildingName}} period {{Period}} have not been paid. Outstanding: {{Outstanding}} ILS. Pay now: {{PayLink}}",
+                    EmailSubject = "HOA Payment Reminder – {{BuildingName}} – {{Period}}",
                     IsActive = true
                 }
             );
             await context.SaveChangesAsync();
-            logger.LogInformation("Seeded SMS templates.");
+            logger.LogInformation("Seeded reminder templates.");
         }
 
         logger.LogInformation("Database seeded successfully with demo data.");

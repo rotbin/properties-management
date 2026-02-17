@@ -62,7 +62,7 @@
     "collectionStatus": "סטטוס גבייה",
     "tenants": "דיירים",
     "vendorInvoices": "תשלומי ספקים",
-    "smsReminders": "תזכורות SMS"
+    "sendReminders": "שליחת תזכורות"
   },
 
   "login": {
@@ -945,13 +945,19 @@
     "failedDeletePayment": "מחיקת תשלום נכשלה"
   },
 
-  "sms": {
-    "title": "תזכורות תשלום ב-SMS",
+  "reminders": {
+    "title": "שליחת תזכורות תשלום",
     "setup": "הגדרות קמפיין",
     "building": "מבנה",
     "period": "תקופה",
     "template": "תבנית הודעה",
     "includePartial": "כלול תשלומים חלקיים",
+    "channelLabel": "שליחה באמצעות",
+    "channel": {
+      "Sms": "SMS",
+      "Email": "אימייל",
+      "Both": "SMS + אימייל"
+    },
     "campaignNotes": "הערות לקמפיין",
     "generateList": "הפק רשימת נמענים",
     "totalRecipients": "סה\"כ נמענים",
@@ -959,17 +965,19 @@
     "campaignStatus": "סטטוס קמפיין",
     "sendResults": "תוצאות שליחה",
     "recipientsList": "רשימת נמענים",
-    "sendSms": "שלח SMS",
+    "sendReminders": "שלח תזכורות",
     "unitCol": "יחידה",
     "tenantName": "שם דייר",
     "phone": "טלפון",
+    "email": "אימייל",
+    "emailSubject": "נושא",
     "chargeStatus": "סטטוס חיוב",
     "outstanding": "יתרה",
     "sendStatusCol": "סטטוס שליחה",
     "preview": "תצוגה מקדימה",
     "previewTitle": "תצוגה מקדימה — {{name}}",
-    "confirmSendTitle": "אישור שליחת SMS",
-    "confirmSendBody": "האם לשלוח SMS ל-{{count}} נמענים?",
+    "confirmSendTitle": "אישור שליחה",
+    "confirmSendBody": "לשלוח תזכורות באמצעות {{channel}} ל-{{count}} נמענים?",
     "confirmSend": "שלח",
     "sendResultTitle": "תוצאות שליחה",
     "sent": "נשלחו",
@@ -982,7 +990,7 @@
     "errorGenerating": "שגיאה בהפקת רשימה",
     "errorUpdating": "שגיאה בעדכון נמענים",
     "errorPreview": "שגיאה בטעינת תצוגה מקדימה",
-    "errorSending": "שגיאה בשליחת SMS",
+    "errorSending": "שגיאה בשליחת תזכורות",
     "status": {
       "Draft": "טיוטה",
       "Sent": "נשלח",

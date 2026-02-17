@@ -28,6 +28,9 @@ public class SmsCampaignRecipient
     [MaxLength(30)]
     public string? PhoneSnapshot { get; set; }
 
+    [MaxLength(200)]
+    public string? EmailSnapshot { get; set; }
+
     [Column(TypeName = "decimal(18,2)")]
     public decimal AmountDueSnapshot { get; set; }
 

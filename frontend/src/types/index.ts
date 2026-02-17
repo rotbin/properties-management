@@ -487,13 +487,18 @@ export const VENDOR_INVOICE_CATEGORIES = [
   'Cleaning', 'Gardening', 'PestControl', 'Repairs', 'Elevator', 'Electricity', 'Other'
 ] as const;
 
-// ─── SMS Notifications ──────────────────────────────────
+// ─── Reminder Notifications ─────────────────────────────
+
+export type ReminderChannel = 'Sms' | 'Email' | 'Both';
+
+export const REMINDER_CHANNELS: ReminderChannel[] = ['Sms', 'Email', 'Both'];
 
 export interface SmsTemplateDto {
   id: number;
   name: string;
   language: string;
   body: string;
+  emailSubject?: string;
   isActive: boolean;
 }
 
@@ -507,6 +512,7 @@ export interface SmsCampaignDto {
   createdByUserId: string;
   createdAtUtc: string;
   status: string;
+  channel: ReminderChannel;
   notes?: string;
   totalSelected: number;
   sentCount: number;
@@ -521,6 +527,7 @@ export interface SmsCampaignRecipientDto {
   tenantProfileId?: number;
   fullNameSnapshot: string;
   phoneSnapshot?: string;
+  emailSnapshot?: string;
   amountDueSnapshot: number;
   amountPaidSnapshot: number;
   outstandingSnapshot: number;

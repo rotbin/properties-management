@@ -1,9 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 using BuildingManagement.Core.Entities.Notifications;
+using BuildingManagement.Core.Enums;
 
 namespace BuildingManagement.Core.DTOs;
 
-// ─── SMS Templates ──────────────────────────────────────
+// ─── Reminder Templates ─────────────────────────────────
 
 public record SmsTemplateDto
 {
@@ -11,10 +12,11 @@ public record SmsTemplateDto
     public string Name { get; init; } = string.Empty;
     public string Language { get; init; } = "he";
     public string Body { get; init; } = string.Empty;
+    public string? EmailSubject { get; init; }
     public bool IsActive { get; init; }
 }
 
-// ─── SMS Campaign ───────────────────────────────────────
+// ─── Reminder Campaign ──────────────────────────────────
 
 public record CreateSmsCampaignRequest
 {
@@ -28,6 +30,8 @@ public record CreateSmsCampaignRequest
     public int TemplateId { get; init; }
 
     public bool IncludePartial { get; init; } = true;
+
+    public ReminderChannel Channel { get; init; } = ReminderChannel.Sms;
 
     [MaxLength(1000)]
     public string? Notes { get; init; }
@@ -44,6 +48,7 @@ public record SmsCampaignDto
     public string CreatedByUserId { get; init; } = string.Empty;
     public DateTime CreatedAtUtc { get; init; }
     public SmsCampaignStatus Status { get; init; }
+    public ReminderChannel Channel { get; init; }
     public string? Notes { get; init; }
     public int TotalSelected { get; init; }
     public int SentCount { get; init; }
@@ -59,6 +64,7 @@ public record SmsCampaignRecipientDto
     public int? TenantProfileId { get; init; }
     public string FullNameSnapshot { get; init; } = string.Empty;
     public string? PhoneSnapshot { get; init; }
+    public string? EmailSnapshot { get; init; }
     public decimal AmountDueSnapshot { get; init; }
     public decimal AmountPaidSnapshot { get; init; }
     public decimal OutstandingSnapshot { get; init; }
