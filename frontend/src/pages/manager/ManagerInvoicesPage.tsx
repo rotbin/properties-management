@@ -5,7 +5,7 @@ import {
   CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, MenuItem, Stack, useMediaQuery, useTheme, IconButton, Tooltip
 } from '@mui/material';
-import { Receipt, Download, Add } from '@mui/icons-material';
+import { Receipt, Download, Add, Settings, Save } from '@mui/icons-material';
 import { accountingApi, buildingsApi } from '../../api/services';
 import type { ManagerInvoiceDto, BuildingDto } from '../../types';
 import { formatDateLocal } from '../../utils/dateUtils';
@@ -29,21 +29,38 @@ const ManagerInvoicesPage: React.FC = () => {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   });
   const [issuing, setIssuing] = useState(false);
+  const [issuerProfileId, setIssuerProfileId] = useState('');
+  const [issuerSaving, setIssuerSaving] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [inv, bld] = await Promise.all([
+      const [inv, bld, profile] = await Promise.all([
         accountingApi.getInvoices(filterPeriod || undefined),
-        buildingsApi.getAll()
+        buildingsApi.getAll(),
+        accountingApi.getMyIssuerProfile()
       ]);
       setInvoices(inv.data);
       setBuildings(bld.data);
+      setIssuerProfileId(profile.data.issuerProfileId || '');
     } catch { setMsg(t('mgrInvoices.errorLoading')); setMsgSeverity('error'); }
     finally { setLoading(false); }
   };
 
   useEffect(() => { loadData(); }, [filterPeriod]);
+
+  const handleSaveIssuerProfile = async () => {
+    setIssuerSaving(true);
+    try {
+      await accountingApi.setMyIssuerProfile(issuerProfileId);
+      setMsg(t('mgrInvoices.profileSaved'));
+      setMsgSeverity('success');
+    } catch {
+      setMsg(t('mgrInvoices.profileSaveError'));
+      setMsgSeverity('error');
+    } finally { setIssuerSaving(false); }
+  };
 
   const handleIssue = async () => {
     if (!issueBuildingId || !issuePeriod) return;
@@ -87,6 +104,42 @@ const ManagerInvoicesPage: React.FC = () => {
       </Box>
 
       {msg && <Alert severity={msgSeverity} onClose={() => setMsg('')} sx={{ mb: 2 }}>{msg}</Alert>}
+
+      {/* Issuer Profile Settings */}
+      <Card variant="outlined" sx={{ mb: 2 }}>
+        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => setShowSettings(!showSettings)}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Settings fontSize="small" color="action" />
+              <Typography variant="subtitle2">{t('mgrInvoices.issuerSettings')}</Typography>
+              {!issuerProfileId && <Chip label={t('mgrInvoices.notConfigured')} size="small" color="warning" />}
+              {issuerProfileId && <Chip label={t('mgrInvoices.configured')} size="small" color="success" />}
+            </Box>
+          </Box>
+          {showSettings && (
+            <Box sx={{ mt: 2, display: 'flex', gap: 1, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <TextField
+                size="small"
+                label={t('mgrInvoices.issuerProfileId')}
+                value={issuerProfileId}
+                onChange={e => setIssuerProfileId(e.target.value)}
+                sx={{ minWidth: 280, flex: 1 }}
+                helperText={t('mgrInvoices.issuerProfileIdHelp')}
+              />
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={issuerSaving ? <CircularProgress size={16} /> : <Save />}
+                onClick={handleSaveIssuerProfile}
+                disabled={issuerSaving}
+                sx={{ mb: 2.5 }}
+              >
+                {t('app.save')}
+              </Button>
+            </Box>
+          )}
+        </CardContent>
+      </Card>
 
       {isMobile ? (
         <Stack spacing={1.5}>
@@ -176,7 +229,7 @@ const ManagerInvoicesPage: React.FC = () => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setIssueDialog(false)}>{t('common.cancel')}</Button>
+          <Button onClick={() => setIssueDialog(false)}>{t('app.cancel')}</Button>
           <Button variant="contained" onClick={handleIssue} disabled={issuing || !issueBuildingId || !issuePeriod}>
             {issuing ? <CircularProgress size={20} /> : t('mgrInvoices.issueInvoice')}
           </Button>

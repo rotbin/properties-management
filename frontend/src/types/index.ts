@@ -31,6 +31,8 @@ export interface BuildingDto {
   postalCode?: string;
   notes?: string;
   unitCount: number;
+  issuerProfileId?: string;
+  committeeLegalName?: string;
 }
 
 export interface UnitDto {

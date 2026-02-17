@@ -174,7 +174,12 @@
     "failedUpdate": "עדכון מבנה נכשל",
     "failedCreate": "יצירת מבנה נכשלה",
     "failedDelete": "מחיקת מבנה נכשלה",
-    "failedCreateUnit": "יצירת יחידה נכשלה"
+    "failedCreateUnit": "יצירת יחידה נכשלה",
+    "accountingSettings": "הגדרות חשבונאות / חשבוניות",
+    "committeeLegalName": "שם משפטי של ועד הבית",
+    "committeeLegalNameHelp": "השם המשפטי של ועד הבית (עבור מסמכי חשבונאות)",
+    "issuerProfileId": "מזהה פרופיל מנפיק",
+    "issuerProfileIdHelp": "מזהה מספק החשבוניות (כגון Green Invoice) להפקת קבלות לדיירים"
   },
 
   "vendors": {
@@ -547,7 +552,14 @@
     "invoiceIssued": "החשבונית הופקה בהצלחה!",
     "errorIssuing": "שגיאה בהפקת חשבונית",
     "errorLoading": "שגיאה בטעינת חשבוניות",
-    "issued": "הופקה"
+    "issued": "הופקה",
+    "issuerSettings": "הגדרות פרופיל מנפיק",
+    "issuerProfileId": "מזהה פרופיל מנפיק",
+    "issuerProfileIdHelp": "מזהה העסק שלך מספק החשבוניות (כגון Green Invoice). נדרש להפקת חשבוניות.",
+    "notConfigured": "לא מוגדר",
+    "configured": "מוגדר",
+    "profileSaved": "פרופיל מנפיק נשמר!",
+    "profileSaveError": "שגיאה בשמירת פרופיל מנפיק"
   },
 
   "myRequests": {

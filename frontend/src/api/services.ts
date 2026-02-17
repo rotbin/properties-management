@@ -266,4 +266,8 @@ export const accountingApi = {
     apiClient.post<ManagerInvoiceDto>('/api/accounting/invoices', data),
   getInvoicePdf: (id: number) =>
     apiClient.get<{ pdfUrl: string; docNumber: string }>(`/api/accounting/invoices/${id}/pdf`),
+  getMyIssuerProfile: () =>
+    apiClient.get<{ issuerProfileId: string }>('/api/accounting/my-issuer-profile'),
+  setMyIssuerProfile: (issuerProfileId: string) =>
+    apiClient.put<{ issuerProfileId: string }>('/api/accounting/my-issuer-profile', { issuerProfileId }),
 };

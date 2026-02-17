@@ -86,6 +86,37 @@ public class AccountingDocsController : ControllerBase
     }
 
     // ═══════════════════════════════════════════════════════
+    // MANAGER: Issuer Profile Settings
+    // ═══════════════════════════════════════════════════════
+
+    /// <summary>Get the manager's issuer profile ID.</summary>
+    [HttpGet("my-issuer-profile")]
+    [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Manager}")]
+    public async Task<IActionResult> GetMyIssuerProfile()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+        var user = await _db.Users.FindAsync(userId);
+        if (user == null) return Unauthorized();
+        return Ok(new { issuerProfileId = user.IssuerProfileId ?? "" });
+    }
+
+    /// <summary>Set the manager's issuer profile ID (from external invoicing provider).</summary>
+    [HttpPut("my-issuer-profile")]
+    [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Manager}")]
+    public async Task<IActionResult> SetMyIssuerProfile([FromBody] SetIssuerProfileRequest request)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+        var user = await _db.Users.FindAsync(userId);
+        if (user == null) return Unauthorized();
+
+        user.IssuerProfileId = request.IssuerProfileId?.Trim();
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Manager {UserId} updated issuer profile ID", userId);
+        return Ok(new { issuerProfileId = user.IssuerProfileId ?? "" });
+    }
+
+    // ═══════════════════════════════════════════════════════
     // MANAGER: Invoices
     // ═══════════════════════════════════════════════════════
 

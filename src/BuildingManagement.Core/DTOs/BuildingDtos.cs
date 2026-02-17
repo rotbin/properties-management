@@ -11,6 +11,8 @@ public record BuildingDto
     public string? PostalCode { get; init; }
     public string? Notes { get; init; }
     public int UnitCount { get; init; }
+    public string? IssuerProfileId { get; init; }
+    public string? CommitteeLegalName { get; init; }
 }
 
 public record CreateBuildingRequest
@@ -29,6 +31,12 @@ public record CreateBuildingRequest
 
     [MaxLength(1000)]
     public string? Notes { get; init; }
+
+    [MaxLength(200)]
+    public string? IssuerProfileId { get; init; }
+
+    [MaxLength(300)]
+    public string? CommitteeLegalName { get; init; }
 }
 
 public record UpdateBuildingRequest : CreateBuildingRequest;

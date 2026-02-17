@@ -28,3 +28,9 @@ public record IssueManagerInvoiceRequest
     [Required, MaxLength(7)]
     public string Period { get; init; } = string.Empty;
 }
+
+public record SetIssuerProfileRequest
+{
+    [MaxLength(200)]
+    public string? IssuerProfileId { get; init; }
+}

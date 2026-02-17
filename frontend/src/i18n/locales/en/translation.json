@@ -174,7 +174,12 @@
     "failedUpdate": "Failed to update building",
     "failedCreate": "Failed to create building",
     "failedDelete": "Failed to delete building",
-    "failedCreateUnit": "Failed to create unit"
+    "failedCreateUnit": "Failed to create unit",
+    "accountingSettings": "Accounting / Invoicing Settings",
+    "committeeLegalName": "Committee Legal Name",
+    "committeeLegalNameHelp": "Legal name of the building committee (for invoicing documents)",
+    "issuerProfileId": "Issuer Profile ID",
+    "issuerProfileIdHelp": "ID from your invoicing provider (e.g. Green Invoice) to issue tenant receipts"
   },
 
   "vendors": {
@@ -547,7 +552,14 @@
     "invoiceIssued": "Invoice issued successfully!",
     "errorIssuing": "Error issuing invoice",
     "errorLoading": "Error loading invoices",
-    "issued": "Issued"
+    "issued": "Issued",
+    "issuerSettings": "My Issuer Profile Settings",
+    "issuerProfileId": "Issuer Profile ID",
+    "issuerProfileIdHelp": "Your business ID from the invoicing provider (e.g. Green Invoice). Required to issue invoices.",
+    "notConfigured": "Not configured",
+    "configured": "Configured",
+    "profileSaved": "Issuer profile saved!",
+    "profileSaveError": "Failed to save issuer profile"
   },
 
   "myRequests": {

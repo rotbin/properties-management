@@ -25,7 +25,7 @@ const BuildingsPage: React.FC = () => {
   const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(null);
   const [units, setUnits] = useState<UnitDto[]>([]);
   const [unitsLoading, setUnitsLoading] = useState(false);
-  const [formData, setFormData] = useState({ name: '', addressLine: '', city: '', postalCode: '', notes: '' });
+  const [formData, setFormData] = useState({ name: '', addressLine: '', city: '', postalCode: '', notes: '', issuerProfileId: '', committeeLegalName: '' });
   const [unitFormData, setUnitFormData] = useState({ unitNumber: '', floor: '', sizeSqm: '', ownerName: '' });
 
   const loadBuildings = () => {
@@ -48,12 +48,12 @@ const BuildingsPage: React.FC = () => {
     else { setSelectedBuildingId(buildingId); loadUnits(buildingId); }
   };
 
-  const handleOpenCreateBuilding = () => { setEditingBuilding(null); setFormData({ name: '', addressLine: '', city: '', postalCode: '', notes: '' }); setBuildingDialogOpen(true); };
-  const handleOpenEditBuilding = (b: BuildingDto) => { setEditingBuilding(b); setFormData({ name: b.name, addressLine: b.addressLine || '', city: b.city || '', postalCode: b.postalCode || '', notes: b.notes || '' }); setBuildingDialogOpen(true); };
+  const handleOpenCreateBuilding = () => { setEditingBuilding(null); setFormData({ name: '', addressLine: '', city: '', postalCode: '', notes: '', issuerProfileId: '', committeeLegalName: '' }); setBuildingDialogOpen(true); };
+  const handleOpenEditBuilding = (b: BuildingDto) => { setEditingBuilding(b); setFormData({ name: b.name, addressLine: b.addressLine || '', city: b.city || '', postalCode: b.postalCode || '', notes: b.notes || '', issuerProfileId: b.issuerProfileId || '', committeeLegalName: b.committeeLegalName || '' }); setBuildingDialogOpen(true); };
 
   const handleSaveBuilding = () => {
     if (!formData.name.trim()) return;
-    const payload = { name: formData.name.trim(), addressLine: formData.addressLine.trim() || undefined, city: formData.city.trim() || undefined, postalCode: formData.postalCode.trim() || undefined, notes: formData.notes.trim() || undefined };
+    const payload = { name: formData.name.trim(), addressLine: formData.addressLine.trim() || undefined, city: formData.city.trim() || undefined, postalCode: formData.postalCode.trim() || undefined, notes: formData.notes.trim() || undefined, issuerProfileId: formData.issuerProfileId.trim() || undefined, committeeLegalName: formData.committeeLegalName.trim() || undefined };
     if (editingBuilding) {
       buildingsApi.update(editingBuilding.id, payload).then(() => { setBuildingDialogOpen(false); loadBuildings(); }).catch(err => setError(err.response?.data?.message || t('buildings.failedUpdate')));
     } else {
@@ -193,6 +193,9 @@ const BuildingsPage: React.FC = () => {
             <TextField label={t('buildings.city')} value={formData.city} onChange={e => setFormData(p => ({ ...p, city: e.target.value }))} fullWidth />
             <TextField label={t('buildings.postalCode')} value={formData.postalCode} onChange={e => setFormData(p => ({ ...p, postalCode: e.target.value }))} fullWidth />
             <TextField label={t('buildings.notes')} value={formData.notes} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))} multiline rows={3} fullWidth />
+            <Typography variant="subtitle2" sx={{ mt: 1 }}>{t('buildings.accountingSettings')}</Typography>
+            <TextField label={t('buildings.committeeLegalName')} value={formData.committeeLegalName} onChange={e => setFormData(p => ({ ...p, committeeLegalName: e.target.value }))} fullWidth helperText={t('buildings.committeeLegalNameHelp')} />
+            <TextField label={t('buildings.issuerProfileId')} value={formData.issuerProfileId} onChange={e => setFormData(p => ({ ...p, issuerProfileId: e.target.value }))} fullWidth helperText={t('buildings.issuerProfileIdHelp')} />
           </Box>
         </DialogContent>
         <DialogActions>

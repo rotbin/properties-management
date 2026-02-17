@@ -60,7 +60,9 @@ public class BuildingsController : ControllerBase
             City = b.City,
             PostalCode = b.PostalCode,
             Notes = b.Notes,
-            UnitCount = b.Units.Count(u => !u.IsDeleted)
+            UnitCount = b.Units.Count(u => !u.IsDeleted),
+            IssuerProfileId = b.IssuerProfileId,
+            CommitteeLegalName = b.CommitteeLegalName
         }).ToListAsync();
 
         return Ok(buildings);
@@ -81,7 +83,9 @@ public class BuildingsController : ControllerBase
             City = building.City,
             PostalCode = building.PostalCode,
             Notes = building.Notes,
-            UnitCount = building.Units.Count(u => !u.IsDeleted)
+            UnitCount = building.Units.Count(u => !u.IsDeleted),
+            IssuerProfileId = building.IssuerProfileId,
+            CommitteeLegalName = building.CommitteeLegalName
         });
     }
 
@@ -96,6 +100,8 @@ public class BuildingsController : ControllerBase
             City = request.City,
             PostalCode = request.PostalCode,
             Notes = request.Notes,
+            IssuerProfileId = request.IssuerProfileId,
+            CommitteeLegalName = request.CommitteeLegalName,
             CreatedBy = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
         };
 
@@ -109,7 +115,9 @@ public class BuildingsController : ControllerBase
             AddressLine = building.AddressLine,
             City = building.City,
             PostalCode = building.PostalCode,
-            Notes = building.Notes
+            Notes = building.Notes,
+            IssuerProfileId = building.IssuerProfileId,
+            CommitteeLegalName = building.CommitteeLegalName
         });
     }
 
@@ -125,6 +133,8 @@ public class BuildingsController : ControllerBase
         building.City = request.City;
         building.PostalCode = request.PostalCode;
         building.Notes = request.Notes;
+        building.IssuerProfileId = request.IssuerProfileId;
+        building.CommitteeLegalName = request.CommitteeLegalName;
         building.UpdatedBy = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         await _db.SaveChangesAsync();
