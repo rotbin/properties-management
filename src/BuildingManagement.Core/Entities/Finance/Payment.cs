@@ -44,5 +44,17 @@ public class Payment
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
+    // ─── Receipt (קבלה) fields ─────────────────────────────
+    [MaxLength(200)]
+    public string? ReceiptDocId { get; set; }
+
+    [MaxLength(100)]
+    public string? ReceiptDocNumber { get; set; }
+
+    [MaxLength(2000)]
+    public string? ReceiptPdfUrl { get; set; }
+
+    public DateTime? ReceiptIssuedAtUtc { get; set; }
+
     public ICollection<PaymentAllocation> Allocations { get; set; } = new List<PaymentAllocation>();
 }

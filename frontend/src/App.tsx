@@ -30,6 +30,7 @@ import CollectionStatusPage from './pages/manager/CollectionStatusPage';
 import TenantsPage from './pages/manager/TenantsPage';
 import VendorInvoicesPage from './pages/manager/VendorInvoicesPage';
 import SendRemindersPage from './pages/manager/SmsRemindersPage';
+import ManagerInvoicesPage from './pages/manager/ManagerInvoicesPage';
 import PaymentSuccessPage from './pages/payment/PaymentSuccessPage';
 import PaymentCancelPage from './pages/payment/PaymentCancelPage';
 
@@ -82,6 +83,7 @@ const AppRoutes: React.FC = () => {
         <Route path="tenants" element={<ProtectedRoute roles={['Admin', 'Manager']}><TenantsPage /></ProtectedRoute>} />
         <Route path="vendor-invoices" element={<ProtectedRoute roles={['Admin', 'Manager']}><VendorInvoicesPage /></ProtectedRoute>} />
         <Route path="send-reminders" element={<ProtectedRoute roles={['Admin', 'Manager']}><SendRemindersPage /></ProtectedRoute>} />
+        <Route path="manager-invoices" element={<ProtectedRoute roles={['Admin', 'Manager']}><ManagerInvoicesPage /></ProtectedRoute>} />
         <Route path="payment/success" element={<ProtectedRoute><PaymentSuccessPage /></ProtectedRoute>} />
         <Route path="payment/cancel" element={<ProtectedRoute><PaymentCancelPage /></ProtectedRoute>} />
         <Route path="new-request" element={<ProtectedRoute roles={['Tenant', 'Admin', 'Manager']}><NewRequestPage /></ProtectedRoute>} />

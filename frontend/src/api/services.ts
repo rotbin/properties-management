@@ -9,7 +9,8 @@ import type {
   TenantProfileDto, CreateTenantRequest, UpdateTenantRequest, EndTenancyRequest,
   VendorInvoiceDto, VendorPaymentDto,
   SmsTemplateDto, SmsCampaignDto, CreateCampaignResult, SendCampaignResult, SmsCampaignRecipientDto, ReminderChannel,
-  StandingOrderDto, CreateStandingOrderRequest, CreateStandingOrderResponse
+  StandingOrderDto, CreateStandingOrderRequest, CreateStandingOrderResponse,
+  TenantPaymentDto, ManagerInvoiceDto
 } from '../types';
 
 // Auth
@@ -252,4 +253,17 @@ export const smsApi = {
     apiClient.get<{ message: string; subject?: string }>(`/api/notifications/sms/campaigns/${campaignId}/recipients/${recipientId}/preview`),
   sendCampaign: (campaignId: number) =>
     apiClient.post<SendCampaignResult>(`/api/notifications/sms/campaigns/${campaignId}/send`, { confirm: true }),
+};
+
+// Accounting Documents
+export const accountingApi = {
+  getMyPayments: () => apiClient.get<TenantPaymentDto[]>('/api/accounting/my-payments'),
+  getReceipt: (paymentId: number) =>
+    apiClient.get<{ pdfUrl: string; docNumber: string }>(`/api/accounting/my-payments/${paymentId}/receipt`),
+  getInvoices: (period?: string) =>
+    apiClient.get<ManagerInvoiceDto[]>('/api/accounting/invoices', { params: period ? { period } : undefined }),
+  issueInvoice: (data: { buildingId: number; period: string }) =>
+    apiClient.post<ManagerInvoiceDto>('/api/accounting/invoices', data),
+  getInvoicePdf: (id: number) =>
+    apiClient.get<{ pdfUrl: string; docNumber: string }>(`/api/accounting/invoices/${id}/pdf`),
 };

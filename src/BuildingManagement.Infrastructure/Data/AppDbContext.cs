@@ -38,6 +38,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<VendorInvoice> VendorInvoices => Set<VendorInvoice>();
     public DbSet<VendorPayment> VendorPayments => Set<VendorPayment>();
     public DbSet<StandingOrder> StandingOrders => Set<StandingOrder>();
+    public DbSet<ManagerInvoice> ManagerInvoices => Set<ManagerInvoice>();
 
     // Notifications
     public DbSet<SmsTemplate> SmsTemplates => Set<SmsTemplate>();
@@ -385,6 +386,34 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<StandingOrder>()
             .HasIndex(so => new { so.UserId, so.UnitId, so.Status });
+
+        // ─── ManagerInvoice ─────────────────────────────────
+
+        builder.Entity<ManagerInvoice>()
+            .HasOne(mi => mi.ManagerUser)
+            .WithMany()
+            .HasForeignKey(mi => mi.ManagerUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<ManagerInvoice>()
+            .HasOne(mi => mi.Building)
+            .WithMany()
+            .HasForeignKey(mi => mi.BuildingId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<ManagerInvoice>()
+            .Property(mi => mi.Amount).HasColumnType("decimal(18,2)");
+
+        // Unique: one invoice per manager per building per period
+        builder.Entity<ManagerInvoice>()
+            .HasIndex(mi => new { mi.ManagerUserId, mi.BuildingId, mi.Period })
+            .IsUnique();
+
+        // Payment: unique receipt (at most one receipt per payment)
+        builder.Entity<Payment>()
+            .HasIndex(p => p.ReceiptDocId)
+            .IsUnique()
+            .HasFilter("[ReceiptDocId] IS NOT NULL");
     }
 
     public override int SaveChanges()

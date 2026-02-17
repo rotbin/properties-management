@@ -592,3 +592,33 @@ export interface CreateStandingOrderResponse {
 }
 
 export const STANDING_ORDER_STATUSES = ['Active', 'Paused', 'Cancelled', 'Expired', 'PaymentFailed'] as const;
+
+// ─── Accounting Documents ─────────────────────────────
+
+export interface TenantPaymentDto {
+  id: number;
+  amount: number;
+  paymentDateUtc: string;
+  status: string;
+  buildingName?: string;
+  unitNumber?: string;
+  period?: string;
+  receiptDocNumber?: string;
+  receiptPdfUrl?: string;
+  receiptIssuedAtUtc?: string;
+  hasReceipt: boolean;
+}
+
+export interface ManagerInvoiceDto {
+  id: number;
+  managerUserId: string;
+  buildingId: number;
+  buildingName?: string;
+  period: string;
+  amount: number;
+  invoiceDocId?: string;
+  invoiceDocNumber?: string;
+  invoicePdfUrl?: string;
+  issuedAtUtc?: string;
+  createdAtUtc: string;
+}

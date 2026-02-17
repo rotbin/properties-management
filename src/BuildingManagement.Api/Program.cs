@@ -1,6 +1,7 @@
 using System.Text;
 using BuildingManagement.Core.Entities;
 using BuildingManagement.Core.Interfaces;
+using BuildingManagement.Infrastructure.Services.Accounting;
 using BuildingManagement.Infrastructure.Data;
 using BuildingManagement.Infrastructure.Services.Sms;
 using BuildingManagement.Infrastructure.Jobs;
@@ -126,6 +127,18 @@ builder.Services.AddSingleton(new BuildingManagement.Infrastructure.Services.Sms
 
 // Email sender
 builder.Services.AddSingleton<IEmailSender, BuildingManagement.Infrastructure.Services.Email.FakeEmailSender>();
+
+// Accounting Document Provider (Israeli invoicing)
+var accountingProvider = builder.Configuration["Accounting:Provider"] ?? "Fake";
+if (accountingProvider.Equals("GreenInvoice", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddHttpClient<BuildingManagement.Infrastructure.Services.Accounting.GreenInvoiceProvider>();
+    builder.Services.AddSingleton<IAccountingDocProvider, BuildingManagement.Infrastructure.Services.Accounting.GreenInvoiceProvider>();
+}
+else
+{
+    builder.Services.AddSingleton<IAccountingDocProvider, BuildingManagement.Infrastructure.Services.Accounting.FakeAccountingDocProvider>();
+}
 
 // Background Jobs
 builder.Services.AddSingleton<MaintenanceJobService>();

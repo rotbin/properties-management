@@ -20,13 +20,15 @@ public class PaymentsController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IPaymentGatewayFactory _gatewayFactory;
     private readonly IEmailService _emailService;
+    private readonly IAccountingDocProvider _docProvider;
     private readonly ILogger<PaymentsController> _logger;
 
-    public PaymentsController(AppDbContext db, IPaymentGatewayFactory gatewayFactory, IEmailService emailService, ILogger<PaymentsController> logger)
+    public PaymentsController(AppDbContext db, IPaymentGatewayFactory gatewayFactory, IEmailService emailService, IAccountingDocProvider docProvider, ILogger<PaymentsController> logger)
     {
         _db = db;
         _gatewayFactory = gatewayFactory;
         _emailService = emailService;
+        _docProvider = docProvider;
         _logger = logger;
     }
 
@@ -97,6 +99,9 @@ public class PaymentsController : ControllerBase
                 await AllocatePaymentAsync(payment, charge, remaining);
                 _logger.LogInformation("FAKE: Auto-confirmed payment {PaymentId} for charge {ChargeId}, amount {Amount} ILS",
                     payment.Id, unitChargeId, remaining);
+
+                // Issue receipt in background (best-effort, non-blocking)
+                _ = Task.Run(async () => { try { await IssueReceiptSafe(payment.Id); } catch { /* logged inside */ } });
             }
 
             await _db.SaveChangesAsync();
@@ -428,6 +433,10 @@ public class PaymentsController : ControllerBase
                         await AllocatePaymentAsync(payment, charge, payment.Amount);
                 }
                 await _db.SaveChangesAsync();
+
+                // Issue receipt for successful payment (idempotent, best-effort)
+                if (parsed.Status == PaymentStatus.Succeeded)
+                    _ = Task.Run(async () => { try { await IssueReceiptSafe(payment.Id); } catch { /* logged inside */ } });
             }
         }
 
@@ -744,4 +753,55 @@ public class PaymentsController : ControllerBase
         Amount = p.Amount, PaymentDateUtc = p.PaymentDateUtc, PaymentMethodId = p.PaymentMethodId,
         Last4 = last4, ProviderReference = p.ProviderReference, Status = p.Status, CreatedAtUtc = p.CreatedAtUtc
     };
+
+    /// <summary>Issue receipt for a payment (idempotent, logs errors).</summary>
+    private async Task IssueReceiptSafe(int paymentId)
+    {
+        try
+        {
+            var payment = await _db.Payments
+                .Include(p => p.Unit).ThenInclude(u => u.Building)
+                .Include(p => p.User)
+                .Include(p => p.Allocations).ThenInclude(a => a.UnitCharge)
+                .FirstOrDefaultAsync(p => p.Id == paymentId);
+
+            if (payment == null || payment.Status != PaymentStatus.Succeeded || payment.ReceiptDocId != null)
+                return;
+
+            var building = payment.Unit?.Building;
+            if (building == null || string.IsNullOrEmpty(building.IssuerProfileId))
+            {
+                _logger.LogInformation("Skipping receipt for payment {PaymentId}: no issuer profile on building", paymentId);
+                return;
+            }
+
+            var period = payment.Allocations.FirstOrDefault()?.UnitCharge?.Period ?? "N/A";
+            var result = await _docProvider.CreateReceiptAsync(new CreateDocRequest
+            {
+                IssuerProfileId = building.IssuerProfileId,
+                Customer = new DocCustomer { Name = payment.User?.FullName ?? "Tenant", Email = payment.User?.Email },
+                Amount = payment.Amount,
+                Currency = "ILS",
+                Date = payment.PaymentDateUtc,
+                Description = $"HOA payment – {building.Name} – {period}",
+                ExternalRef = $"payment:{payment.Id}"
+            });
+
+            if (!result.Success) { _logger.LogWarning("Receipt failed for payment {PaymentId}: {Error}", paymentId, result.Error); return; }
+
+            await _db.Payments
+                .Where(p => p.Id == paymentId && p.ReceiptDocId == null)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(p => p.ReceiptDocId, result.DocId)
+                    .SetProperty(p => p.ReceiptDocNumber, result.DocNumber)
+                    .SetProperty(p => p.ReceiptPdfUrl, result.PdfUrl)
+                    .SetProperty(p => p.ReceiptIssuedAtUtc, DateTime.UtcNow));
+
+            _logger.LogInformation("Receipt issued for payment {PaymentId}: {DocNumber}", paymentId, result.DocNumber);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "IssueReceiptSafe failed for payment {PaymentId}", paymentId);
+        }
+    }
 }

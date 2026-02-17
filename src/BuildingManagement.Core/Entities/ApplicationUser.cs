@@ -15,6 +15,10 @@ public class ApplicationUser : IdentityUser
     [MaxLength(5)]
     public string PreferredLanguage { get; set; } = "he";
 
+    /// <summary>External accounting provider issuer profile ID (for managers issuing invoices).</summary>
+    [MaxLength(200)]
+    public string? IssuerProfileId { get; set; }
+
     // For vendor users
     public int? VendorId { get; set; }
     public Vendor? Vendor { get; set; }

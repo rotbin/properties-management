@@ -62,7 +62,8 @@
     "collectionStatus": "Collection Status",
     "tenants": "Tenants",
     "vendorInvoices": "Vendor Payments",
-    "sendReminders": "Send Reminders"
+    "sendReminders": "Send Reminders",
+    "managerInvoices": "Accounting Documents"
   },
 
   "login": {
@@ -524,7 +525,29 @@
     "soStatusPaymentFailed": "Payment Failed",
     "freqMonthly": "month",
     "freqQuarterly": "quarter",
-    "freqYearly": "year"
+    "freqYearly": "year",
+    "tabReceipts": "Receipts",
+    "building": "Building",
+    "receiptNumber": "Receipt #",
+    "downloadReceipt": "Download Receipt",
+    "receiptPending": "Generating…",
+    "noReceipts": "No receipts yet"
+  },
+
+  "mgrInvoices": {
+    "title": "Accounting Documents",
+    "period": "Period",
+    "building": "Building",
+    "amount": "Amount",
+    "docNumber": "Doc #",
+    "issuedAt": "Issued Date",
+    "download": "Download",
+    "issueInvoice": "Issue Invoice",
+    "noInvoices": "No invoices found",
+    "invoiceIssued": "Invoice issued successfully!",
+    "errorIssuing": "Error issuing invoice",
+    "errorLoading": "Error loading invoices",
+    "issued": "Issued"
   },
 
   "myRequests": {

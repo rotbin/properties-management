@@ -62,7 +62,8 @@
     "collectionStatus": "סטטוס גבייה",
     "tenants": "דיירים",
     "vendorInvoices": "תשלומי ספקים",
-    "sendReminders": "שליחת תזכורות"
+    "sendReminders": "שליחת תזכורות",
+    "managerInvoices": "מסמכי חשבונאות"
   },
 
   "login": {
@@ -524,7 +525,29 @@
     "soStatusPaymentFailed": "תשלום נכשל",
     "freqMonthly": "חודש",
     "freqQuarterly": "רבעון",
-    "freqYearly": "שנה"
+    "freqYearly": "שנה",
+    "tabReceipts": "קבלות",
+    "building": "בניין",
+    "receiptNumber": "מס׳ קבלה",
+    "downloadReceipt": "הורד קבלה",
+    "receiptPending": "בהפקה…",
+    "noReceipts": "אין קבלות עדיין"
+  },
+
+  "mgrInvoices": {
+    "title": "מסמכי חשבונאות",
+    "period": "תקופה",
+    "building": "בניין",
+    "amount": "סכום",
+    "docNumber": "מס׳ מסמך",
+    "issuedAt": "תאריך הפקה",
+    "download": "הורדה",
+    "issueInvoice": "הפק חשבונית",
+    "noInvoices": "לא נמצאו חשבוניות",
+    "invoiceIssued": "החשבונית הופקה בהצלחה!",
+    "errorIssuing": "שגיאה בהפקת חשבונית",
+    "errorLoading": "שגיאה בטעינת חשבוניות",
+    "issued": "הופקה"
   },
 
   "myRequests": {

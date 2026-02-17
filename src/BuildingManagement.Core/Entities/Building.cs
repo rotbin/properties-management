@@ -19,6 +19,14 @@ public class Building : BaseEntity
     [MaxLength(1000)]
     public string? Notes { get; set; }
 
+    /// <summary>External accounting provider issuer profile ID (for issuing receipts to tenants).</summary>
+    [MaxLength(200)]
+    public string? IssuerProfileId { get; set; }
+
+    /// <summary>Committee legal name for invoicing purposes.</summary>
+    [MaxLength(300)]
+    public string? CommitteeLegalName { get; set; }
+
     public ICollection<Unit> Units { get; set; } = new List<Unit>();
     public ICollection<Asset> Assets { get; set; } = new List<Asset>();
     public ICollection<CleaningPlan> CleaningPlans { get; set; } = new List<CleaningPlan>();

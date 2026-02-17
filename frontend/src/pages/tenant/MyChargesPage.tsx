@@ -6,9 +6,9 @@ import {
   TextField, MenuItem, FormControl, InputLabel, Select, IconButton, Tooltip,
   Stack, useMediaQuery, useTheme
 } from '@mui/material';
-import { Payment, CreditCard, Add, Delete, Star, StarBorder, OpenInNew, Repeat, Pause, PlayArrow, Cancel } from '@mui/icons-material';
-import { hoaApi, paymentsApi } from '../../api/services';
-import type { UnitChargeDto, PaymentMethodDto, PaymentDto, StandingOrderDto } from '../../types';
+import { Payment, CreditCard, Add, Delete, Star, StarBorder, OpenInNew, Repeat, Pause, PlayArrow, Cancel, Receipt, Download } from '@mui/icons-material';
+import { hoaApi, paymentsApi, accountingApi } from '../../api/services';
+import type { UnitChargeDto, PaymentMethodDto, PaymentDto, StandingOrderDto, TenantPaymentDto } from '../../types';
 import { formatDateLocal } from '../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
 
@@ -20,10 +20,11 @@ const MyChargesPage: React.FC = () => {
   const [methods, setMethods] = useState<PaymentMethodDto[]>([]);
   const [payments, setPayments] = useState<PaymentDto[]>([]);
   const [standingOrders, setStandingOrders] = useState<StandingOrderDto[]>([]);
+  const [receipts, setReceipts] = useState<TenantPaymentDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
   const [msgSeverity, setMsgSeverity] = useState<'success' | 'error' | 'info'>('info');
-  const [tab, setTab] = useState<'charges' | 'payments' | 'methods' | 'standingOrders'>('charges');
+  const [tab, setTab] = useState<'charges' | 'payments' | 'receipts' | 'methods' | 'standingOrders'>('charges');
   const [soDialog, setSoDialog] = useState(false);
   const [soAmount, setSoAmount] = useState('');
   const [payDialog, setPayDialog] = useState(false);
@@ -37,8 +38,8 @@ const MyChargesPage: React.FC = () => {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [c, m, p, so] = await Promise.all([hoaApi.getMyCharges(), paymentsApi.getMethods(), paymentsApi.getMyPayments(), paymentsApi.getStandingOrders()]);
-      setCharges(c.data); setMethods(m.data); setPayments(p.data); setStandingOrders(so.data);
+      const [c, m, p, so, rp] = await Promise.all([hoaApi.getMyCharges(), paymentsApi.getMethods(), paymentsApi.getMyPayments(), paymentsApi.getStandingOrders(), accountingApi.getMyPayments()]);
+      setCharges(c.data); setMethods(m.data); setPayments(p.data); setStandingOrders(so.data); setReceipts(rp.data);
     } catch { setMsg(t('myCharges.errorLoading')); setMsgSeverity('error'); } finally { setLoading(false); }
   };
 
@@ -84,7 +85,7 @@ const MyChargesPage: React.FC = () => {
 
   if (loading) return <CircularProgress />;
 
-  const tabLabels: Record<string, string> = { charges: t('myCharges.tabCharges'), payments: t('myCharges.tabPayments'), methods: t('myCharges.tabMethods'), standingOrders: t('myCharges.tabStandingOrders') };
+  const tabLabels: Record<string, string> = { charges: t('myCharges.tabCharges'), payments: t('myCharges.tabPayments'), receipts: t('myCharges.tabReceipts'), methods: t('myCharges.tabMethods'), standingOrders: t('myCharges.tabStandingOrders') };
 
   const handleCreateStandingOrder = async () => {
     if (!charges.length) return;
@@ -251,6 +252,65 @@ const MyChargesPage: React.FC = () => {
                 </TableRow>
               ))}
               {payments.length === 0 && <TableRow><TableCell colSpan={6} align="center">{t('myCharges.noPayments')}</TableCell></TableRow>}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      ))}
+
+      {tab === 'receipts' && (isMobile ? (
+        <Stack spacing={1.5}>
+          {receipts.filter(r => r.status === 'Succeeded').map(r => (
+            <Card key={r.id} variant="outlined">
+              <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                  <Typography variant="subtitle2">{r.amount.toFixed(2)} ₪</Typography>
+                  {r.hasReceipt ? (
+                    <Chip icon={<Receipt />} label={r.receiptDocNumber} size="small" color="success" />
+                  ) : (
+                    <Chip label={t('myCharges.receiptPending')} size="small" color="warning" />
+                  )}
+                </Box>
+                <Typography variant="body2">{r.buildingName} · {r.unitNumber} · {r.period || ''}</Typography>
+                <Typography variant="caption" color="text.secondary">{formatDateLocal(r.paymentDateUtc)}</Typography>
+                {r.hasReceipt && r.receiptPdfUrl && (
+                  <Box sx={{ mt: 1 }}>
+                    <Button size="small" startIcon={<Download />} variant="outlined" href={r.receiptPdfUrl} target="_blank">{t('myCharges.downloadReceipt')}</Button>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+          {receipts.filter(r => r.status === 'Succeeded').length === 0 && <Typography align="center" color="text.secondary" sx={{ py: 4 }}>{t('myCharges.noReceipts')}</Typography>}
+        </Stack>
+      ) : (
+        <TableContainer component={Paper} variant="outlined">
+          <Table size="small">
+            <TableHead><TableRow>
+              <TableCell>{t('myCharges.date')}</TableCell>
+              <TableCell>{t('myCharges.building')}</TableCell>
+              <TableCell>{t('myCharges.unit')}</TableCell>
+              <TableCell>{t('myCharges.period')}</TableCell>
+              <TableCell align="right">{t('myCharges.amount')}</TableCell>
+              <TableCell>{t('myCharges.receiptNumber')}</TableCell>
+              <TableCell></TableCell>
+            </TableRow></TableHead>
+            <TableBody>
+              {receipts.filter(r => r.status === 'Succeeded').map(r => (
+                <TableRow key={r.id}>
+                  <TableCell>{formatDateLocal(r.paymentDateUtc)}</TableCell>
+                  <TableCell>{r.buildingName}</TableCell>
+                  <TableCell>{r.unitNumber}</TableCell>
+                  <TableCell>{r.period || '—'}</TableCell>
+                  <TableCell align="right">{r.amount.toFixed(2)}</TableCell>
+                  <TableCell>{r.hasReceipt ? r.receiptDocNumber : <Chip label={t('myCharges.receiptPending')} size="small" color="warning" />}</TableCell>
+                  <TableCell>
+                    {r.hasReceipt && r.receiptPdfUrl && (
+                      <Tooltip title={t('myCharges.downloadReceipt')}><IconButton size="small" href={r.receiptPdfUrl} target="_blank"><Download fontSize="small" /></IconButton></Tooltip>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {receipts.filter(r => r.status === 'Succeeded').length === 0 && <TableRow><TableCell colSpan={7} align="center">{t('myCharges.noReceipts')}</TableCell></TableRow>}
             </TableBody>
           </Table>
         </TableContainer>
