@@ -5,7 +5,7 @@ import {
 } from '@mui/material';
 import { Delete, CloudUpload } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { serviceRequestsApi, buildingsApi } from '../../api/services';
+import { serviceRequestsApi, buildingsApi, tenantsApi } from '../../api/services';
 import { useAuth } from '../../auth/AuthContext';
 import type { BuildingDto, UnitDto } from '../../types';
 import { AREAS, CATEGORIES, PRIORITIES } from '../../types';
@@ -27,10 +27,31 @@ const NewRequestPage: React.FC = () => {
   const [error, setError] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
-  const [form, setForm] = useState({ buildingId: '' as any, unitId: '' as any, phone: user?.phone || '', area: 'Other', category: 'General', priority: 'Medium', isEmergency: false, description: '' });
+  const [form, setForm] = useState({ buildingId: '' as any, unitId: '' as any, phone: '', area: 'Other', category: 'General', priority: 'Medium', isEmergency: false, description: '' });
 
   useEffect(() => {
-    buildingsApi.getAll().then(r => { setBuildings(r.data); if (r.data.length === 1) setForm(f => ({ ...f, buildingId: r.data[0].id })); }).catch(() => setError(t('newRequest.failedLoadBuildings'))).finally(() => setLoading(false));
+    const init = async () => {
+      try {
+        // Load buildings (API already filters for tenant's buildings)
+        const bRes = await buildingsApi.getAll();
+        setBuildings(bRes.data);
+        if (bRes.data.length === 1) setForm(f => ({ ...f, buildingId: bRes.data[0].id }));
+
+        // Load tenant profile to get phone
+        try {
+          const profile = await tenantsApi.getMyProfile();
+          if (profile.data.phone) setForm(f => ({ ...f, phone: f.phone || profile.data.phone || '' }));
+        } catch {
+          // Fallback to user phone from auth
+          if (user?.phone) setForm(f => ({ ...f, phone: f.phone || user.phone || '' }));
+        }
+      } catch {
+        setError(t('newRequest.failedLoadBuildings'));
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
   }, []);
 
   useEffect(() => {
@@ -57,6 +78,7 @@ const NewRequestPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.buildingId || !form.description.trim()) { setError(t('newRequest.requiredFields')); return; }
+    if (!form.phone.trim()) { setError(t('newRequest.phoneRequired')); return; }
     setSubmitting(true); setError('');
     try {
       const sr = await serviceRequestsApi.create({ buildingId: Number(form.buildingId), unitId: form.unitId ? Number(form.unitId) : undefined, phone: form.phone, area: form.area, category: form.category, priority: form.priority, isEmergency: form.isEmergency, description: form.description });
@@ -82,7 +104,8 @@ const NewRequestPage: React.FC = () => {
               {units.map(u => <MenuItem key={u.id} value={u.id}>{u.unitNumber} ({t('newRequest.unitFloor', { floor: u.floor })})</MenuItem>)}
             </TextField>
           )}
-          <TextField fullWidth label={t('newRequest.phone')} value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} sx={{ mb: 2 }} />
+          <TextField fullWidth label={t('newRequest.phone')} value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} required
+            error={!form.phone.trim()} helperText={!form.phone.trim() ? t('newRequest.phoneRequired') : ''} sx={{ mb: 2 }} />
           <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
             <TextField fullWidth select label={t('newRequest.area')} value={form.area} onChange={e => setForm({ ...form, area: e.target.value })}>
               {AREAS.map(a => <MenuItem key={a} value={a}>{t(`enums.area.${a}`, a)}</MenuItem>)}

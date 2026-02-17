@@ -38,8 +38,8 @@ public record CreateServiceRequestRequest
 
     public int? UnitId { get; init; }
 
-    [MaxLength(20)]
-    public string? Phone { get; init; }
+    [Required, MaxLength(20)]
+    public string Phone { get; init; } = string.Empty;
 
     public Area Area { get; init; }
     public ServiceRequestCategory Category { get; init; }

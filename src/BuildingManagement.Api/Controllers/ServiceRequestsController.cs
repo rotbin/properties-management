@@ -36,13 +36,40 @@ public class ServiceRequestsController : ControllerBase
         var user = await _db.Users.FindAsync(userId);
         if (user == null) return Unauthorized();
 
+        // Resolve phone: request > tenant profile > user
+        var phone = request.Phone;
+        if (string.IsNullOrWhiteSpace(phone))
+        {
+            var tenantProfile = await _db.TenantProfiles
+                .Where(tp => tp.UserId == userId && tp.IsActive && !tp.IsDeleted)
+                .FirstOrDefaultAsync();
+            phone = tenantProfile?.Phone ?? user.Phone;
+        }
+
+        if (string.IsNullOrWhiteSpace(phone))
+            return BadRequest(new { message = "Callback phone is required." });
+
+        // Tenant: restrict to their building(s)
+        if (User.IsInRole(AppRoles.Tenant) && !User.IsInRole(AppRoles.Admin))
+        {
+            var tenantBuildingIds = await _db.TenantProfiles
+                .Where(tp => tp.UserId == userId && tp.IsActive && !tp.IsDeleted)
+                .Select(tp => tp.Unit.BuildingId)
+                .Distinct()
+                .ToListAsync();
+            if (tenantBuildingIds.Count > 0 && !tenantBuildingIds.Contains(request.BuildingId))
+                return BadRequest(new { message = "You can only create tickets for your building." });
+        }
+
+        var building = await _db.Buildings.FindAsync(request.BuildingId);
+
         var sr = new ServiceRequest
         {
             BuildingId = request.BuildingId,
             UnitId = request.UnitId,
             SubmittedByUserId = userId,
             SubmittedByName = user.FullName,
-            Phone = request.Phone ?? user.Phone,
+            Phone = phone,
             Email = user.Email,
             Area = request.Area,
             Category = request.Category,
@@ -55,6 +82,9 @@ public class ServiceRequestsController : ControllerBase
 
         _db.ServiceRequests.Add(sr);
         await _db.SaveChangesAsync();
+
+        // Load building for MapToDto
+        sr.Building = building!;
 
         await _emailService.SendEmailAsync(
             "manager@example.com",
@@ -162,19 +192,20 @@ public class ServiceRequestsController : ControllerBase
         var vendor = await _db.Vendors.FindAsync(request.VendorId);
         if (vendor == null) return BadRequest(new { message = "Vendor not found." });
 
-        // Find existing work order for this SR, or create new
+        // Find existing work order for this SR, or create new (idempotent)
         var wo = sr.WorkOrders.FirstOrDefault();
+        var defaultTitle = request.Title ?? $"{sr.Building?.Name} – {sr.Area} – {sr.Category}";
         if (wo == null)
         {
             wo = new WorkOrder
             {
                 BuildingId = sr.BuildingId,
                 ServiceRequestId = sr.Id,
-                Title = request.Title ?? $"SR #{sr.Id}: {sr.Category} — {sr.Area}",
+                Title = defaultTitle,
                 Description = request.Notes ?? sr.Description,
                 VendorId = request.VendorId,
-                ScheduledFor = request.ScheduledFor,
-                Status = request.ScheduledFor.HasValue ? WorkOrderStatus.Scheduled : WorkOrderStatus.Assigned,
+                ScheduledFor = request.ScheduledFor ?? DateTime.UtcNow,
+                Status = WorkOrderStatus.Assigned,
                 CreatedBy = userId
             };
             _db.WorkOrders.Add(wo);
@@ -182,10 +213,10 @@ public class ServiceRequestsController : ControllerBase
         else
         {
             wo.VendorId = request.VendorId;
-            if (request.ScheduledFor.HasValue) wo.ScheduledFor = request.ScheduledFor;
+            wo.ScheduledFor = request.ScheduledFor ?? wo.ScheduledFor;
             if (!string.IsNullOrEmpty(request.Title)) wo.Title = request.Title;
             if (!string.IsNullOrEmpty(request.Notes)) wo.Description = request.Notes;
-            wo.Status = request.ScheduledFor.HasValue ? WorkOrderStatus.Scheduled : WorkOrderStatus.Assigned;
+            wo.Status = WorkOrderStatus.Assigned;
             wo.UpdatedBy = userId;
         }
 
@@ -199,8 +230,8 @@ public class ServiceRequestsController : ControllerBase
         if (vendor.Email != null)
         {
             await _emailService.SendEmailAsync(vendor.Email,
-                $"New assignment: SR #{sr.Id}",
-                $"You have been assigned to service request #{sr.Id}: {sr.Description}");
+                $"New assignment: Ticket #{sr.Id}",
+                $"You have been assigned to ticket #{sr.Id}: {sr.Description}");
         }
 
         return Ok(new

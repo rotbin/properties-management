@@ -140,6 +140,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             .HasForeignKey(wo => wo.ServiceRequestId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        // One work order per service request
+        builder.Entity<WorkOrder>()
+            .HasIndex(wo => wo.ServiceRequestId)
+            .IsUnique()
+            .HasFilter("[ServiceRequestId] IS NOT NULL AND [IsDeleted] = 0");
+
         builder.Entity<WorkOrder>()
             .HasOne(wo => wo.Vendor)
             .WithMany(v => v.WorkOrders)

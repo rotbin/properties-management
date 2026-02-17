@@ -5,7 +5,7 @@ import {
   DialogActions, CircularProgress, Alert, useMediaQuery, useTheme, Card, CardContent,
   Stack, CardActionArea, FormControlLabel, Switch, ImageList, ImageListItem, IconButton
 } from '@mui/material';
-import { Visibility, Add, Delete, CloudUpload, NoteAdd, AssignmentInd } from '@mui/icons-material';
+import { Visibility, Add, Delete, CloudUpload, NoteAdd, Edit } from '@mui/icons-material';
 import { serviceRequestsApi, buildingsApi, workOrdersApi, vendorsApi } from '../../api/services';
 import type { ServiceRequestDto, BuildingDto, VendorDto, UnitDto } from '../../types';
 import { SR_STATUSES, AREAS, CATEGORIES, PRIORITIES } from '../../types';
@@ -19,6 +19,12 @@ const statusColor = (s: string) => s === 'New' ? 'info' : s === 'Resolved' ? 'su
 const MAX_FILES = 5;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+const nowLocal = () => {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+};
 
 const ServiceRequestsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -51,11 +57,6 @@ const ServiceRequestsPage: React.FC = () => {
     area: 'Other', category: 'General', priority: 'Medium', isEmergency: false, description: ''
   });
 
-  // Assign vendor dialog
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [assignSubmitting, setAssignSubmitting] = useState(false);
-  const [assignForm, setAssignForm] = useState({ vendorId: '', scheduledFor: '', title: '', notes: '' });
-
   const load = async () => {
     try {
       setLoading(true);
@@ -73,7 +74,6 @@ const ServiceRequestsPage: React.FC = () => {
 
   useEffect(() => { load(); }, [filterStatus, filterBuilding]);
 
-  // Load units for create form
   const loadCreateUnits = async (buildingId: number) => {
     if (!buildingId) { setCreateUnits([]); return; }
     try { const r = await buildingsApi.getUnits(buildingId); setCreateUnits(r.data); } catch { /* ignore */ }
@@ -102,6 +102,9 @@ const ServiceRequestsPage: React.FC = () => {
     if (!createForm.buildingId || !createForm.description.trim()) {
       setError(t('serviceRequests.missingFields')); return;
     }
+    if (!createForm.phone.trim()) {
+      setError(t('newRequest.phoneRequired')); return;
+    }
     setCreateSubmitting(true);
     try {
       const sr = await serviceRequestsApi.create({
@@ -124,53 +127,60 @@ const ServiceRequestsPage: React.FC = () => {
     finally { setCreateSubmitting(false); }
   };
 
-  const openAssignVendor = (sr: ServiceRequestDto) => {
-    setSelected(sr);
-    setAssignForm({
-      vendorId: sr.assignedVendorId?.toString() || '',
-      scheduledFor: '',
-      title: `SR #${sr.id}: ${t(`enums.category.${sr.category}`, sr.category)} — ${t(`enums.area.${sr.area}`, sr.area)}`,
-      notes: ''
-    });
-    setAssignOpen(true);
-  };
-
-  const handleAssignVendor = async () => {
-    if (!selected || !assignForm.vendorId) { setError(t('serviceRequests.vendorRequired')); return; }
-    setAssignSubmitting(true);
-    try {
-      await serviceRequestsApi.assignVendor(selected.id, {
-        vendorId: Number(assignForm.vendorId),
-        scheduledFor: assignForm.scheduledFor || undefined,
-        title: assignForm.title || undefined,
-        notes: assignForm.notes || undefined,
-      });
-      setAssignOpen(false);
-      setDetailOpen(false);
-      setSuccess(t('serviceRequests.vendorAssigned'));
-      load();
-    } catch (err: any) { setError(err?.response?.data?.message || t('serviceRequests.failedAssign')); }
-    finally { setAssignSubmitting(false); }
-  };
-
   const handleStatusUpdate = async () => {
     if (!selected || !statusForm) return;
     try { await serviceRequestsApi.updateStatus(selected.id, { status: statusForm }); setSuccess(t('serviceRequests.statusUpdated')); setDetailOpen(false); load(); } catch { setError(t('serviceRequests.failedUpdateStatus')); }
   };
 
-  const handleCreateWO = async () => {
+  // Unified: Create WO or Edit WO (includes vendor assignment)
+  const openWorkOrderDialog = (sr: ServiceRequestDto) => {
+    setSelected(sr);
+    const bld = buildings.find(b => b.id === sr.buildingId);
+    const defaultTitle = `${bld?.name || ''} – ${t(`enums.area.${sr.area}`, sr.area)} – ${t(`enums.category.${sr.category}`, sr.category)}`;
+    setWoForm({
+      title: defaultTitle,
+      description: sr.description,
+      vendorId: sr.assignedVendorId?.toString() || '',
+      scheduledFor: nowLocal(),
+    });
+    setWoDialogOpen(true);
+  };
+
+  const handleCreateOrEditWO = async () => {
     if (!selected) return;
+    if (!woForm.vendorId) { setError(t('serviceRequests.vendorRequired')); return; }
+
     try {
-      await workOrdersApi.create({
-        buildingId: selected.buildingId,
-        serviceRequestId: selected.id,
-        title: woForm.title || `WO for SR #${selected.id}`,
-        description: woForm.description || selected.description,
-        vendorId: woForm.vendorId ? Number(woForm.vendorId) : undefined,
-        scheduledFor: woForm.scheduledFor || undefined,
-      });
-      setSuccess(t('serviceRequests.woCreated')); setWoDialogOpen(false); load();
-    } catch { setError(t('serviceRequests.failedCreateWo')); }
+      if (selected.linkedWorkOrderId) {
+        // Edit existing WO: re-assign vendor
+        await workOrdersApi.assign(selected.linkedWorkOrderId, {
+          vendorId: Number(woForm.vendorId),
+          scheduledFor: woForm.scheduledFor || undefined,
+        });
+        setSuccess(t('serviceRequests.woUpdated'));
+      } else {
+        // Create new WO with vendor
+        await workOrdersApi.create({
+          buildingId: selected.buildingId,
+          serviceRequestId: selected.id,
+          title: woForm.title,
+          description: woForm.description,
+          vendorId: Number(woForm.vendorId),
+          scheduledFor: woForm.scheduledFor || undefined,
+        });
+        setSuccess(t('serviceRequests.woCreated'));
+      }
+      setWoDialogOpen(false);
+      setDetailOpen(false);
+      load();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || t('serviceRequests.failedCreateWo'));
+    }
+  };
+
+  // Ticket display title: Building – Area – Category
+  const srTitle = (sr: ServiceRequestDto) => {
+    return `${sr.buildingName || ''} – ${t(`enums.area.${sr.area}`, sr.area)} – ${t(`enums.category.${sr.category}`, sr.category)}`;
   };
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
@@ -211,8 +221,8 @@ const ServiceRequestsPage: React.FC = () => {
                       <Chip label={t(`enums.srStatus.${sr.status}`, sr.status)} size="small" color={statusColor(sr.status) as any} />
                     </Box>
                   </Box>
-                  <Typography variant="body2" fontWeight={600} noWrap>{t(`enums.category.${sr.category}`, sr.category)} — {t(`enums.area.${sr.area}`, sr.area)}</Typography>
-                  <Typography variant="caption" color="text.secondary">{sr.buildingName} · {sr.submittedByName} · {formatDateLocal(sr.createdAtUtc)}</Typography>
+                  <Typography variant="body2" fontWeight={600} noWrap>{srTitle(sr)}</Typography>
+                  <Typography variant="caption" color="text.secondary">{sr.submittedByName} · {formatDateLocal(sr.createdAtUtc)}</Typography>
                 </CardContent>
               </CardActionArea>
             </Card>
@@ -223,17 +233,15 @@ const ServiceRequestsPage: React.FC = () => {
         <TableContainer component={Paper}>
           <Table size="small">
             <TableHead><TableRow>
-              <TableCell>{t('serviceRequests.id')}</TableCell><TableCell>{t('serviceRequests.building')}</TableCell><TableCell>{t('serviceRequests.area')}</TableCell>
-              <TableCell>{t('serviceRequests.category')}</TableCell><TableCell>{t('serviceRequests.priority')}</TableCell><TableCell>{t('serviceRequests.status')}</TableCell>
+              <TableCell>{t('serviceRequests.id')}</TableCell><TableCell>{t('serviceRequests.ticketTitle')}</TableCell>
+              <TableCell>{t('serviceRequests.priority')}</TableCell><TableCell>{t('serviceRequests.status')}</TableCell>
               <TableCell>{t('serviceRequests.submittedBy')}</TableCell><TableCell>{t('serviceRequests.date')}</TableCell><TableCell>{t('app.actions')}</TableCell>
             </TableRow></TableHead>
             <TableBody>
               {requests.map(sr => (
                 <TableRow key={sr.id} hover>
                   <TableCell>{sr.id}</TableCell>
-                  <TableCell>{sr.buildingName}</TableCell>
-                  <TableCell>{t(`enums.area.${sr.area}`, sr.area)}</TableCell>
-                  <TableCell>{t(`enums.category.${sr.category}`, sr.category)}</TableCell>
+                  <TableCell>{srTitle(sr)}</TableCell>
                   <TableCell><Chip label={t(`enums.priority.${sr.priority}`, sr.priority)} size="small" color={priorityColor(sr.priority) as any} /></TableCell>
                   <TableCell><Chip label={t(`enums.srStatus.${sr.status}`, sr.status)} size="small" color={statusColor(sr.status) as any} /></TableCell>
                   <TableCell>{sr.submittedByName}</TableCell>
@@ -243,16 +251,17 @@ const ServiceRequestsPage: React.FC = () => {
                   </TableCell>
                 </TableRow>
               ))}
-              {requests.length === 0 && <TableRow><TableCell colSpan={9} align="center">{t('serviceRequests.noRequests')}</TableCell></TableRow>}
+              {requests.length === 0 && <TableRow><TableCell colSpan={7} align="center">{t('serviceRequests.noRequests')}</TableCell></TableRow>}
             </TableBody>
           </Table>
         </TableContainer>
       )}
 
+      {/* Detail Dialog */}
       <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         {selected && (<>
           <DialogTitle>
-            {t('myRequests.detailTitle', { id: selected.id })}
+            {srTitle(selected)}
             {selected.isEmergency && <Chip label={t('serviceRequests.emergency')} color="error" size="small" sx={{ ml: 1 }} />}
           </DialogTitle>
           <DialogContent>
@@ -268,7 +277,6 @@ const ServiceRequestsPage: React.FC = () => {
             </Box>
             <Typography sx={{ mb: 2 }}><strong>{t('serviceRequests.description')}:</strong> {selected.description}</Typography>
 
-            {/* Vendor assignment info */}
             {selected.assignedVendorName && (
               <Box sx={{ mb: 2, p: 1.5, bgcolor: 'rgba(26,86,160,0.06)', borderRadius: 2, border: '1px solid rgba(26,86,160,0.12)' }}>
                 <Typography variant="body2"><strong>{t('serviceRequests.assignedVendor')}:</strong> {selected.assignedVendorName}</Typography>
@@ -291,58 +299,46 @@ const ServiceRequestsPage: React.FC = () => {
                 {SR_STATUSES.map(s => <MenuItem key={s} value={s}>{t(`enums.srStatus.${s}`, s)}</MenuItem>)}
               </TextField>
               <Button variant="contained" size="small" onClick={handleStatusUpdate}>{t('serviceRequests.updateStatus')}</Button>
-              <Button variant="outlined" color="primary" startIcon={<AssignmentInd />} onClick={() => openAssignVendor(selected)}>
-                {selected.assignedVendorName ? t('serviceRequests.reassignVendor') : t('serviceRequests.assignVendor')}
+              {/* Single action: Create or Edit Work Order (includes vendor assignment) */}
+              <Button variant="outlined" color="primary" startIcon={selected.linkedWorkOrderId ? <Edit /> : <Add />}
+                onClick={() => openWorkOrderDialog(selected)}>
+                {selected.linkedWorkOrderId ? t('serviceRequests.editWorkOrder') : t('serviceRequests.createWorkOrder')}
               </Button>
-              <Button variant="outlined" color="secondary" startIcon={<Add />} onClick={() => {
-                setWoForm({ title: `WO for SR #${selected.id}: ${selected.description.substring(0, 50)}`, description: selected.description, vendorId: '', scheduledFor: '' });
-                setWoDialogOpen(true);
-              }}>{t('serviceRequests.createWorkOrder')}</Button>
             </Box>
           </DialogContent>
           <DialogActions><Button onClick={() => setDetailOpen(false)}>{t('app.close')}</Button></DialogActions>
         </>)}
       </Dialog>
 
+      {/* Create / Edit Work Order Dialog (includes vendor assignment) */}
       <Dialog open={woDialogOpen} onClose={() => setWoDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
-        <DialogTitle>{t('serviceRequests.createWoFrom', { id: selected?.id })}</DialogTitle>
-        <DialogContent>
-          <TextField fullWidth label={t('serviceRequests.woTitle')} value={woForm.title} onChange={e => setWoForm({ ...woForm, title: e.target.value })} sx={{ mt: 1, mb: 2 }} />
-          <TextField fullWidth multiline rows={2} label={t('serviceRequests.woDescription')} value={woForm.description} onChange={e => setWoForm({ ...woForm, description: e.target.value })} sx={{ mb: 2 }} />
-          <TextField fullWidth select label={t('serviceRequests.assignVendor')} value={woForm.vendorId} onChange={e => setWoForm({ ...woForm, vendorId: e.target.value })} sx={{ mb: 2 }}>
-            <MenuItem value="">{t('serviceRequests.unassigned')}</MenuItem>
-            {vendors.map(v => <MenuItem key={v.id} value={v.id}>{v.name} ({v.serviceType})</MenuItem>)}
-          </TextField>
-          <TextField fullWidth type="datetime-local" label={t('serviceRequests.scheduleFor')} value={woForm.scheduledFor} onChange={e => setWoForm({ ...woForm, scheduledFor: e.target.value })} InputLabelProps={{ shrink: true }} />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setWoDialogOpen(false)}>{t('app.cancel')}</Button>
-          <Button variant="contained" onClick={handleCreateWO}>{t('serviceRequests.createWorkOrder')}</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Assign Vendor Dialog */}
-      <Dialog open={assignOpen} onClose={() => setAssignOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{t('serviceRequests.assignVendor')}</DialogTitle>
+        <DialogTitle>
+          {selected?.linkedWorkOrderId
+            ? t('serviceRequests.editWoTitle', { id: selected.linkedWorkOrderId })
+            : t('serviceRequests.createWoFrom', { id: selected?.id })}
+        </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField select label={t('serviceRequests.vendor')} value={assignForm.vendorId}
-              onChange={e => setAssignForm({ ...assignForm, vendorId: e.target.value })} fullWidth required>
+            {!selected?.linkedWorkOrderId && (
+              <>
+                <TextField fullWidth label={t('serviceRequests.woTitle')} value={woForm.title}
+                  onChange={e => setWoForm({ ...woForm, title: e.target.value })} />
+                <TextField fullWidth multiline rows={2} label={t('serviceRequests.woDescription')} value={woForm.description}
+                  onChange={e => setWoForm({ ...woForm, description: e.target.value })} />
+              </>
+            )}
+            <TextField fullWidth select label={t('serviceRequests.vendor')} value={woForm.vendorId}
+              onChange={e => setWoForm({ ...woForm, vendorId: e.target.value })} required>
               {vendors.map(v => <MenuItem key={v.id} value={v.id}>{v.name} ({v.serviceType})</MenuItem>)}
             </TextField>
-            <TextField label={t('serviceRequests.scheduleFor')} type="datetime-local" value={assignForm.scheduledFor}
-              onChange={e => setAssignForm({ ...assignForm, scheduledFor: e.target.value })} fullWidth
-              slotProps={{ inputLabel: { shrink: true } }} />
-            <TextField label={t('serviceRequests.woTitle')} value={assignForm.title}
-              onChange={e => setAssignForm({ ...assignForm, title: e.target.value })} fullWidth />
-            <TextField label={t('serviceRequests.vendorNotes')} value={assignForm.notes}
-              onChange={e => setAssignForm({ ...assignForm, notes: e.target.value })} fullWidth multiline rows={2} />
+            <TextField fullWidth type="datetime-local" label={t('serviceRequests.scheduleFor')} value={woForm.scheduledFor}
+              onChange={e => setWoForm({ ...woForm, scheduledFor: e.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAssignOpen(false)}>{t('app.cancel')}</Button>
-          <Button variant="contained" onClick={handleAssignVendor} disabled={assignSubmitting}>
-            {assignSubmitting ? <CircularProgress size={20} /> : t('serviceRequests.assignVendor')}
+          <Button onClick={() => setWoDialogOpen(false)}>{t('app.cancel')}</Button>
+          <Button variant="contained" onClick={handleCreateOrEditWO}>
+            {selected?.linkedWorkOrderId ? t('app.update') : t('serviceRequests.createWorkOrder')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -364,7 +360,8 @@ const ServiceRequestsPage: React.FC = () => {
               </TextField>
             )}
             <TextField fullWidth label={t('newRequest.phone')} value={createForm.phone}
-              onChange={e => setCreateForm({ ...createForm, phone: e.target.value })} />
+              onChange={e => setCreateForm({ ...createForm, phone: e.target.value })} required
+              error={!createForm.phone.trim()} helperText={!createForm.phone.trim() ? t('newRequest.phoneRequired') : ''} />
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField fullWidth select label={t('newRequest.area')} value={createForm.area}
                 onChange={e => setCreateForm({ ...createForm, area: e.target.value })}>

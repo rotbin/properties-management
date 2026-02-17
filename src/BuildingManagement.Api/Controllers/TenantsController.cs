@@ -18,6 +18,21 @@ public class TenantsController : ControllerBase
 
     public TenantsController(AppDbContext db) => _db = db;
 
+    // ─── MY PROFILE (tenant) ────────────────────────────
+
+    [HttpGet("my-profile")]
+    [Authorize(Roles = AppRoles.Tenant)]
+    public async Task<ActionResult<TenantProfileDto>> GetMyProfile()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+        var tp = await _db.TenantProfiles
+            .Include(t => t.Unit).ThenInclude(u => u.Building)
+            .Where(t => t.UserId == userId && t.IsActive && !t.IsDeleted)
+            .FirstOrDefaultAsync();
+        if (tp == null) return NotFound();
+        return Ok(MapDto(tp));
+    }
+
     // ─── LIST ────────────────────────────────────────────
 
     [HttpGet]

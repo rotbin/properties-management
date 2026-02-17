@@ -5,7 +5,7 @@ import {
   DialogActions, CircularProgress, Alert, Divider, List, ListItem, ListItemText,
   useMediaQuery, useTheme, Card, CardContent, Stack, CardActionArea
 } from '@mui/material';
-import { Visibility, PersonAdd } from '@mui/icons-material';
+import { Visibility } from '@mui/icons-material';
 import { workOrdersApi, vendorsApi, buildingsApi } from '../../api/services';
 import type { WorkOrderDto, VendorDto, BuildingDto } from '../../types';
 import { WO_STATUSES } from '../../types';
@@ -28,8 +28,6 @@ const WorkOrdersPage: React.FC = () => {
   const [filterVendor, setFilterVendor] = useState('');
   const [detailOpen, setDetailOpen] = useState(false);
   const [selected, setSelected] = useState<WorkOrderDto | null>(null);
-  const [assignDialog, setAssignDialog] = useState(false);
-  const [assignForm, setAssignForm] = useState({ vendorId: '', scheduledFor: '' });
   const [statusForm, setStatusForm] = useState('');
 
   const load = async () => {
@@ -44,14 +42,6 @@ const WorkOrdersPage: React.FC = () => {
   };
 
   useEffect(() => { load(); }, [filterStatus, filterVendor]);
-
-  const handleAssign = async () => {
-    if (!selected || !assignForm.vendorId) return;
-    try {
-      await workOrdersApi.assign(selected.id, { vendorId: Number(assignForm.vendorId), scheduledFor: assignForm.scheduledFor || undefined });
-      setSuccess(t('workOrders.vendorAssigned')); setAssignDialog(false); load();
-    } catch { setError(t('workOrders.failedAssign')); }
-  };
 
   const handleStatusUpdate = async () => {
     if (!selected || !statusForm) return;
@@ -137,6 +127,19 @@ const WorkOrdersPage: React.FC = () => {
               <Typography><strong>{t('workOrders.created')}:</strong> {formatDateLocal(selected.createdAtUtc)}</Typography>
             </Box>
             <Typography sx={{ mb: 2 }}><strong>{t('workOrders.description')}:</strong> {selected.description || t('app.na')}</Typography>
+
+            {/* SR details if linked */}
+            {selected.serviceRequestId && (
+              <Box sx={{ mb: 2, p: 1.5, bgcolor: 'rgba(26,86,160,0.06)', borderRadius: 2, border: '1px solid rgba(26,86,160,0.12)' }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>{t('workOrders.linkedSr')}</Typography>
+                <Typography variant="body2"><strong>{t('serviceRequests.area')}:</strong> {t(`enums.area.${selected.srArea}`, selected.srArea ?? '')}</Typography>
+                <Typography variant="body2"><strong>{t('serviceRequests.category')}:</strong> {t(`enums.category.${selected.srCategory}`, selected.srCategory ?? '')}</Typography>
+                <Typography variant="body2"><strong>{t('serviceRequests.submittedBy')}:</strong> {selected.srSubmittedByName}</Typography>
+                {selected.srPhone && <Typography variant="body2"><strong>{t('serviceRequests.phone')}:</strong> {selected.srPhone}</Typography>}
+                <Typography variant="body2"><strong>{t('serviceRequests.description')}:</strong> {selected.srDescription}</Typography>
+              </Box>
+            )}
+
             {selected.notes.length > 0 && (<>
               <Divider sx={{ my: 1 }} />
               <Typography variant="subtitle2">{t('workOrders.notes')}:</Typography>
@@ -151,25 +154,10 @@ const WorkOrdersPage: React.FC = () => {
                 {WO_STATUSES.map(s => <MenuItem key={s} value={s}>{t(`enums.woStatus.${s}`, s)}</MenuItem>)}
               </TextField>
               <Button variant="contained" size="small" onClick={handleStatusUpdate}>{t('workOrders.updateStatus')}</Button>
-              <Button variant="outlined" startIcon={<PersonAdd />} onClick={() => { setAssignForm({ vendorId: String(selected.vendorId || ''), scheduledFor: '' }); setAssignDialog(true); }}>{t('workOrders.assignVendor')}</Button>
             </Box>
           </DialogContent>
           <DialogActions><Button onClick={() => setDetailOpen(false)}>{t('app.close')}</Button></DialogActions>
         </>)}
-      </Dialog>
-
-      <Dialog open={assignDialog} onClose={() => setAssignDialog(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
-        <DialogTitle>{t('workOrders.assignVendorTo', { id: selected?.id })}</DialogTitle>
-        <DialogContent>
-          <TextField fullWidth select label={t('workOrders.vendor')} value={assignForm.vendorId} onChange={e => setAssignForm({ ...assignForm, vendorId: e.target.value })} sx={{ mt: 1, mb: 2 }}>
-            {vendors.map(v => <MenuItem key={v.id} value={v.id}>{v.name} ({v.serviceType})</MenuItem>)}
-          </TextField>
-          <TextField fullWidth type="datetime-local" label={t('workOrders.scheduleFor')} value={assignForm.scheduledFor} onChange={e => setAssignForm({ ...assignForm, scheduledFor: e.target.value })} InputLabelProps={{ shrink: true }} />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAssignDialog(false)}>{t('app.cancel')}</Button>
-          <Button variant="contained" onClick={handleAssign}>{t('workOrders.assign')}</Button>
-        </DialogActions>
       </Dialog>
     </Box>
   );

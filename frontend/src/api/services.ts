@@ -191,6 +191,7 @@ export const tenantsApi = {
   getAll: (params?: { buildingId?: number; unitId?: number; activeOnly?: boolean; includeArchived?: boolean }) =>
     apiClient.get<TenantProfileDto[]>('/api/tenants', { params }),
   getById: (id: number) => apiClient.get<TenantProfileDto>(`/api/tenants/${id}`),
+  getMyProfile: () => apiClient.get<TenantProfileDto>('/api/tenants/my-profile'),
   create: (data: CreateTenantRequest) => apiClient.post<TenantProfileDto>('/api/tenants', data),
   update: (id: number, data: UpdateTenantRequest) => apiClient.put(`/api/tenants/${id}`, data),
   endTenancy: (id: number, data: EndTenancyRequest) => apiClient.post(`/api/tenants/${id}/end-tenancy`, data),

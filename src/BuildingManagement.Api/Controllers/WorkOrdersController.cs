@@ -30,29 +30,45 @@ public class WorkOrdersController : ControllerBase
     [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Manager}")]
     public async Task<ActionResult<WorkOrderDto>> Create([FromBody] CreateWorkOrderRequest request)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        // Prevent duplicate work orders for the same service request
+        if (request.ServiceRequestId.HasValue)
+        {
+            var existingWo = await _db.WorkOrders
+                .FirstOrDefaultAsync(wo => wo.ServiceRequestId == request.ServiceRequestId.Value);
+            if (existingWo != null)
+                return Conflict(new { message = "A work order already exists for this service request.", workOrderId = existingWo.Id });
+        }
+
+        // Build title from SR's building + area + category if linked and no custom title
+        var title = request.Title;
+        ServiceRequest? sr = null;
+        if (request.ServiceRequestId.HasValue)
+        {
+            sr = await _db.ServiceRequests.Include(s => s.Building).FirstOrDefaultAsync(s => s.Id == request.ServiceRequestId.Value);
+            if (sr != null && string.IsNullOrWhiteSpace(title))
+                title = $"{sr.Building?.Name} – {sr.Area} – {sr.Category}";
+        }
+
         var wo = new WorkOrder
         {
             BuildingId = request.BuildingId,
             ServiceRequestId = request.ServiceRequestId,
             VendorId = request.VendorId,
-            Title = request.Title,
+            Title = title,
             Description = request.Description,
-            ScheduledFor = request.ScheduledFor,
+            ScheduledFor = request.ScheduledFor ?? DateTime.UtcNow,
             Status = request.VendorId.HasValue ? WorkOrderStatus.Assigned : WorkOrderStatus.Draft,
-            CreatedBy = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            CreatedBy = userId
         };
 
         _db.WorkOrders.Add(wo);
 
-        // Update SR status if linked
-        if (request.ServiceRequestId.HasValue)
+        if (sr != null)
         {
-            var sr = await _db.ServiceRequests.FindAsync(request.ServiceRequestId.Value);
-            if (sr != null)
-            {
-                sr.Status = ServiceRequestStatus.InProgress;
-                sr.UpdatedBy = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            }
+            sr.Status = request.VendorId.HasValue ? ServiceRequestStatus.Assigned : ServiceRequestStatus.InProgress;
+            sr.UpdatedBy = userId;
         }
 
         await _db.SaveChangesAsync();

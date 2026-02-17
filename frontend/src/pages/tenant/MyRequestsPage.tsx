@@ -48,8 +48,8 @@ const MyRequestsPage: React.FC = () => {
                       <Chip label={t(`enums.srStatus.${sr.status}`, sr.status)} size="small" color={statusColor(sr.status) as any} />
                     </Box>
                   </Box>
-                  <Typography variant="body2" fontWeight={600} noWrap>{t(`enums.area.${sr.area}`, sr.area)}</Typography>
-                  <Typography variant="caption" color="text.secondary">{sr.buildingName} · {formatDateLocal(sr.createdAtUtc)}</Typography>
+                  <Typography variant="body2" fontWeight={600} noWrap>{sr.buildingName} – {t(`enums.area.${sr.area}`, sr.area)} – {t(`enums.category.${sr.category}`, sr.category)}</Typography>
+                  <Typography variant="caption" color="text.secondary">{formatDateLocal(sr.createdAtUtc)}</Typography>
                 </CardContent>
               </CardActionArea>
             </Card>
@@ -85,7 +85,7 @@ const MyRequestsPage: React.FC = () => {
       <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         {selected && (<>
           <DialogTitle>
-            {t('myRequests.detailTitle', { id: selected.id })}
+            {selected.buildingName} – {t(`enums.area.${selected.area}`, selected.area)} – {t(`enums.category.${selected.category}`, selected.category)}
             {selected.isEmergency && <Chip label={t('serviceRequests.emergency')} color="error" size="small" sx={{ ml: 1 }} />}
           </DialogTitle>
           <DialogContent>

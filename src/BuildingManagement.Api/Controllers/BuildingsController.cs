@@ -40,6 +40,18 @@ public class BuildingsController : ControllerBase
             query = query.Where(b => buildingIds.Contains(b.Id));
         }
 
+        // Tenant can only see buildings they belong to
+        if (User.IsInRole(AppRoles.Tenant) && !isAdmin && !isManager)
+        {
+            var tenantBuildingIds = await _db.TenantProfiles
+                .Where(tp => tp.UserId == userId && tp.IsActive && !tp.IsDeleted)
+                .Select(tp => tp.Unit.BuildingId)
+                .Distinct()
+                .ToListAsync();
+            if (tenantBuildingIds.Count > 0)
+                query = query.Where(b => tenantBuildingIds.Contains(b.Id));
+        }
+
         var buildings = await query.Select(b => new BuildingDto
         {
             Id = b.Id,
