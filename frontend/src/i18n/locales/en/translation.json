@@ -1038,6 +1038,7 @@
     "noMessages": "No messages yet. The AI assistant will respond shortly.",
     "aiAssistant": "AI Assistant",
     "incidentLinked": "Linked to incident #{{id}} ({{count}} reports)",
-    "unread": "New"
+    "unread": "New",
+    "newMessage": "New message"
   }
 }

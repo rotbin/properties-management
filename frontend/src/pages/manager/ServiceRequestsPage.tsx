@@ -75,9 +75,18 @@ const ServiceRequestsPage: React.FC = () => {
 
   useEffect(() => { load(); }, [filterStatus, filterBuilding]);
 
-  const handleTicketUpdated = (update: { ticketId: number; area?: string; category?: string; priority?: string; isEmergency?: boolean; description?: string }) => {
-    setSelected(prev => prev ? { ...prev, area: update.area ?? prev.area, category: update.category ?? prev.category, priority: update.priority ?? prev.priority, isEmergency: update.isEmergency ?? prev.isEmergency, description: update.description ?? prev.description } : prev);
-    setRequests(prev => prev.map(sr => sr.id === update.ticketId ? { ...sr, area: update.area ?? sr.area, category: update.category ?? sr.category, priority: update.priority ?? sr.priority, isEmergency: update.isEmergency ?? sr.isEmergency, description: update.description ?? sr.description } : sr));
+  const handleTicketUpdated = (update: { ticketId: number; area?: string; category?: string; priority?: string; isEmergency?: boolean; description?: string; status?: string }) => {
+    const patch = (sr: ServiceRequestDto) => ({
+      ...sr,
+      area: update.area ?? sr.area,
+      category: update.category ?? sr.category,
+      priority: update.priority ?? sr.priority,
+      isEmergency: update.isEmergency ?? sr.isEmergency,
+      description: update.description ?? sr.description,
+      status: update.status ?? sr.status,
+    });
+    setSelected(prev => prev ? patch(prev) : prev);
+    setRequests(prev => prev.map(sr => sr.id === update.ticketId ? patch(sr) : sr));
   };
 
   const loadCreateUnits = async (buildingId: number) => {

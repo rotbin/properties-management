@@ -1038,6 +1038,7 @@
     "noMessages": "אין הודעות עדיין. העוזר החכם יגיב בקרוב.",
     "aiAssistant": "עוזר חכם",
     "incidentLinked": "מקושר לאירוע #{{id}} ({{count}} דיווחים)",
-    "unread": "חדש"
+    "unread": "חדש",
+    "newMessage": "הודעה חדשה"
   }
 }

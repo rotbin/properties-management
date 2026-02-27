@@ -66,11 +66,25 @@ public class FakeTicketAgent : ITicketAiAgent
                   "We've linked these together so the management team can address them as one incident.";
         }
 
+        // Detect field corrections from the description itself
+        var fieldUpdates = TryExtractFieldUpdates(ticket.Description);
+        // Only suggest changes that differ from what the tenant already selected
+        if (fieldUpdates != null)
+        {
+            if (fieldUpdates.Area != null && fieldUpdates.Area.Equals(ticket.Area, StringComparison.OrdinalIgnoreCase))
+                fieldUpdates = fieldUpdates with { Area = null };
+            if (fieldUpdates.Category != null && fieldUpdates.Category.Equals(ticket.Category, StringComparison.OrdinalIgnoreCase))
+                fieldUpdates = fieldUpdates with { Category = null };
+            if (fieldUpdates.Area == null && fieldUpdates.Category == null)
+                fieldUpdates = null;
+        }
+
         return Task.FromResult(new AgentAnalysisResult
         {
             Message = message,
             MatchedIncidentGroupId = matchedGroupId,
-            IncidentTitle = incidentTitle
+            IncidentTitle = incidentTitle,
+            FieldUpdates = fieldUpdates
         });
     }
 
@@ -103,7 +117,18 @@ public class FakeTicketAgent : ITicketAiAgent
                 : "\n\nI've updated the ticket details based on the information you provided.";
         }
 
-        return Task.FromResult(new AgentReplyResult { Message = message, FieldUpdates = fieldUpdates });
+        // If the tenant gave a substantial reply, consider data collection complete
+        string? suggestedStatus = null;
+        var agentAskedQuestions = conversationHistory.Any(m => m.SenderType == "Agent" && m.Text.Contains('?'));
+        if (agentAskedQuestions && lastTenantMsg.Length >= 10)
+        {
+            suggestedStatus = "InReview";
+            message += he
+                ? "\n\nהפנייה שלך הועברה לבדיקה על ידי צוות הניהול."
+                : "\n\nYour ticket has been moved to review by the management team.";
+        }
+
+        return Task.FromResult(new AgentReplyResult { Message = message, FieldUpdates = fieldUpdates, SuggestedStatus = suggestedStatus });
     }
 
     private static TicketFieldUpdates? TryExtractFieldUpdates(string text)
@@ -135,7 +160,8 @@ public class FakeTicketAgent : ITicketAiAgent
             ["חשמל"] = "Electrical", ["תאורה"] = "Electrical",
             ["hvac"] = "HVAC", ["air condition"] = "HVAC", ["heating"] = "HVAC",
             ["מיזוג"] = "HVAC", ["חימום"] = "HVAC",
-            ["cleaning"] = "Cleaning", ["ניקיון"] = "Cleaning",
+            ["cleaning"] = "Cleaning", ["dirty"] = "Cleaning", ["dirt"] = "Cleaning", ["trash"] = "Cleaning",
+            ["ניקיון"] = "Cleaning", ["מלוכלך"] = "Cleaning", ["לכלוך"] = "Cleaning",
             ["pest"] = "Pest", ["מזיקים"] = "Pest", ["חרקים"] = "Pest",
             ["elevator"] = "Elevator", ["מעלית"] = "Elevator",
             ["security"] = "Security", ["אבטחה"] = "Security",

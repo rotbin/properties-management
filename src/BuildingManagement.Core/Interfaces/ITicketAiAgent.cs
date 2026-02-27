@@ -51,12 +51,15 @@ public record AgentAnalysisResult
     public string? Message { get; init; }
     public int? MatchedIncidentGroupId { get; init; }
     public string? IncidentTitle { get; init; }
+    public TicketFieldUpdates? FieldUpdates { get; init; }
 }
 
 public record AgentReplyResult
 {
     public string? Message { get; init; }
     public TicketFieldUpdates? FieldUpdates { get; init; }
+    /// <summary>If set, the agent suggests changing the ticket status (e.g. "InReview" once data collection is complete).</summary>
+    public string? SuggestedStatus { get; init; }
 }
 
 /// <summary>

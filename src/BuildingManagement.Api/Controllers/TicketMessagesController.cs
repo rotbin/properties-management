@@ -227,6 +227,13 @@ public class TicketMessagesController : ControllerBase
             var ctx = BuildContext(sr);
             var result = await _aiAgent.AnalyzeNewTicketAsync(ctx, openTickets);
 
+            // Apply any field corrections the agent detected (e.g. category: General -> Cleaning)
+            if (ApplyFieldUpdates(sr, result.FieldUpdates))
+            {
+                await _db.SaveChangesAsync();
+                _logger.LogInformation("Agent corrected fields for SR #{Id}", serviceRequestId);
+            }
+
             // Handle incident clustering
             if (result.MatchedIncidentGroupId.HasValue)
             {
@@ -275,6 +282,21 @@ public class TicketMessagesController : ControllerBase
                 await _db.SaveChangesAsync();
                 await BroadcastMessageAsync(serviceRequestId, MapDto(agentMsg));
                 _logger.LogInformation("Agent message posted for SR #{Id}", serviceRequestId);
+            }
+
+            // Broadcast field corrections to connected clients
+            if (result.FieldUpdates != null)
+            {
+                await _hubContext.Clients.Group($"ticket-{serviceRequestId}").SendAsync("TicketUpdated", new
+                {
+                    ticketId = serviceRequestId,
+                    area = sr.Area.ToString(),
+                    category = sr.Category.ToString(),
+                    priority = sr.Priority.ToString(),
+                    isEmergency = sr.IsEmergency,
+                    description = sr.Description,
+                    status = sr.Status.ToString()
+                });
             }
         }
         catch (Exception ex)
@@ -335,6 +357,16 @@ public class TicketMessagesController : ControllerBase
 
         var fieldsChanged = ApplyFieldUpdates(sr, result.FieldUpdates);
 
+        // Apply status change if the agent suggests one
+        if (result.SuggestedStatus != null &&
+            Enum.TryParse<ServiceRequestStatus>(result.SuggestedStatus, ignoreCase: true, out var newStatus) &&
+            sr.Status == ServiceRequestStatus.New)
+        {
+            sr.Status = newStatus;
+            sr.UpdatedAtUtc = DateTime.UtcNow;
+            fieldsChanged = true;
+        }
+
         if (!string.IsNullOrEmpty(result.Message))
         {
             var agentMsg = new TicketMessage
@@ -363,7 +395,8 @@ public class TicketMessagesController : ControllerBase
                 category = sr.Category.ToString(),
                 priority = sr.Priority.ToString(),
                 isEmergency = sr.IsEmergency,
-                description = sr.Description
+                description = sr.Description,
+                status = sr.Status.ToString()
             });
         }
     }

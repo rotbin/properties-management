@@ -18,6 +18,7 @@ interface TicketFieldUpdate {
   priority?: string;
   isEmergency?: boolean;
   description?: string;
+  status?: string;
 }
 
 interface TicketChatProps {

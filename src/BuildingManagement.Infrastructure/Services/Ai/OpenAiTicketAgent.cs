@@ -45,7 +45,10 @@ public class OpenAiTicketAgent : ITicketAiAgent
                 (t.IncidentGroupId.HasValue ? $" (incident group #{t.IncidentGroupId})" : "")))
             : "No other open tickets in this building.";
 
-        var systemPrompt = """
+        var validAreas = "Stairwell, Parking, Lobby, Corridor, GarbageRoom, Garden, Roof, Other";
+        var validCategories = "Plumbing, Electrical, HVAC, Cleaning, Pest, Structural, Elevator, Security, General";
+
+        var systemPrompt = $$"""
             You are a building management AI assistant. Analyze the new maintenance ticket below.
 
             CRITICAL: Respond in the SAME LANGUAGE the tenant used in their description. If the description is in Hebrew, your message MUST be in Hebrew. If in English, respond in English.
@@ -53,14 +56,20 @@ public class OpenAiTicketAgent : ITicketAiAgent
             Your tasks:
             1. CHECK if the description is missing key details: exact location, when it started, severity/urgency, or access instructions (for in-unit issues). If details are missing, ask up to 2 concise clarifying questions.
             2. CHECK if this ticket appears similar to any existing open tickets in the same building (same type of issue, same area). If so, identify the matching ticket ID.
-            3. Always be polite, professional, and concise. Address the tenant by name.
+            3. CHECK if the area or category selected by the tenant does not match their description. If so, suggest the correct values. Valid areas: [{{validAreas}}]. Valid categories: [{{validCategories}}].
+            4. Always be polite, professional, and concise. Address the tenant by name.
 
             Respond in this JSON format (no markdown):
             {
               "message": "Your message to the tenant (in the SAME language as their description)",
               "matchedTicketId": null or <number>,
-              "incidentTitle": null or "short title for the grouped incident"
+              "incidentTitle": null or "short title for the grouped incident",
+              "fieldUpdates": {
+                "area": null or "CorrectArea",
+                "category": null or "CorrectCategory"
+              }
             }
+            Set fieldUpdates fields to null if no correction is needed.
             """;
 
         var userPrompt = $"""
@@ -97,11 +106,21 @@ public class OpenAiTicketAgent : ITicketAiAgent
                 matchedGroupId = matched?.IncidentGroupId;
             }
 
+            TicketFieldUpdates? fieldUpdates = null;
+            if (root.TryGetProperty("fieldUpdates", out var fuEl) && fuEl.ValueKind == JsonValueKind.Object)
+            {
+                var areaUpd = fuEl.TryGetProperty("area", out var a) && a.ValueKind == JsonValueKind.String ? a.GetString() : null;
+                var catUpd = fuEl.TryGetProperty("category", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() : null;
+                if (areaUpd != null || catUpd != null)
+                    fieldUpdates = new TicketFieldUpdates { Area = areaUpd, Category = catUpd };
+            }
+
             return new AgentAnalysisResult
             {
                 Message = message,
                 MatchedIncidentGroupId = matchedGroupId,
-                IncidentTitle = incidentTitle
+                IncidentTitle = incidentTitle,
+                FieldUpdates = fieldUpdates
             };
         }
         catch (Exception ex)
@@ -123,6 +142,7 @@ public class OpenAiTicketAgent : ITicketAiAgent
             Review the conversation and:
             1. Provide a helpful follow-up message. Be concise and professional.
             2. If the tenant provided new information that should update ticket fields, extract those updates.
+            3. If the conversation has collected enough information (the agent previously asked questions and the tenant answered them), set readyForReview to true.
 
             Field values you can update:
             - area: one of [{{validAreas}}]
@@ -142,10 +162,12 @@ public class OpenAiTicketAgent : ITicketAiAgent
                 "priority": null or "ValidPriority",
                 "isEmergency": null or true/false,
                 "description": null or "enriched description"
-              }
+              },
+              "readyForReview": false
             }
             Only include non-null values in fieldUpdates if the tenant clearly provided information that warrants a change.
             If no fields should be updated, set fieldUpdates to null.
+            Set readyForReview to true only if all needed information has been collected and the ticket can move to management review.
             """;
 
         var convoText = string.Join("\n", conversationHistory.Select(m => $"[{m.SenderType}]: {m.Text}"));
@@ -190,7 +212,11 @@ public class OpenAiTicketAgent : ITicketAiAgent
                 }
             }
 
-            return new AgentReplyResult { Message = message, FieldUpdates = fieldUpdates };
+            string? suggestedStatus = null;
+            if (root.TryGetProperty("readyForReview", out var rfr) && rfr.ValueKind == JsonValueKind.True)
+                suggestedStatus = "InReview";
+
+            return new AgentReplyResult { Message = message, FieldUpdates = fieldUpdates, SuggestedStatus = suggestedStatus };
         }
         catch (Exception ex)
         {

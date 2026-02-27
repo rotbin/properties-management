@@ -28,9 +28,18 @@ const MyRequestsPage: React.FC = () => {
   const loadRequests = () => { serviceRequestsApi.getMy().then(r => setRequests(r.data)).catch(() => {}).finally(() => setLoading(false)); };
   useEffect(() => { loadRequests(); }, []);
 
-  const handleTicketUpdated = (update: { ticketId: number; area?: string; category?: string; priority?: string; isEmergency?: boolean; description?: string }) => {
-    setSelected(prev => prev ? { ...prev, ...update, area: update.area ?? prev.area, category: update.category ?? prev.category, priority: update.priority ?? prev.priority, isEmergency: update.isEmergency ?? prev.isEmergency, description: update.description ?? prev.description } : prev);
-    setRequests(prev => prev.map(sr => sr.id === update.ticketId ? { ...sr, area: update.area ?? sr.area, category: update.category ?? sr.category, priority: update.priority ?? sr.priority, isEmergency: update.isEmergency ?? sr.isEmergency, description: update.description ?? sr.description } : sr));
+  const handleTicketUpdated = (update: { ticketId: number; area?: string; category?: string; priority?: string; isEmergency?: boolean; description?: string; status?: string }) => {
+    const patch = (sr: ServiceRequestDto) => ({
+      ...sr,
+      area: update.area ?? sr.area,
+      category: update.category ?? sr.category,
+      priority: update.priority ?? sr.priority,
+      isEmergency: update.isEmergency ?? sr.isEmergency,
+      description: update.description ?? sr.description,
+      status: update.status ?? sr.status,
+    });
+    setSelected(prev => prev ? patch(prev) : prev);
+    setRequests(prev => prev.map(sr => sr.id === update.ticketId ? patch(sr) : sr));
   };
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
@@ -45,11 +54,20 @@ const MyRequestsPage: React.FC = () => {
       {isMobile ? (
         <Stack spacing={1.5}>
           {requests.map(sr => (
-            <Card key={sr.id} variant="outlined">
+            <Card key={sr.id} variant="outlined" sx={sr.hasUnreadMessages ? {
+              borderLeft: '4px solid', borderLeftColor: 'error.main', bgcolor: 'error.50',
+              boxShadow: '0 0 0 1px rgba(211,47,47,0.12)',
+            } : undefined}>
               <CardActionArea onClick={() => { setSelected(sr); setDetailOpen(true); }}>
                 <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                    <Typography variant="subtitle2">#{sr.id}</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography variant="subtitle2">#{sr.id}</Typography>
+                      {sr.hasUnreadMessages && (
+                        <Chip icon={<FiberNew sx={{ fontSize: 14 }} />} label={t('ticketChat.newMessage')} size="small" color="error"
+                          sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' }, animation: 'pulse 2s infinite', '@keyframes pulse': { '0%, 100%': { opacity: 1 }, '50%': { opacity: 0.7 } } }} />
+                      )}
+                    </Box>
                     <Box sx={{ display: 'flex', gap: 0.5 }}>
                       <Chip label={t(`enums.priority.${sr.priority}`, sr.priority)} size="small" color={priorityColor(sr.priority) as any} />
                       <Chip label={t(`enums.srStatus.${sr.status}`, sr.status)} size="small" color={statusColor(sr.status) as any} />
@@ -58,7 +76,6 @@ const MyRequestsPage: React.FC = () => {
                   <Typography variant="body2" fontWeight={600} noWrap>{sr.buildingName} – {t(`enums.area.${sr.area}`, sr.area)} – {t(`enums.category.${sr.category}`, sr.category)}</Typography>
                   <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
                     <Typography variant="caption" color="text.secondary">{formatDateLocal(sr.createdAtUtc)}</Typography>
-                    {sr.hasUnreadMessages && <Chip icon={<FiberNew sx={{ fontSize: 14 }} />} label={t('ticketChat.unread')} size="small" color="error" sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />}
                     {sr.incidentGroupId && <Chip icon={<BugReport sx={{ fontSize: 14 }} />} label={`#${sr.incidentGroupId}`} size="small" color="warning" variant="outlined" sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />}
                     {(sr.messageCount ?? 0) > 0 && <Chip icon={<Chat sx={{ fontSize: 14 }} />} label={sr.messageCount} size="small" variant="outlined" sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />}
                   </Box>
@@ -77,11 +94,18 @@ const MyRequestsPage: React.FC = () => {
             </TableRow></TableHead>
             <TableBody>
               {requests.map(sr => (
-                <TableRow key={sr.id} hover>
+                <TableRow key={sr.id} hover sx={sr.hasUnreadMessages ? {
+                  bgcolor: 'rgba(211,47,47,0.04)',
+                  borderLeft: '4px solid',
+                  borderLeftColor: 'error.main',
+                } : undefined}>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       {sr.id}
-                      {sr.hasUnreadMessages && <Chip icon={<FiberNew sx={{ fontSize: 14 }} />} label={t('ticketChat.unread')} size="small" color="error" sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />}
+                      {sr.hasUnreadMessages && (
+                        <Chip icon={<FiberNew sx={{ fontSize: 14 }} />} label={t('ticketChat.newMessage')} size="small" color="error"
+                          sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />
+                      )}
                     </Box>
                   </TableCell>
                   <TableCell>{sr.buildingName}</TableCell>
