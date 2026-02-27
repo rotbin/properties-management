@@ -128,6 +128,19 @@ builder.Services.AddSingleton(new BuildingManagement.Infrastructure.Services.Sms
 // Email sender
 builder.Services.AddSingleton<IEmailSender, BuildingManagement.Infrastructure.Services.Email.FakeEmailSender>();
 
+// AI Ticket Agent
+var aiProvider = builder.Configuration["Ai:Provider"] ?? "Fake";
+if (aiProvider.Equals("OpenAi", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddHttpClient<BuildingManagement.Infrastructure.Services.Ai.OpenAiTicketAgent>();
+    builder.Services.AddSingleton<ITicketAiAgent, BuildingManagement.Infrastructure.Services.Ai.OpenAiTicketAgent>();
+}
+else
+{
+    builder.Services.AddSingleton<ITicketAiAgent, BuildingManagement.Infrastructure.Services.Ai.FakeTicketAgent>();
+}
+builder.Services.AddScoped<BuildingManagement.Api.Controllers.TicketMessagesController>();
+
 // Accounting Document Provider (Israeli invoicing)
 var accountingProvider = builder.Configuration["Accounting:Provider"] ?? "Fake";
 if (accountingProvider.Equals("GreenInvoice", StringComparison.OrdinalIgnoreCase))

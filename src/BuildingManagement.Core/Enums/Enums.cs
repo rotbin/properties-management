@@ -223,6 +223,13 @@ public enum PropertyRole
     Renter = 2       // שוכר
 }
 
+public enum TicketMessageSender
+{
+    Tenant = 0,
+    Agent = 1,
+    Manager = 2
+}
+
 public static class AppRoles
 {
     public const string Admin = "Admin";

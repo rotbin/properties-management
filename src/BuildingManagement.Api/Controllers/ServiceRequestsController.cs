@@ -18,13 +18,15 @@ public class ServiceRequestsController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IFileStorageService _fileStorage;
     private readonly IEmailService _emailService;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ServiceRequestsController> _logger;
 
-    public ServiceRequestsController(AppDbContext db, IFileStorageService fileStorage, IEmailService emailService, ILogger<ServiceRequestsController> logger)
+    public ServiceRequestsController(AppDbContext db, IFileStorageService fileStorage, IEmailService emailService, IServiceProvider serviceProvider, ILogger<ServiceRequestsController> logger)
     {
         _db = db;
         _fileStorage = fileStorage;
         _emailService = emailService;
+        _serviceProvider = serviceProvider;
         _logger = logger;
     }
 
@@ -91,6 +93,19 @@ public class ServiceRequestsController : ControllerBase
             $"New Service Request #{sr.Id}",
             $"A new service request has been submitted by {user.FullName}: {request.Description}");
 
+        // Trigger AI agent analysis (fire-and-forget)
+        var srId = sr.Id;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var msgController = scope.ServiceProvider.GetRequiredService<TicketMessagesController>();
+                await msgController.TriggerAgentOnNewTicketAsync(srId);
+            }
+            catch (Exception ex) { _logger.LogError(ex, "AI agent trigger failed for ticket #{Id}", srId); }
+        });
+
         return CreatedAtAction(nameof(GetById), new { id = sr.Id }, MapToDto(sr));
     }
 
@@ -108,7 +123,9 @@ public class ServiceRequestsController : ControllerBase
             .Include(sr => sr.Building)
             .Include(sr => sr.Unit)
             .Include(sr => sr.Attachments)
-            .Include(sr => sr.WorkOrders).ThenInclude(wo => wo.Vendor);
+            .Include(sr => sr.WorkOrders).ThenInclude(wo => wo.Vendor)
+            .Include(sr => sr.IncidentGroup).ThenInclude(ig => ig!.ServiceRequests)
+            .Include(sr => sr.Messages);
 
         // Manager: filter to their buildings
         if (!isAdmin)
@@ -139,6 +156,8 @@ public class ServiceRequestsController : ControllerBase
             .Include(sr => sr.Unit)
             .Include(sr => sr.Attachments)
             .Include(sr => sr.WorkOrders).ThenInclude(wo => wo.Vendor)
+            .Include(sr => sr.IncidentGroup).ThenInclude(ig => ig!.ServiceRequests)
+            .Include(sr => sr.Messages)
             .Where(sr => sr.SubmittedByUserId == userId)
             .OrderByDescending(sr => sr.CreatedAtUtc)
             .ToListAsync();
@@ -154,6 +173,8 @@ public class ServiceRequestsController : ControllerBase
             .Include(sr => sr.Unit)
             .Include(sr => sr.Attachments)
             .Include(sr => sr.WorkOrders).ThenInclude(wo => wo.Vendor)
+            .Include(sr => sr.IncidentGroup).ThenInclude(ig => ig!.ServiceRequests)
+            .Include(sr => sr.Messages)
             .FirstOrDefaultAsync(sr => sr.Id == id);
 
         if (sr == null) return NotFound();
@@ -261,6 +282,19 @@ public class ServiceRequestsController : ControllerBase
                 sr.Email ?? "",
                 $"Service Request #{sr.Id} Resolved",
                 $"Your service request has been resolved.");
+
+            // Trigger AI agent satisfaction follow-up
+            var srId = sr.Id;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var msgController = scope.ServiceProvider.GetRequiredService<TicketMessagesController>();
+                    await msgController.TriggerAgentOnResolutionAsync(srId);
+                }
+                catch (Exception ex) { _logger.LogError(ex, "AI agent resolution follow-up failed for ticket #{Id}", srId); }
+            });
         }
 
         return NoContent();
@@ -348,7 +382,11 @@ public class ServiceRequestsController : ControllerBase
             AssignedVendorId = linkedWo?.VendorId,
             AssignedVendorName = linkedWo?.Vendor?.Name,
             LinkedWorkOrderId = linkedWo?.Id,
-            LinkedWorkOrderStatus = linkedWo?.Status.ToString()
+            LinkedWorkOrderStatus = linkedWo?.Status.ToString(),
+            IncidentGroupId = sr.IncidentGroupId,
+            IncidentGroupTitle = sr.IncidentGroup?.Title,
+            IncidentTicketCount = sr.IncidentGroup?.ServiceRequests?.Count ?? 0,
+            MessageCount = sr.Messages?.Count ?? 0
         };
     }
 }

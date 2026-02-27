@@ -29,6 +29,14 @@ public record ServiceRequestDto
     public string? AssignedVendorName { get; init; }
     public int? LinkedWorkOrderId { get; init; }
     public string? LinkedWorkOrderStatus { get; init; }
+
+    // Incident group
+    public int? IncidentGroupId { get; init; }
+    public string? IncidentGroupTitle { get; init; }
+    public int IncidentTicketCount { get; init; }
+
+    // Message count
+    public int MessageCount { get; init; }
 }
 
 public record CreateServiceRequestRequest
@@ -57,6 +65,23 @@ public record UpdateServiceRequestStatusRequest
 
     [MaxLength(500)]
     public string? Note { get; init; }
+}
+
+public record TicketMessageDto
+{
+    public int Id { get; init; }
+    public int ServiceRequestId { get; init; }
+    public string SenderType { get; init; } = string.Empty;
+    public string? SenderUserId { get; init; }
+    public string? SenderName { get; init; }
+    public string Text { get; init; } = string.Empty;
+    public DateTime CreatedAtUtc { get; init; }
+}
+
+public record PostTicketMessageRequest
+{
+    [Required, MaxLength(4000)]
+    public string Text { get; init; } = string.Empty;
 }
 
 public record AttachmentDto

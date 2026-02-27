@@ -1030,5 +1030,12 @@
       "Failed": "נכשל",
       "Skipped": "דולג"
     }
+  },
+  "ticketChat": {
+    "title": "שיחת פנייה",
+    "placeholder": "כתוב הודעה...",
+    "noMessages": "אין הודעות עדיין. העוזר החכם יגיב בקרוב.",
+    "aiAssistant": "עוזר חכם",
+    "incidentLinked": "מקושר לאירוע #{{id}} ({{count}} דיווחים)"
   }
 }

@@ -106,6 +106,12 @@ export interface ServiceRequestDto {
   assignedVendorName?: string;
   linkedWorkOrderId?: number;
   linkedWorkOrderStatus?: string;
+  // Incident group
+  incidentGroupId?: number;
+  incidentGroupTitle?: string;
+  incidentTicketCount?: number;
+  // Message count
+  messageCount?: number;
 }
 
 export interface AttachmentDto {
@@ -609,6 +615,16 @@ export interface TenantPaymentDto {
   receiptPdfUrl?: string;
   receiptIssuedAtUtc?: string;
   hasReceipt: boolean;
+}
+
+export interface TicketMessageDto {
+  id: number;
+  serviceRequestId: number;
+  senderType: string;
+  senderUserId?: string;
+  senderName?: string;
+  text: string;
+  createdAtUtc: string;
 }
 
 export interface ManagerInvoiceDto {

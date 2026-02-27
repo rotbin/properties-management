@@ -1030,5 +1030,12 @@
       "Failed": "Failed",
       "Skipped": "Skipped"
     }
+  },
+  "ticketChat": {
+    "title": "Ticket Conversation",
+    "placeholder": "Type a message...",
+    "noMessages": "No messages yet. The AI assistant will respond shortly.",
+    "aiAssistant": "AI Assistant",
+    "incidentLinked": "Linked to incident #{{id}} ({{count}} reports)"
   }
 }

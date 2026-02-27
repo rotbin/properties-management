@@ -25,6 +25,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<BuildingManager> BuildingManagers => Set<BuildingManager>();
     public DbSet<TenantProfile> TenantProfiles => Set<TenantProfile>();
+    public DbSet<TicketMessage> TicketMessages => Set<TicketMessage>();
+    public DbSet<IncidentGroup> IncidentGroups => Set<IncidentGroup>();
 
     // Finance
     public DbSet<HOAFeePlan> HOAFeePlans => Set<HOAFeePlan>();
@@ -127,6 +129,28 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             .WithMany(sr => sr.Attachments)
             .HasForeignKey(a => a.ServiceRequestId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // ─── TicketMessage ──────────────────────────────────
+
+        builder.Entity<TicketMessage>()
+            .HasOne(tm => tm.ServiceRequest)
+            .WithMany(sr => sr.Messages)
+            .HasForeignKey(tm => tm.ServiceRequestId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ─── IncidentGroup ──────────────────────────────────
+
+        builder.Entity<IncidentGroup>()
+            .HasOne(ig => ig.Building)
+            .WithMany()
+            .HasForeignKey(ig => ig.BuildingId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<ServiceRequest>()
+            .HasOne(sr => sr.IncidentGroup)
+            .WithMany(ig => ig!.ServiceRequests)
+            .HasForeignKey(sr => sr.IncidentGroupId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         // WorkOrder relationships
         builder.Entity<WorkOrder>()

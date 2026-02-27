@@ -5,13 +5,14 @@ import {
   DialogActions, CircularProgress, Alert, useMediaQuery, useTheme, Card, CardContent,
   Stack, CardActionArea, FormControlLabel, Switch, ImageList, ImageListItem, IconButton
 } from '@mui/material';
-import { Visibility, Add, Delete, CloudUpload, NoteAdd, Edit } from '@mui/icons-material';
+import { Visibility, Add, Delete, CloudUpload, NoteAdd, Edit, BugReport, Chat } from '@mui/icons-material';
 import { serviceRequestsApi, buildingsApi, workOrdersApi, vendorsApi } from '../../api/services';
 import type { ServiceRequestDto, BuildingDto, VendorDto, UnitDto } from '../../types';
 import { SR_STATUSES, AREAS, CATEGORIES, PRIORITIES } from '../../types';
 import { formatDateLocal } from '../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../auth/AuthContext';
+import TicketChat from '../../components/TicketChat';
 
 const priorityColor = (p: string) => p === 'Critical' ? 'error' : p === 'High' ? 'warning' : p === 'Medium' ? 'info' : 'default';
 const statusColor = (s: string) => s === 'New' ? 'info' : s === 'Resolved' ? 'success' : s === 'Rejected' ? 'error' : 'default';
@@ -222,7 +223,11 @@ const ServiceRequestsPage: React.FC = () => {
                     </Box>
                   </Box>
                   <Typography variant="body2" fontWeight={600} noWrap>{srTitle(sr)}</Typography>
-                  <Typography variant="caption" color="text.secondary">{sr.submittedByName} · {formatDateLocal(sr.createdAtUtc)}</Typography>
+                  <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                    <Typography variant="caption" color="text.secondary">{sr.submittedByName} · {formatDateLocal(sr.createdAtUtc)}</Typography>
+                    {sr.incidentGroupId && <Chip icon={<BugReport sx={{ fontSize: 14 }} />} label={`#${sr.incidentGroupId}`} size="small" color="warning" variant="outlined" sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />}
+                    {(sr.messageCount ?? 0) > 0 && <Chip icon={<Chat sx={{ fontSize: 14 }} />} label={sr.messageCount} size="small" variant="outlined" sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />}
+                  </Box>
                 </CardContent>
               </CardActionArea>
             </Card>
@@ -241,7 +246,13 @@ const ServiceRequestsPage: React.FC = () => {
               {requests.map(sr => (
                 <TableRow key={sr.id} hover>
                   <TableCell>{sr.id}</TableCell>
-                  <TableCell>{srTitle(sr)}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      {srTitle(sr)}
+                      {sr.incidentGroupId && <Chip icon={<BugReport sx={{ fontSize: 14 }} />} label={`#${sr.incidentGroupId}`} size="small" color="warning" variant="outlined" sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />}
+                      {(sr.messageCount ?? 0) > 0 && <Chip icon={<Chat sx={{ fontSize: 14 }} />} label={sr.messageCount} size="small" variant="outlined" sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />}
+                    </Box>
+                  </TableCell>
                   <TableCell><Chip label={t(`enums.priority.${sr.priority}`, sr.priority)} size="small" color={priorityColor(sr.priority) as any} /></TableCell>
                   <TableCell><Chip label={t(`enums.srStatus.${sr.status}`, sr.status)} size="small" color={statusColor(sr.status) as any} /></TableCell>
                   <TableCell>{sr.submittedByName}</TableCell>
@@ -305,6 +316,13 @@ const ServiceRequestsPage: React.FC = () => {
                 {selected.linkedWorkOrderId ? t('serviceRequests.editWorkOrder') : t('serviceRequests.createWorkOrder')}
               </Button>
             </Box>
+
+            <TicketChat
+              ticketId={selected.id}
+              incidentGroupId={selected.incidentGroupId}
+              incidentGroupTitle={selected.incidentGroupTitle}
+              incidentTicketCount={selected.incidentTicketCount}
+            />
           </DialogContent>
           <DialogActions><Button onClick={() => setDetailOpen(false)}>{t('app.close')}</Button></DialogActions>
         </>)}

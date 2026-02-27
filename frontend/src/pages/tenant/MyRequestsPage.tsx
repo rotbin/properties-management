@@ -4,12 +4,13 @@ import {
   Paper, Chip, Button, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress,
   Card, CardContent, CardActionArea, Stack, useMediaQuery, useTheme
 } from '@mui/material';
-import { Visibility, Add } from '@mui/icons-material';
+import { Visibility, Add, BugReport, Chat } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { serviceRequestsApi } from '../../api/services';
 import type { ServiceRequestDto } from '../../types';
 import { formatDateLocal } from '../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
+import TicketChat from '../../components/TicketChat';
 
 const priorityColor = (p: string) => p === 'Critical' ? 'error' : p === 'High' ? 'warning' : p === 'Medium' ? 'info' : 'default';
 const statusColor = (s: string) => s === 'New' ? 'info' : s === 'Resolved' ? 'success' : s === 'Rejected' ? 'error' : 'default';
@@ -49,7 +50,11 @@ const MyRequestsPage: React.FC = () => {
                     </Box>
                   </Box>
                   <Typography variant="body2" fontWeight={600} noWrap>{sr.buildingName} – {t(`enums.area.${sr.area}`, sr.area)} – {t(`enums.category.${sr.category}`, sr.category)}</Typography>
-                  <Typography variant="caption" color="text.secondary">{formatDateLocal(sr.createdAtUtc)}</Typography>
+                  <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                    <Typography variant="caption" color="text.secondary">{formatDateLocal(sr.createdAtUtc)}</Typography>
+                    {sr.incidentGroupId && <Chip icon={<BugReport sx={{ fontSize: 14 }} />} label={`#${sr.incidentGroupId}`} size="small" color="warning" variant="outlined" sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />}
+                    {(sr.messageCount ?? 0) > 0 && <Chip icon={<Chat sx={{ fontSize: 14 }} />} label={sr.messageCount} size="small" variant="outlined" sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />}
+                  </Box>
                 </CardContent>
               </CardActionArea>
             </Card>
@@ -107,6 +112,13 @@ const MyRequestsPage: React.FC = () => {
                 </Box>
               </Box>
             )}
+
+            <TicketChat
+              ticketId={selected.id}
+              incidentGroupId={selected.incidentGroupId}
+              incidentGroupTitle={selected.incidentGroupTitle}
+              incidentTicketCount={selected.incidentTicketCount}
+            />
           </DialogContent>
           <DialogActions><Button onClick={() => setDetailOpen(false)}>{t('app.close')}</Button></DialogActions>
         </>)}

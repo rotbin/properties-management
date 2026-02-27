@@ -10,7 +10,7 @@ import type {
   VendorInvoiceDto, VendorPaymentDto,
   SmsTemplateDto, SmsCampaignDto, CreateCampaignResult, SendCampaignResult, SmsCampaignRecipientDto, ReminderChannel,
   StandingOrderDto, CreateStandingOrderRequest, CreateStandingOrderResponse,
-  TenantPaymentDto, ManagerInvoiceDto
+  TenantPaymentDto, ManagerInvoiceDto, TicketMessageDto
 } from '../types';
 
 // Auth
@@ -253,6 +253,14 @@ export const smsApi = {
     apiClient.get<{ message: string; subject?: string }>(`/api/notifications/sms/campaigns/${campaignId}/recipients/${recipientId}/preview`),
   sendCampaign: (campaignId: number) =>
     apiClient.post<SendCampaignResult>(`/api/notifications/sms/campaigns/${campaignId}/send`, { confirm: true }),
+};
+
+// Ticket Messages (AI Agent)
+export const ticketMessagesApi = {
+  getMessages: (ticketId: number) =>
+    apiClient.get<TicketMessageDto[]>(`/api/tickets/${ticketId}/messages`),
+  postMessage: (ticketId: number, text: string) =>
+    apiClient.post<TicketMessageDto>(`/api/tickets/${ticketId}/messages`, { text }),
 };
 
 // Accounting Documents

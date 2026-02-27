@@ -34,6 +34,10 @@ public class ServiceRequest : BaseEntity
 
     public ServiceRequestStatus Status { get; set; } = ServiceRequestStatus.New;
 
+    public int? IncidentGroupId { get; set; }
+    public IncidentGroup? IncidentGroup { get; set; }
+
     public ICollection<ServiceRequestAttachment> Attachments { get; set; } = new List<ServiceRequestAttachment>();
     public ICollection<WorkOrder> WorkOrders { get; set; } = new List<WorkOrder>();
+    public ICollection<TicketMessage> Messages { get; set; } = new List<TicketMessage>();
 }

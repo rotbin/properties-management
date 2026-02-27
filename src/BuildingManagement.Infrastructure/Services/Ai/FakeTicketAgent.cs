@@ -1,0 +1,111 @@
+using BuildingManagement.Core.Interfaces;
+using Microsoft.Extensions.Logging;
+
+namespace BuildingManagement.Infrastructure.Services.Ai;
+
+/// <summary>
+/// Fake AI agent for development/demo. Returns canned responses with zero external cost.
+/// </summary>
+public class FakeTicketAgent : ITicketAiAgent
+{
+    private readonly ILogger<FakeTicketAgent> _logger;
+
+    public FakeTicketAgent(ILogger<FakeTicketAgent> logger) => _logger = logger;
+
+    public Task<AgentAnalysisResult> AnalyzeNewTicketAsync(
+        TicketContext ticket, List<TicketSummary> openTicketsInBuilding, CancellationToken ct = default)
+    {
+        _logger.LogInformation("[FakeAI] Analyzing ticket #{Id}: {Desc}", ticket.Id, ticket.Description);
+
+        // Check for missing details heuristically
+        var desc = ticket.Description.ToLowerInvariant();
+        var missingParts = new List<string>();
+
+        if (desc.Length < 30)
+            missingParts.Add("a more detailed description of the issue");
+        if (!ContainsLocationHint(desc) && ticket.Area == "Other")
+            missingParts.Add("the exact location (floor, area, or apartment)");
+        if (!ContainsTimeHint(desc))
+            missingParts.Add("when this issue started or was first noticed");
+
+        string? message = null;
+        if (missingParts.Count > 0)
+        {
+            message = $"Hi {ticket.TenantName}, thank you for reporting this issue. " +
+                      $"To help us address it quickly, could you please provide:\n" +
+                      string.Join("\n", missingParts.Select((p, i) => $"{i + 1}. {p}")) +
+                      "\n\nThis will help the building management team respond more efficiently.";
+        }
+        else
+        {
+            message = $"Hi {ticket.TenantName}, thank you for the detailed report. " +
+                      "Your ticket has been received and the building management team will review it shortly.";
+        }
+
+        // Check for similar tickets (simple keyword match for demo)
+        int? matchedGroupId = null;
+        string? incidentTitle = null;
+        var matchingTicket = openTicketsInBuilding.FirstOrDefault(t =>
+            t.Id != ticket.Id &&
+            t.Category == ticket.Category &&
+            t.Area == ticket.Area &&
+            HasWordOverlap(t.Description, ticket.Description));
+
+        if (matchingTicket != null)
+        {
+            matchedGroupId = matchingTicket.IncidentGroupId;
+            incidentTitle = $"{ticket.Area} - {ticket.Category} issue";
+            message += $"\n\nNote: This appears related to an existing report (Ticket #{matchingTicket.Id}). " +
+                       "We've linked these together so the management team can address them as one incident.";
+        }
+
+        return Task.FromResult(new AgentAnalysisResult
+        {
+            Message = message,
+            MatchedIncidentGroupId = matchedGroupId,
+            IncidentTitle = incidentTitle
+        });
+    }
+
+    public Task<string?> ProcessTenantReplyAsync(
+        TicketContext ticket, List<MessageEntry> conversationHistory, CancellationToken ct = default)
+    {
+        _logger.LogInformation("[FakeAI] Processing reply on ticket #{Id}", ticket.Id);
+
+        var lastTenantMsg = conversationHistory.LastOrDefault(m => m.SenderType == "Tenant")?.Text ?? "";
+
+        if (lastTenantMsg.Length < 10)
+            return Task.FromResult<string?>("Thank you for your response. Could you provide a bit more detail so we can assist you better?");
+
+        return Task.FromResult<string?>(
+            "Thank you for the additional information. The building management team has been notified " +
+            "and will take this into account when handling your request.");
+    }
+
+    public Task<string> GenerateResolutionFollowUpAsync(TicketContext ticket, CancellationToken ct = default)
+    {
+        _logger.LogInformation("[FakeAI] Generating resolution follow-up for ticket #{Id}", ticket.Id);
+
+        return Task.FromResult(
+            $"Hi {ticket.TenantName}, your ticket regarding the {ticket.Category.ToLowerInvariant()} " +
+            $"issue in {ticket.Area.ToLowerInvariant()} has been marked as resolved.\n\n" +
+            "Has this issue been resolved to your satisfaction? " +
+            "Please reply to let us know, or contact the building management if you need further assistance.");
+    }
+
+    private static bool ContainsLocationHint(string text) =>
+        new[] { "floor", "apartment", "apt", "room", "entrance", "lobby", "parking", "roof", "garden", "stairwell", "corridor", "קומה", "דירה", "חדר", "כניסה" }
+            .Any(text.Contains);
+
+    private static bool ContainsTimeHint(string text) =>
+        new[] { "since", "started", "yesterday", "today", "days", "weeks", "hours", "morning", "night", "ago", "מאז", "התחיל", "אתמול", "היום" }
+            .Any(text.Contains);
+
+    private static bool HasWordOverlap(string a, string b)
+    {
+        var wordsA = a.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(w => w.Length > 3).ToHashSet();
+        var wordsB = b.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(w => w.Length > 3).ToHashSet();
+        var overlap = wordsA.Intersect(wordsB).Count();
+        return overlap >= 3;
+    }
+}
