@@ -18,15 +18,15 @@ public class ServiceRequestsController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IFileStorageService _fileStorage;
     private readonly IEmailService _emailService;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<ServiceRequestsController> _logger;
 
-    public ServiceRequestsController(AppDbContext db, IFileStorageService fileStorage, IEmailService emailService, IServiceProvider serviceProvider, ILogger<ServiceRequestsController> logger)
+    public ServiceRequestsController(AppDbContext db, IFileStorageService fileStorage, IEmailService emailService, IServiceScopeFactory scopeFactory, ILogger<ServiceRequestsController> logger)
     {
         _db = db;
         _fileStorage = fileStorage;
         _emailService = emailService;
-        _serviceProvider = serviceProvider;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -93,17 +93,18 @@ public class ServiceRequestsController : ControllerBase
             $"New Service Request #{sr.Id}",
             $"A new service request has been submitted by {user.FullName}: {request.Description}");
 
-        // Trigger AI agent analysis (fire-and-forget)
+        // Trigger AI agent analysis (fire-and-forget via singleton scope factory)
         var srId = sr.Id;
+        var scopeFactory = _scopeFactory;
         _ = Task.Run(async () =>
         {
             try
             {
-                using var scope = _serviceProvider.CreateScope();
+                using var scope = scopeFactory.CreateScope();
                 var msgController = scope.ServiceProvider.GetRequiredService<TicketMessagesController>();
                 await msgController.TriggerAgentOnNewTicketAsync(srId);
             }
-            catch (Exception ex) { _logger.LogError(ex, "AI agent trigger failed for ticket #{Id}", srId); }
+            catch (Exception ex) { Console.WriteLine($"AI agent trigger failed for ticket #{srId}: {ex}"); }
         });
 
         return CreatedAtAction(nameof(GetById), new { id = sr.Id }, MapToDto(sr));
@@ -283,17 +284,18 @@ public class ServiceRequestsController : ControllerBase
                 $"Service Request #{sr.Id} Resolved",
                 $"Your service request has been resolved.");
 
-            // Trigger AI agent satisfaction follow-up
-            var srId = sr.Id;
+            // Trigger AI agent satisfaction follow-up via singleton scope factory
+            var resolvedSrId = sr.Id;
+            var resolvedScopeFactory = _scopeFactory;
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    using var scope = _serviceProvider.CreateScope();
+                    using var scope = resolvedScopeFactory.CreateScope();
                     var msgController = scope.ServiceProvider.GetRequiredService<TicketMessagesController>();
-                    await msgController.TriggerAgentOnResolutionAsync(srId);
+                    await msgController.TriggerAgentOnResolutionAsync(resolvedSrId);
                 }
-                catch (Exception ex) { _logger.LogError(ex, "AI agent resolution follow-up failed for ticket #{Id}", srId); }
+                catch (Exception ex) { Console.WriteLine($"AI agent resolution follow-up failed for ticket #{resolvedSrId}: {ex}"); }
             });
         }
 

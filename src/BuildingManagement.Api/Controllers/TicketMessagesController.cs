@@ -17,12 +17,14 @@ public class TicketMessagesController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ITicketAiAgent _aiAgent;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<TicketMessagesController> _logger;
 
-    public TicketMessagesController(AppDbContext db, ITicketAiAgent aiAgent, ILogger<TicketMessagesController> logger)
+    public TicketMessagesController(AppDbContext db, ITicketAiAgent aiAgent, IServiceScopeFactory scopeFactory, ILogger<TicketMessagesController> logger)
     {
         _db = db;
         _aiAgent = aiAgent;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -34,7 +36,6 @@ public class TicketMessagesController : ControllerBase
         var sr = await _db.ServiceRequests.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
         if (sr == null) return NotFound();
 
-        // Tenants can only see their own tickets
         if (User.IsInRole(AppRoles.Tenant) && !User.IsInRole(AppRoles.Admin) && !User.IsInRole(AppRoles.Manager))
         {
             if (sr.SubmittedByUserId != userId) return Forbid();
@@ -72,7 +73,6 @@ public class TicketMessagesController : ControllerBase
             .FirstOrDefaultAsync(s => s.Id == id);
         if (sr == null) return NotFound();
 
-        // Determine sender type
         TicketMessageSender senderType;
         if (User.IsInRole(AppRoles.Tenant) && sr.SubmittedByUserId == userId)
             senderType = TicketMessageSender.Tenant;
@@ -93,13 +93,21 @@ public class TicketMessagesController : ControllerBase
         _db.TicketMessages.Add(message);
         await _db.SaveChangesAsync();
 
-        // If tenant posted, trigger AI agent response asynchronously
+        // If tenant posted, trigger AI agent response in a new scope (fire-and-forget)
         if (senderType == TicketMessageSender.Tenant)
         {
+            var ticketId = id;
+            var factory = _scopeFactory;
             _ = Task.Run(async () =>
             {
-                try { await GenerateAgentReplyAsync(sr, id); }
-                catch (Exception ex) { _logger.LogError(ex, "Agent reply failed for ticket #{Id}", id); }
+                try
+                {
+                    using var scope = factory.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    var agent = scope.ServiceProvider.GetRequiredService<ITicketAiAgent>();
+                    await GenerateAgentReplyInScopeAsync(db, agent, ticketId);
+                }
+                catch (Exception ex) { Console.WriteLine($"Agent reply failed for ticket #{ticketId}: {ex}"); }
             });
         }
 
@@ -108,7 +116,6 @@ public class TicketMessagesController : ControllerBase
 
     /// <summary>
     /// Called after a new ticket is created to trigger the AI agent's initial analysis.
-    /// This is a fire-and-forget internal method called from ServiceRequestsController.
     /// </summary>
     public async Task TriggerAgentOnNewTicketAsync(int serviceRequestId)
     {
@@ -118,7 +125,7 @@ public class TicketMessagesController : ControllerBase
                 .Include(s => s.Building)
                 .Include(s => s.Unit)
                 .FirstOrDefaultAsync(s => s.Id == serviceRequestId);
-            if (sr == null) return;
+            if (sr == null) { _logger.LogWarning("TriggerAgentOnNewTicket: SR #{Id} not found", serviceRequestId); return; }
 
             var openTickets = await _db.ServiceRequests
                 .Where(s => s.BuildingId == sr.BuildingId && s.Id != sr.Id &&
@@ -128,6 +135,8 @@ public class TicketMessagesController : ControllerBase
                 .Select(s => new TicketSummary(s.Id, s.Area.ToString(), s.Category.ToString(), s.Description, s.IncidentGroupId))
                 .ToListAsync();
 
+            _logger.LogInformation("TriggerAgentOnNewTicket: SR #{Id}, found {Count} open tickets in building", serviceRequestId, openTickets.Count);
+
             var ctx = BuildContext(sr);
             var result = await _aiAgent.AnalyzeNewTicketAsync(ctx, openTickets);
 
@@ -136,10 +145,10 @@ public class TicketMessagesController : ControllerBase
             {
                 sr.IncidentGroupId = result.MatchedIncidentGroupId.Value;
                 await _db.SaveChangesAsync();
+                _logger.LogInformation("SR #{Id} linked to existing incident group #{GroupId}", serviceRequestId, result.MatchedIncidentGroupId.Value);
             }
             else if (result.IncidentTitle != null)
             {
-                // Find the matched ticket and create a new incident group
                 var matchedTickets = await _db.ServiceRequests
                     .Where(s => s.BuildingId == sr.BuildingId && s.Id != sr.Id &&
                                 s.IncidentGroupId == null &&
@@ -161,6 +170,7 @@ public class TicketMessagesController : ControllerBase
                     sr.IncidentGroupId = group.Id;
                     foreach (var mt in matchedTickets) mt.IncidentGroupId = group.Id;
                     await _db.SaveChangesAsync();
+                    _logger.LogInformation("Created incident group #{GroupId} with {Count} tickets", group.Id, matchedTickets.Count + 1);
                 }
             }
 
@@ -175,6 +185,7 @@ public class TicketMessagesController : ControllerBase
                     Text = result.Message
                 });
                 await _db.SaveChangesAsync();
+                _logger.LogInformation("Agent message posted for SR #{Id}", serviceRequestId);
             }
         }
         catch (Exception ex)
@@ -214,27 +225,33 @@ public class TicketMessagesController : ControllerBase
         }
     }
 
-    private async Task GenerateAgentReplyAsync(ServiceRequest sr, int serviceRequestId)
+    private static async Task GenerateAgentReplyInScopeAsync(AppDbContext db, ITicketAiAgent agent, int serviceRequestId)
     {
-        var messages = await _db.TicketMessages
+        var sr = await db.ServiceRequests
+            .Include(s => s.Building)
+            .Include(s => s.Unit)
+            .FirstOrDefaultAsync(s => s.Id == serviceRequestId);
+        if (sr == null) return;
+
+        var messages = await db.TicketMessages
             .Where(m => m.ServiceRequestId == serviceRequestId)
             .OrderBy(m => m.CreatedAtUtc)
             .Select(m => new MessageEntry(m.SenderType.ToString(), m.Text))
             .ToListAsync();
 
         var ctx = BuildContext(sr);
-        var reply = await _aiAgent.ProcessTenantReplyAsync(ctx, messages);
+        var reply = await agent.ProcessTenantReplyAsync(ctx, messages);
 
         if (!string.IsNullOrEmpty(reply))
         {
-            _db.TicketMessages.Add(new TicketMessage
+            db.TicketMessages.Add(new TicketMessage
             {
                 ServiceRequestId = serviceRequestId,
                 SenderType = TicketMessageSender.Agent,
                 SenderName = "AI Assistant",
                 Text = reply
             });
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
         }
     }
 

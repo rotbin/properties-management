@@ -45,11 +45,11 @@ public class FakeTicketAgent : ITicketAiAgent
         // Check for similar tickets (simple keyword match for demo)
         int? matchedGroupId = null;
         string? incidentTitle = null;
+        // Cluster if same area + category (strong signal), or same category + word overlap
         var matchingTicket = openTicketsInBuilding.FirstOrDefault(t =>
             t.Id != ticket.Id &&
             t.Category == ticket.Category &&
-            t.Area == ticket.Area &&
-            HasWordOverlap(t.Description, ticket.Description));
+            (t.Area == ticket.Area || HasWordOverlap(t.Description, ticket.Description)));
 
         if (matchingTicket != null)
         {
@@ -103,9 +103,9 @@ public class FakeTicketAgent : ITicketAiAgent
 
     private static bool HasWordOverlap(string a, string b)
     {
-        var wordsA = a.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(w => w.Length > 3).ToHashSet();
-        var wordsB = b.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(w => w.Length > 3).ToHashSet();
+        var wordsA = a.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(w => w.Length > 2).ToHashSet();
+        var wordsB = b.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(w => w.Length > 2).ToHashSet();
         var overlap = wordsA.Intersect(wordsB).Count();
-        return overlap >= 3;
+        return overlap >= 2;
     }
 }
