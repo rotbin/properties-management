@@ -579,7 +579,11 @@
     "created": "נוצר",
     "updated": "עודכן",
     "description": "תיאור",
-    "attachments": "קבצים מצורפים"
+    "attachments": "קבצים מצורפים",
+    "all": "הכל",
+    "unreadOnly": "לא נקראו",
+    "unreadBanner": "יש לך {{count}} פניות שמחכות לתגובתך — הן מוצגות בראש הרשימה.",
+    "noUnread": "אין פניות עם הודעות שלא נקראו."
   },
 
   "newRequest": {

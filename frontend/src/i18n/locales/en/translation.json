@@ -579,7 +579,11 @@
     "created": "Created",
     "updated": "Updated",
     "description": "Description",
-    "attachments": "Attachments"
+    "attachments": "Attachments",
+    "all": "All",
+    "unreadOnly": "Unread",
+    "unreadBanner": "You have {{count}} request(s) waiting for your reply — they are shown at the top.",
+    "noUnread": "No requests with unread messages."
   },
 
   "newRequest": {

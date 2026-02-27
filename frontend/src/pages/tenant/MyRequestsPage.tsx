@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper, Chip, Button, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress,
-  Card, CardContent, CardActionArea, Stack, useMediaQuery, useTheme
+  Card, CardContent, CardActionArea, Stack, useMediaQuery, useTheme, Alert, ToggleButton,
+  ToggleButtonGroup
 } from '@mui/material';
-import { Visibility, Add, BugReport, Chat, FiberNew } from '@mui/icons-material';
+import { Visibility, Add, BugReport, Chat, FiberNew, MarkUnreadChatAlt, FilterList } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { serviceRequestsApi } from '../../api/services';
 import type { ServiceRequestDto } from '../../types';
@@ -24,9 +25,21 @@ const MyRequestsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<ServiceRequestDto | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [showOnlyUnread, setShowOnlyUnread] = useState(false);
 
   const loadRequests = () => { serviceRequestsApi.getMy().then(r => setRequests(r.data)).catch(() => {}).finally(() => setLoading(false)); };
   useEffect(() => { loadRequests(); }, []);
+
+  const unreadCount = useMemo(() => requests.filter(r => r.hasUnreadMessages).length, [requests]);
+
+  const sortedRequests = useMemo(() => {
+    const filtered = showOnlyUnread ? requests.filter(r => r.hasUnreadMessages) : requests;
+    return [...filtered].sort((a, b) => {
+      if (a.hasUnreadMessages && !b.hasUnreadMessages) return -1;
+      if (!a.hasUnreadMessages && b.hasUnreadMessages) return 1;
+      return 0;
+    });
+  }, [requests, showOnlyUnread]);
 
   const handleTicketUpdated = (update: { ticketId: number; area?: string; category?: string; priority?: string; isEmergency?: boolean; description?: string; status?: string }) => {
     const patch = (sr: ServiceRequestDto) => ({
@@ -51,9 +64,35 @@ const MyRequestsPage: React.FC = () => {
         <Button variant="contained" startIcon={<Add />} onClick={() => navigate('/new-request')} size={isMobile ? 'small' : 'medium'}>{t('myRequests.newRequest')}</Button>
       </Box>
 
+      {unreadCount > 0 && (
+        <Alert
+          severity="info"
+          icon={<MarkUnreadChatAlt />}
+          sx={{ mb: 2 }}
+          action={
+            <ToggleButtonGroup
+              size="small"
+              value={showOnlyUnread ? 'unread' : 'all'}
+              exclusive
+              onChange={(_, val) => setShowOnlyUnread(val === 'unread')}
+              sx={{ height: 30 }}
+            >
+              <ToggleButton value="all" sx={{ px: 1.5, fontSize: '0.75rem' }}>{t('myRequests.all')}</ToggleButton>
+              <ToggleButton value="unread" sx={{ px: 1.5, fontSize: '0.75rem' }}>
+                <FilterList sx={{ fontSize: 16, mr: 0.5 }} />{t('myRequests.unreadOnly')}
+              </ToggleButton>
+            </ToggleButtonGroup>
+          }
+        >
+          <Typography variant="body2" fontWeight={600}>
+            {t('myRequests.unreadBanner', { count: unreadCount })}
+          </Typography>
+        </Alert>
+      )}
+
       {isMobile ? (
         <Stack spacing={1.5}>
-          {requests.map(sr => (
+          {sortedRequests.map(sr => (
             <Card key={sr.id} variant="outlined" sx={sr.hasUnreadMessages ? {
               borderLeft: '4px solid', borderLeftColor: 'error.main', bgcolor: 'error.50',
               boxShadow: '0 0 0 1px rgba(211,47,47,0.12)',
@@ -83,7 +122,7 @@ const MyRequestsPage: React.FC = () => {
               </CardActionArea>
             </Card>
           ))}
-          {requests.length === 0 && <Typography align="center" color="text.secondary" sx={{ py: 4 }}>{t('myRequests.noRequests')}</Typography>}
+          {sortedRequests.length === 0 && <Typography align="center" color="text.secondary" sx={{ py: 4 }}>{showOnlyUnread ? t('myRequests.noUnread') : t('myRequests.noRequests')}</Typography>}
         </Stack>
       ) : (
         <TableContainer component={Paper}>
@@ -93,7 +132,7 @@ const MyRequestsPage: React.FC = () => {
               <TableCell>{t('myRequests.priority')}</TableCell><TableCell>{t('myRequests.status')}</TableCell><TableCell>{t('myRequests.date')}</TableCell><TableCell>{t('app.actions')}</TableCell>
             </TableRow></TableHead>
             <TableBody>
-              {requests.map(sr => (
+              {sortedRequests.map(sr => (
                 <TableRow key={sr.id} hover sx={sr.hasUnreadMessages ? {
                   bgcolor: 'rgba(211,47,47,0.04)',
                   borderLeft: '4px solid',
@@ -116,8 +155,8 @@ const MyRequestsPage: React.FC = () => {
                   <TableCell><Button size="small" startIcon={<Visibility />} onClick={() => { setSelected(sr); setDetailOpen(true); }}>{t('app.view')}</Button></TableCell>
                 </TableRow>
               ))}
-              {requests.length === 0 && (
-                <TableRow><TableCell colSpan={7} align="center"><Typography color="text.secondary" sx={{ py: 2 }}>{t('myRequests.noRequests')}</Typography></TableCell></TableRow>
+              {sortedRequests.length === 0 && (
+                <TableRow><TableCell colSpan={7} align="center"><Typography color="text.secondary" sx={{ py: 2 }}>{showOnlyUnread ? t('myRequests.noUnread') : t('myRequests.noRequests')}</Typography></TableCell></TableRow>
               )}
             </TableBody>
           </Table>
