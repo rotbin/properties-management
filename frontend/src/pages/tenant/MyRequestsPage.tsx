@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper, Chip, Button, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress,
@@ -28,9 +28,20 @@ const MyRequestsPage: React.FC = () => {
   const [selected, setSelected] = useState<ServiceRequestDto | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [showOnlyUnread, setShowOnlyUnread] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval>>();
 
-  const loadRequests = () => { serviceRequestsApi.getMy().then(r => setRequests(r.data)).catch(() => {}).finally(() => setLoading(false)); };
-  useEffect(() => { loadRequests(); }, [notificationTick]);
+  const loadRequests = useCallback(() => {
+    serviceRequestsApi.getMy().then(r => setRequests(r.data)).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  // Load on mount + whenever SignalR signals new messages
+  useEffect(() => { loadRequests(); }, [loadRequests, notificationTick]);
+
+  // Polling fallback: refresh every 8 seconds to catch unread changes even if SignalR misses
+  useEffect(() => {
+    pollRef.current = setInterval(loadRequests, 8000);
+    return () => clearInterval(pollRef.current);
+  }, [loadRequests]);
 
   const unreadCount = useMemo(() => requests.filter(r => r.hasUnreadMessages).length, [requests]);
 
