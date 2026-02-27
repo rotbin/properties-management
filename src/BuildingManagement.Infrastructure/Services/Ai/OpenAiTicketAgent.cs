@@ -8,14 +8,17 @@ using Microsoft.Extensions.Logging;
 namespace BuildingManagement.Infrastructure.Services.Ai;
 
 /// <summary>
-/// AI agent powered by OpenAI GPT-4o-mini for cost-effective ticket analysis.
+/// AI agent powered by Azure OpenAI GPT-4o for ticket analysis.
+/// Uses Azure OpenAI REST API format.
 /// </summary>
 public class OpenAiTicketAgent : ITicketAiAgent
 {
     private readonly HttpClient _http;
     private readonly ILogger<OpenAiTicketAgent> _logger;
+    private readonly string _endpoint;
     private readonly string _apiKey;
-    private readonly string _model;
+    private readonly string _deploymentName;
+    private readonly string _apiVersion;
 
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
@@ -27,8 +30,10 @@ public class OpenAiTicketAgent : ITicketAiAgent
     {
         _http = http;
         _logger = logger;
+        _endpoint = config["OpenAi:Endpoint"]?.TrimEnd('/') ?? "";
         _apiKey = config["OpenAi:ApiKey"] ?? "";
-        _model = config["OpenAi:Model"] ?? "gpt-4o-mini";
+        _deploymentName = config["OpenAi:DeploymentName"] ?? "gpt-4o-dataplatform";
+        _apiVersion = config["OpenAi:ApiVersion"] ?? "2024-12-01-preview";
     }
 
     public async Task<AgentAnalysisResult> AnalyzeNewTicketAsync(
@@ -72,7 +77,7 @@ public class OpenAiTicketAgent : ITicketAiAgent
             {openTicketsSummary}
             """;
 
-        var json = await CallOpenAiAsync(systemPrompt, userPrompt, ct);
+        var json = await CallAzureOpenAiAsync(systemPrompt, userPrompt, ct);
         if (json == null)
             return new AgentAnalysisResult { Message = null };
 
@@ -100,7 +105,7 @@ public class OpenAiTicketAgent : ITicketAiAgent
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to parse OpenAI analysis response");
+            _logger.LogWarning(ex, "Failed to parse Azure OpenAI analysis response");
             return new AgentAnalysisResult { Message = json };
         }
     }
@@ -120,7 +125,7 @@ public class OpenAiTicketAgent : ITicketAiAgent
         var convoText = string.Join("\n", conversationHistory.Select(m => $"[{m.SenderType}]: {m.Text}"));
         var userPrompt = $"Ticket #{ticket.Id} ({ticket.Category} in {ticket.Area}):\n{convoText}";
 
-        return await CallOpenAiAsync(systemPrompt, userPrompt, ct);
+        return await CallAzureOpenAiAsync(systemPrompt, userPrompt, ct);
     }
 
     public async Task<string> GenerateResolutionFollowUpAsync(TicketContext ticket, CancellationToken ct = default)
@@ -133,27 +138,28 @@ public class OpenAiTicketAgent : ITicketAiAgent
             Respond with plain text.
             """;
 
-        var userPrompt = $"Ticket #{ticket.Id}: {ticket.Category} issue in {ticket.Area} for tenant {ticket.TenantName}.";
+        var userPrompt = $"Ticket #{ticket.Id}: {ticket.Category} issue in {ticket.Area} for tenant {ticket.TenantName}. Description: {ticket.Description}";
 
-        return await CallOpenAiAsync(systemPrompt, userPrompt, ct)
+        return await CallAzureOpenAiAsync(systemPrompt, userPrompt, ct)
             ?? $"Hi {ticket.TenantName}, your ticket has been resolved. Please let us know if the issue has been fully addressed.";
     }
 
-    private async Task<string?> CallOpenAiAsync(string systemPrompt, string userPrompt, CancellationToken ct)
+    private async Task<string?> CallAzureOpenAiAsync(string systemPrompt, string userPrompt, CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(_apiKey))
+        if (string.IsNullOrEmpty(_apiKey) || string.IsNullOrEmpty(_endpoint))
         {
-            _logger.LogWarning("OpenAI API key not configured");
+            _logger.LogWarning("Azure OpenAI endpoint or API key not configured");
             return null;
         }
 
         try
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions")
+            var url = $"{_endpoint}/openai/deployments/{_deploymentName}/chat/completions?api-version={_apiVersion}";
+
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
             {
                 Content = JsonContent.Create(new
                 {
-                    model = _model,
                     messages = new[]
                     {
                         new { role = "system", content = systemPrompt },
@@ -163,14 +169,14 @@ public class OpenAiTicketAgent : ITicketAiAgent
                     temperature = 0.7
                 })
             };
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiKey);
+            request.Headers.Add("api-key", _apiKey);
 
             var response = await _http.SendAsync(request, ct);
             var body = await response.Content.ReadAsStringAsync(ct);
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("OpenAI API error: {Status} {Body}", response.StatusCode, Truncate(body, 200));
+                _logger.LogWarning("Azure OpenAI API error: {Status} {Body}", response.StatusCode, Truncate(body, 300));
                 return null;
             }
 
@@ -181,12 +187,12 @@ public class OpenAiTicketAgent : ITicketAiAgent
                 .GetProperty("content")
                 .GetString();
 
-            _logger.LogInformation("OpenAI response received ({Model})", _model);
+            _logger.LogInformation("Azure OpenAI response received ({Deployment})", _deploymentName);
             return content;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "OpenAI API call failed");
+            _logger.LogError(ex, "Azure OpenAI API call failed");
             return null;
         }
     }
