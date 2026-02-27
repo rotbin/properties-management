@@ -287,21 +287,75 @@ public class TicketMessagesController : ControllerBase
             .ToListAsync();
 
         var ctx = BuildContext(sr);
-        var reply = await agent.ProcessTenantReplyAsync(ctx, messages);
+        var result = await agent.ProcessTenantReplyAsync(ctx, messages);
 
-        if (!string.IsNullOrEmpty(reply))
+        var fieldsChanged = ApplyFieldUpdates(sr, result.FieldUpdates);
+
+        if (!string.IsNullOrEmpty(result.Message))
         {
             var agentMsg = new TicketMessage
             {
                 ServiceRequestId = serviceRequestId,
                 SenderType = TicketMessageSender.Agent,
                 SenderName = "AI Assistant",
-                Text = reply
+                Text = result.Message
             };
             db.TicketMessages.Add(agentMsg);
             await db.SaveChangesAsync();
             await hub.Clients.Group($"ticket-{serviceRequestId}").SendAsync("NewMessage", MapDto(agentMsg));
         }
+        else
+        {
+            await db.SaveChangesAsync();
+        }
+
+        if (fieldsChanged)
+        {
+            await hub.Clients.Group($"ticket-{serviceRequestId}").SendAsync("TicketUpdated", new
+            {
+                ticketId = serviceRequestId,
+                area = sr.Area.ToString(),
+                category = sr.Category.ToString(),
+                priority = sr.Priority.ToString(),
+                isEmergency = sr.IsEmergency,
+                description = sr.Description
+            });
+        }
+    }
+
+    private static bool ApplyFieldUpdates(ServiceRequest sr, TicketFieldUpdates? updates)
+    {
+        if (updates == null) return false;
+        var changed = false;
+
+        if (updates.Area != null && Enum.TryParse<Area>(updates.Area, ignoreCase: true, out var area) && sr.Area != area)
+        {
+            sr.Area = area;
+            changed = true;
+        }
+        if (updates.Category != null && Enum.TryParse<ServiceRequestCategory>(updates.Category, ignoreCase: true, out var cat) && sr.Category != cat)
+        {
+            sr.Category = cat;
+            changed = true;
+        }
+        if (updates.Priority != null && Enum.TryParse<Priority>(updates.Priority, ignoreCase: true, out var pri) && sr.Priority != pri)
+        {
+            sr.Priority = pri;
+            changed = true;
+        }
+        if (updates.IsEmergency.HasValue && sr.IsEmergency != updates.IsEmergency.Value)
+        {
+            sr.IsEmergency = updates.IsEmergency.Value;
+            changed = true;
+        }
+        if (!string.IsNullOrWhiteSpace(updates.Description) && sr.Description != updates.Description)
+        {
+            sr.Description = updates.Description;
+            changed = true;
+        }
+
+        if (changed) sr.UpdatedAtUtc = DateTime.UtcNow;
+        return changed;
     }
 
     private async Task BroadcastMessageAsync(int ticketId, TicketMessageDto dto)

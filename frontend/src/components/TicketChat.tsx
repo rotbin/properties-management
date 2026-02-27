@@ -9,14 +9,24 @@ import type { TicketMessageDto } from '../types';
 import { useAuth } from '../auth/AuthContext';
 import { useTranslation } from 'react-i18next';
 
+interface TicketFieldUpdate {
+  ticketId: number;
+  area?: string;
+  category?: string;
+  priority?: string;
+  isEmergency?: boolean;
+  description?: string;
+}
+
 interface TicketChatProps {
   ticketId: number;
   incidentGroupId?: number;
   incidentGroupTitle?: string;
   incidentTicketCount?: number;
+  onTicketUpdated?: (update: TicketFieldUpdate) => void;
 }
 
-const TicketChat: React.FC<TicketChatProps> = ({ ticketId, incidentGroupId, incidentTicketCount }) => {
+const TicketChat: React.FC<TicketChatProps> = ({ ticketId, incidentGroupId, incidentTicketCount, onTicketUpdated }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [messages, setMessages] = useState<TicketMessageDto[]>([]);
@@ -60,8 +70,11 @@ const TicketChat: React.FC<TicketChatProps> = ({ ticketId, incidentGroupId, inci
           if (prev.some(m => m.id === msg.id)) return prev;
           return [...prev, msg];
         });
-        // Mark as read since chat is open
         ticketMessagesApi.markRead(ticketId).catch(() => {});
+      });
+
+      connection.on('TicketUpdated', (update: TicketFieldUpdate) => {
+        onTicketUpdated?.(update);
       });
 
       try {

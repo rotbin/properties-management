@@ -25,7 +25,13 @@ const MyRequestsPage: React.FC = () => {
   const [selected, setSelected] = useState<ServiceRequestDto | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  useEffect(() => { serviceRequestsApi.getMy().then(r => setRequests(r.data)).catch(() => {}).finally(() => setLoading(false)); }, []);
+  const loadRequests = () => { serviceRequestsApi.getMy().then(r => setRequests(r.data)).catch(() => {}).finally(() => setLoading(false)); };
+  useEffect(() => { loadRequests(); }, []);
+
+  const handleTicketUpdated = (update: { ticketId: number; area?: string; category?: string; priority?: string; isEmergency?: boolean; description?: string }) => {
+    setSelected(prev => prev ? { ...prev, ...update, area: update.area ?? prev.area, category: update.category ?? prev.category, priority: update.priority ?? prev.priority, isEmergency: update.isEmergency ?? prev.isEmergency, description: update.description ?? prev.description } : prev);
+    setRequests(prev => prev.map(sr => sr.id === update.ticketId ? { ...sr, area: update.area ?? sr.area, category: update.category ?? sr.category, priority: update.priority ?? sr.priority, isEmergency: update.isEmergency ?? sr.isEmergency, description: update.description ?? sr.description } : sr));
+  };
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
 
@@ -72,7 +78,13 @@ const MyRequestsPage: React.FC = () => {
             <TableBody>
               {requests.map(sr => (
                 <TableRow key={sr.id} hover>
-                  <TableCell>{sr.id}</TableCell><TableCell>{sr.buildingName}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      {sr.id}
+                      {sr.hasUnreadMessages && <Chip icon={<FiberNew sx={{ fontSize: 14 }} />} label={t('ticketChat.unread')} size="small" color="error" sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />}
+                    </Box>
+                  </TableCell>
+                  <TableCell>{sr.buildingName}</TableCell>
                   <TableCell>{t(`enums.area.${sr.area}`, sr.area)}</TableCell>
                   <TableCell><Chip label={t(`enums.priority.${sr.priority}`, sr.priority)} size="small" color={priorityColor(sr.priority) as any} /></TableCell>
                   <TableCell><Chip label={t(`enums.srStatus.${sr.status}`, sr.status)} size="small" color={statusColor(sr.status) as any} /></TableCell>
@@ -88,7 +100,7 @@ const MyRequestsPage: React.FC = () => {
         </TableContainer>
       )}
 
-      <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
+      <Dialog open={detailOpen} onClose={() => { setDetailOpen(false); loadRequests(); }} maxWidth="md" fullWidth fullScreen={isMobile}>
         {selected && (<>
           <DialogTitle>
             {selected.buildingName} – {t(`enums.area.${selected.area}`, selected.area)} – {t(`enums.category.${selected.category}`, selected.category)}
@@ -119,9 +131,10 @@ const MyRequestsPage: React.FC = () => {
               incidentGroupId={selected.incidentGroupId}
               incidentGroupTitle={selected.incidentGroupTitle}
               incidentTicketCount={selected.incidentTicketCount}
+              onTicketUpdated={handleTicketUpdated}
             />
           </DialogContent>
-          <DialogActions><Button onClick={() => setDetailOpen(false)}>{t('app.close')}</Button></DialogActions>
+          <DialogActions><Button onClick={() => { setDetailOpen(false); loadRequests(); }}>{t('app.close')}</Button></DialogActions>
         </>)}
       </Dialog>
     </Box>

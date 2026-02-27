@@ -74,7 +74,7 @@ public class FakeTicketAgent : ITicketAiAgent
         });
     }
 
-    public Task<string?> ProcessTenantReplyAsync(
+    public Task<AgentReplyResult> ProcessTenantReplyAsync(
         TicketContext ticket, List<MessageEntry> conversationHistory, CancellationToken ct = default)
     {
         _logger.LogInformation("[FakeAI] Processing reply on ticket #{Id}", ticket.Id);
@@ -83,14 +83,71 @@ public class FakeTicketAgent : ITicketAiAgent
         var he = IsHebrew(lastTenantMsg) || IsHebrew(ticket.Description);
 
         if (lastTenantMsg.Length < 10)
-            return Task.FromResult<string?>(he
-                ? "תודה על התגובה. האם תוכל/י לפרט קצת יותר כדי שנוכל לסייע לך?"
-                : "Thank you for your response. Could you provide a bit more detail so we can assist you better?");
+            return Task.FromResult(new AgentReplyResult
+            {
+                Message = he
+                    ? "תודה על התגובה. האם תוכל/י לפרט קצת יותר כדי שנוכל לסייע לך?"
+                    : "Thank you for your response. Could you provide a bit more detail so we can assist you better?"
+            });
 
-        return Task.FromResult<string?>(he
+        var fieldUpdates = TryExtractFieldUpdates(lastTenantMsg);
+        var message = he
             ? "תודה על המידע הנוסף. צוות ניהול הבניין קיבל עדכון ויתחשב במידע זה בטיפול בפנייתך."
             : "Thank you for the additional information. The building management team has been notified " +
-              "and will take this into account when handling your request.");
+              "and will take this into account when handling your request.";
+
+        if (fieldUpdates != null)
+        {
+            message += he
+                ? "\n\nעדכנתי את פרטי הפנייה לפי המידע שסיפקת."
+                : "\n\nI've updated the ticket details based on the information you provided.";
+        }
+
+        return Task.FromResult(new AgentReplyResult { Message = message, FieldUpdates = fieldUpdates });
+    }
+
+    private static TicketFieldUpdates? TryExtractFieldUpdates(string text)
+    {
+        var lower = text.ToLowerInvariant();
+        string? area = null;
+        string? category = null;
+
+        var areaKeywords = new Dictionary<string, string>
+        {
+            ["stairwell"] = "Stairwell", ["חדר מדרגות"] = "Stairwell", ["מדרגות"] = "Stairwell",
+            ["parking"] = "Parking", ["חניה"] = "Parking", ["חנייה"] = "Parking",
+            ["lobby"] = "Lobby", ["לובי"] = "Lobby", ["כניסה"] = "Lobby",
+            ["corridor"] = "Corridor", ["מסדרון"] = "Corridor",
+            ["garbage"] = "GarbageRoom", ["אשפה"] = "GarbageRoom",
+            ["garden"] = "Garden", ["גינה"] = "Garden", ["גן"] = "Garden",
+            ["roof"] = "Roof", ["גג"] = "Roof",
+        };
+        foreach (var (kw, val) in areaKeywords)
+        {
+            if (lower.Contains(kw)) { area = val; break; }
+        }
+
+        var catKeywords = new Dictionary<string, string>
+        {
+            ["plumbing"] = "Plumbing", ["pipe"] = "Plumbing", ["leak"] = "Plumbing", ["water"] = "Plumbing",
+            ["אינסטלציה"] = "Plumbing", ["צנרת"] = "Plumbing", ["נזילה"] = "Plumbing",
+            ["electrical"] = "Electrical", ["power"] = "Electrical", ["light"] = "Electrical",
+            ["חשמל"] = "Electrical", ["תאורה"] = "Electrical",
+            ["hvac"] = "HVAC", ["air condition"] = "HVAC", ["heating"] = "HVAC",
+            ["מיזוג"] = "HVAC", ["חימום"] = "HVAC",
+            ["cleaning"] = "Cleaning", ["ניקיון"] = "Cleaning",
+            ["pest"] = "Pest", ["מזיקים"] = "Pest", ["חרקים"] = "Pest",
+            ["elevator"] = "Elevator", ["מעלית"] = "Elevator",
+            ["security"] = "Security", ["אבטחה"] = "Security",
+            ["structural"] = "Structural", ["crack"] = "Structural", ["סדק"] = "Structural",
+        };
+        foreach (var (kw, val) in catKeywords)
+        {
+            if (lower.Contains(kw)) { category = val; break; }
+        }
+
+        if (area == null && category == null) return null;
+        return new TicketFieldUpdates { Area = area, Category = category };
     }
 
     public Task<string> GenerateResolutionFollowUpAsync(TicketContext ticket, CancellationToken ct = default)

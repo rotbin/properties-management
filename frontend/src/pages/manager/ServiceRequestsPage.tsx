@@ -75,6 +75,11 @@ const ServiceRequestsPage: React.FC = () => {
 
   useEffect(() => { load(); }, [filterStatus, filterBuilding]);
 
+  const handleTicketUpdated = (update: { ticketId: number; area?: string; category?: string; priority?: string; isEmergency?: boolean; description?: string }) => {
+    setSelected(prev => prev ? { ...prev, area: update.area ?? prev.area, category: update.category ?? prev.category, priority: update.priority ?? prev.priority, isEmergency: update.isEmergency ?? prev.isEmergency, description: update.description ?? prev.description } : prev);
+    setRequests(prev => prev.map(sr => sr.id === update.ticketId ? { ...sr, area: update.area ?? sr.area, category: update.category ?? sr.category, priority: update.priority ?? sr.priority, isEmergency: update.isEmergency ?? sr.isEmergency, description: update.description ?? sr.description } : sr));
+  };
+
   const loadCreateUnits = async (buildingId: number) => {
     if (!buildingId) { setCreateUnits([]); return; }
     try { const r = await buildingsApi.getUnits(buildingId); setCreateUnits(r.data); } catch { /* ignore */ }
@@ -271,7 +276,7 @@ const ServiceRequestsPage: React.FC = () => {
       )}
 
       {/* Detail Dialog */}
-      <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
+      <Dialog open={detailOpen} onClose={() => { setDetailOpen(false); load(); }} maxWidth="md" fullWidth fullScreen={isMobile}>
         {selected && (<>
           <DialogTitle>
             {srTitle(selected)}
@@ -324,9 +329,10 @@ const ServiceRequestsPage: React.FC = () => {
               incidentGroupId={selected.incidentGroupId}
               incidentGroupTitle={selected.incidentGroupTitle}
               incidentTicketCount={selected.incidentTicketCount}
+              onTicketUpdated={handleTicketUpdated}
             />
           </DialogContent>
-          <DialogActions><Button onClick={() => setDetailOpen(false)}>{t('app.close')}</Button></DialogActions>
+          <DialogActions><Button onClick={() => { setDetailOpen(false); load(); }}>{t('app.close')}</Button></DialogActions>
         </>)}
       </Dialog>
 

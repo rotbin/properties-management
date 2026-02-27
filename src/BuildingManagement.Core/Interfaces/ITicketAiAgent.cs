@@ -13,9 +13,10 @@ public interface ITicketAiAgent
     Task<AgentAnalysisResult> AnalyzeNewTicketAsync(TicketContext ticket, List<TicketSummary> openTicketsInBuilding, CancellationToken ct = default);
 
     /// <summary>
-    /// Process a tenant's reply in the ticket thread and generate a follow-up agent response.
+    /// Process a tenant's reply in the ticket thread. Returns a follow-up message and
+    /// optional field updates extracted from the conversation (area, category, priority, description, etc.).
     /// </summary>
-    Task<string?> ProcessTenantReplyAsync(TicketContext ticket, List<MessageEntry> conversationHistory, CancellationToken ct = default);
+    Task<AgentReplyResult> ProcessTenantReplyAsync(TicketContext ticket, List<MessageEntry> conversationHistory, CancellationToken ct = default);
 
     /// <summary>
     /// Generate a satisfaction check message when a ticket is resolved.
@@ -50,4 +51,23 @@ public record AgentAnalysisResult
     public string? Message { get; init; }
     public int? MatchedIncidentGroupId { get; init; }
     public string? IncidentTitle { get; init; }
+}
+
+public record AgentReplyResult
+{
+    public string? Message { get; init; }
+    public TicketFieldUpdates? FieldUpdates { get; init; }
+}
+
+/// <summary>
+/// Optional field updates the AI agent extracts from tenant replies.
+/// Null properties mean "no change".
+/// </summary>
+public record TicketFieldUpdates
+{
+    public string? Area { get; init; }
+    public string? Category { get; init; }
+    public string? Priority { get; init; }
+    public bool? IsEmergency { get; init; }
+    public string? Description { get; init; }
 }

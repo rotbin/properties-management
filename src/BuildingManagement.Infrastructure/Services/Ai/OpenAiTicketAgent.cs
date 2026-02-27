@@ -110,22 +110,91 @@ public class OpenAiTicketAgent : ITicketAiAgent
         }
     }
 
-    public async Task<string?> ProcessTenantReplyAsync(
+    public async Task<AgentReplyResult> ProcessTenantReplyAsync(
         TicketContext ticket, List<MessageEntry> conversationHistory, CancellationToken ct = default)
     {
-        var systemPrompt = """
+        var validAreas = "Stairwell, Parking, Lobby, Corridor, GarbageRoom, Garden, Roof, Other";
+        var validCategories = "Plumbing, Electrical, HVAC, Cleaning, Pest, Structural, Elevator, Security, General";
+        var validPriorities = "Low, Medium, High, Critical";
+
+        var systemPrompt = $$"""
             You are a building management AI assistant. The tenant has replied to their maintenance ticket.
-            Review the conversation and provide a helpful follow-up. Be concise and professional.
-            If they've provided the information you asked for, thank them and confirm it's been noted.
-            If the reply is unclear, ask one clarifying question.
+            Review the conversation and:
+            1. Provide a helpful follow-up message. Be concise and professional.
+            2. If the tenant provided new information that should update ticket fields, extract those updates.
+
+            Field values you can update:
+            - area: one of [{{validAreas}}]
+            - category: one of [{{validCategories}}]
+            - priority: one of [{{validPriorities}}]
+            - isEmergency: true or false
+            - description: an enriched description combining the original with new details (only if substantial new info)
+
             CRITICAL: Respond in the SAME LANGUAGE the tenant is using. If Hebrew, reply in Hebrew. If English, reply in English.
-            Respond with plain text (not JSON).
+            
+            Respond in this JSON format (no markdown):
+            {
+              "message": "Your message to the tenant",
+              "fieldUpdates": {
+                "area": null or "ValidArea",
+                "category": null or "ValidCategory",
+                "priority": null or "ValidPriority",
+                "isEmergency": null or true/false,
+                "description": null or "enriched description"
+              }
+            }
+            Only include non-null values in fieldUpdates if the tenant clearly provided information that warrants a change.
+            If no fields should be updated, set fieldUpdates to null.
             """;
 
         var convoText = string.Join("\n", conversationHistory.Select(m => $"[{m.SenderType}]: {m.Text}"));
-        var userPrompt = $"Ticket #{ticket.Id} ({ticket.Category} in {ticket.Area}):\n{convoText}";
+        var userPrompt = $"Ticket #{ticket.Id}:\n" +
+            $"- Current Area: {ticket.Area}\n" +
+            $"- Current Category: {ticket.Category}\n" +
+            $"- Current Priority: {ticket.Priority}\n" +
+            $"- Emergency: {ticket.IsEmergency}\n" +
+            $"- Description: {ticket.Description}\n\n" +
+            $"Conversation:\n{convoText}";
 
-        return await CallAzureOpenAiAsync(systemPrompt, userPrompt, ct);
+        var json = await CallAzureOpenAiAsync(systemPrompt, userPrompt, ct);
+        if (json == null)
+            return new AgentReplyResult { Message = null };
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            var message = root.TryGetProperty("message", out var msgEl) ? msgEl.GetString() : null;
+
+            TicketFieldUpdates? fieldUpdates = null;
+            if (root.TryGetProperty("fieldUpdates", out var fuEl) && fuEl.ValueKind == JsonValueKind.Object)
+            {
+                var area = fuEl.TryGetProperty("area", out var a) && a.ValueKind == JsonValueKind.String ? a.GetString() : null;
+                var category = fuEl.TryGetProperty("category", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() : null;
+                var priority = fuEl.TryGetProperty("priority", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;
+                bool? isEmergency = fuEl.TryGetProperty("isEmergency", out var e) && e.ValueKind != JsonValueKind.Null ? e.GetBoolean() : null;
+                var description = fuEl.TryGetProperty("description", out var d) && d.ValueKind == JsonValueKind.String ? d.GetString() : null;
+
+                if (area != null || category != null || priority != null || isEmergency != null || description != null)
+                {
+                    fieldUpdates = new TicketFieldUpdates
+                    {
+                        Area = area,
+                        Category = category,
+                        Priority = priority,
+                        IsEmergency = isEmergency,
+                        Description = description
+                    };
+                }
+            }
+
+            return new AgentReplyResult { Message = message, FieldUpdates = fieldUpdates };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse Azure OpenAI reply response");
+            return new AgentReplyResult { Message = json };
+        }
     }
 
     public async Task<string> GenerateResolutionFollowUpAsync(TicketContext ticket, CancellationToken ct = default)
