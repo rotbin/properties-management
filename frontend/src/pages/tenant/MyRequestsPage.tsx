@@ -5,7 +5,7 @@ import {
   Card, CardContent, CardActionArea, Stack, useMediaQuery, useTheme, Alert, ToggleButton,
   ToggleButtonGroup
 } from '@mui/material';
-import { Visibility, Add, BugReport, Chat, FiberNew, MarkUnreadChatAlt, FilterList } from '@mui/icons-material';
+import { Visibility, Add, BugReport, Chat, MarkUnreadChatAlt, FilterList, MarkChatUnread, Reply } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { serviceRequestsApi } from '../../api/services';
 import type { ServiceRequestDto } from '../../types';
@@ -94,19 +94,20 @@ const MyRequestsPage: React.FC = () => {
         <Stack spacing={1.5}>
           {sortedRequests.map(sr => (
             <Card key={sr.id} variant="outlined" sx={sr.hasUnreadMessages ? {
-              borderLeft: '4px solid', borderLeftColor: 'error.main', bgcolor: 'error.50',
-              boxShadow: '0 0 0 1px rgba(211,47,47,0.12)',
+              borderLeft: '5px solid #d32f2f',
+              backgroundColor: '#fff3f3',
+              boxShadow: '0 2px 8px rgba(211,47,47,0.15)',
             } : undefined}>
               <CardActionArea onClick={() => { setSelected(sr); setDetailOpen(true); }}>
                 <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <Typography variant="subtitle2">#{sr.id}</Typography>
-                      {sr.hasUnreadMessages && (
-                        <Chip icon={<FiberNew sx={{ fontSize: 14 }} />} label={t('ticketChat.newMessage')} size="small" color="error"
-                          sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' }, animation: 'pulse 2s infinite', '@keyframes pulse': { '0%, 100%': { opacity: 1 }, '50%': { opacity: 0.7 } } }} />
-                      )}
+                  {sr.hasUnreadMessages && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5, px: 1, py: 0.5, borderRadius: 1, bgcolor: '#d32f2f', color: 'white' }}>
+                      <MarkChatUnread sx={{ fontSize: 16 }} />
+                      <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.75rem' }}>{t('ticketChat.replyNeeded')}</Typography>
                     </Box>
+                  )}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                    <Typography variant="subtitle2" fontWeight={sr.hasUnreadMessages ? 700 : 400}>#{sr.id}</Typography>
                     <Box sx={{ display: 'flex', gap: 0.5 }}>
                       <Chip label={t(`enums.priority.${sr.priority}`, sr.priority)} size="small" color={priorityColor(sr.priority) as any} />
                       <Chip label={t(`enums.srStatus.${sr.status}`, sr.status)} size="small" color={statusColor(sr.status) as any} />
@@ -132,29 +133,34 @@ const MyRequestsPage: React.FC = () => {
               <TableCell>{t('myRequests.priority')}</TableCell><TableCell>{t('myRequests.status')}</TableCell><TableCell>{t('myRequests.date')}</TableCell><TableCell>{t('app.actions')}</TableCell>
             </TableRow></TableHead>
             <TableBody>
-              {sortedRequests.map(sr => (
-                <TableRow key={sr.id} hover sx={sr.hasUnreadMessages ? {
-                  bgcolor: 'rgba(211,47,47,0.04)',
-                  borderLeft: '4px solid',
-                  borderLeftColor: 'error.main',
-                } : undefined}>
-                  <TableCell>
+              {sortedRequests.map(sr => {
+                const unread = sr.hasUnreadMessages;
+                const cellSx = unread ? { bgcolor: '#fff3f3', fontWeight: 700 } : {};
+                return (
+                <TableRow key={sr.id} hover>
+                  <TableCell sx={{ ...cellSx, ...(unread ? { borderLeft: '5px solid #d32f2f' } : {}) }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       {sr.id}
-                      {sr.hasUnreadMessages && (
-                        <Chip icon={<FiberNew sx={{ fontSize: 14 }} />} label={t('ticketChat.newMessage')} size="small" color="error"
-                          sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />
-                      )}
+                      {unread && <MarkChatUnread sx={{ fontSize: 18, color: '#d32f2f' }} />}
                     </Box>
                   </TableCell>
-                  <TableCell>{sr.buildingName}</TableCell>
-                  <TableCell>{t(`enums.area.${sr.area}`, sr.area)}</TableCell>
-                  <TableCell><Chip label={t(`enums.priority.${sr.priority}`, sr.priority)} size="small" color={priorityColor(sr.priority) as any} /></TableCell>
-                  <TableCell><Chip label={t(`enums.srStatus.${sr.status}`, sr.status)} size="small" color={statusColor(sr.status) as any} /></TableCell>
-                  <TableCell>{formatDateLocal(sr.createdAtUtc)}</TableCell>
-                  <TableCell><Button size="small" startIcon={<Visibility />} onClick={() => { setSelected(sr); setDetailOpen(true); }}>{t('app.view')}</Button></TableCell>
+                  <TableCell sx={cellSx}>{sr.buildingName}</TableCell>
+                  <TableCell sx={cellSx}>{t(`enums.area.${sr.area}`, sr.area)}</TableCell>
+                  <TableCell sx={cellSx}><Chip label={t(`enums.priority.${sr.priority}`, sr.priority)} size="small" color={priorityColor(sr.priority) as any} /></TableCell>
+                  <TableCell sx={cellSx}><Chip label={t(`enums.srStatus.${sr.status}`, sr.status)} size="small" color={statusColor(sr.status) as any} /></TableCell>
+                  <TableCell sx={cellSx}>{formatDateLocal(sr.createdAtUtc)}</TableCell>
+                  <TableCell sx={cellSx}>
+                    {unread ? (
+                      <Button size="small" variant="contained" color="error" startIcon={<Reply />}
+                        onClick={() => { setSelected(sr); setDetailOpen(true); }}>{t('ticketChat.reply')}</Button>
+                    ) : (
+                      <Button size="small" startIcon={<Visibility />}
+                        onClick={() => { setSelected(sr); setDetailOpen(true); }}>{t('app.view')}</Button>
+                    )}
+                  </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
               {sortedRequests.length === 0 && (
                 <TableRow><TableCell colSpan={7} align="center"><Typography color="text.secondary" sx={{ py: 2 }}>{showOnlyUnread ? t('myRequests.noUnread') : t('myRequests.noRequests')}</Typography></TableCell></TableRow>
               )}

@@ -1043,6 +1043,8 @@
     "aiAssistant": "AI Assistant",
     "incidentLinked": "Linked to incident #{{id}} ({{count}} reports)",
     "unread": "New",
-    "newMessage": "New message"
+    "newMessage": "New message",
+    "replyNeeded": "New message — reply needed",
+    "reply": "Reply"
   }
 }

@@ -1043,6 +1043,8 @@
     "aiAssistant": "עוזר חכם",
     "incidentLinked": "מקושר לאירוע #{{id}} ({{count}} דיווחים)",
     "unread": "חדש",
-    "newMessage": "הודעה חדשה"
+    "newMessage": "הודעה חדשה",
+    "replyNeeded": "הודעה חדשה — נדרשת תגובה",
+    "reply": "השב"
   }
 }
