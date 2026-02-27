@@ -11,6 +11,7 @@ import { serviceRequestsApi } from '../../api/services';
 import type { ServiceRequestDto } from '../../types';
 import { formatDateLocal } from '../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
+import { useNotifications } from '../../contexts/NotificationContext';
 import TicketChat from '../../components/TicketChat';
 
 const priorityColor = (p: string) => p === 'Critical' ? 'error' : p === 'High' ? 'warning' : p === 'Medium' ? 'info' : 'default';
@@ -21,6 +22,7 @@ const MyRequestsPage: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { notificationTick } = useNotifications();
   const [requests, setRequests] = useState<ServiceRequestDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<ServiceRequestDto | null>(null);
@@ -28,7 +30,7 @@ const MyRequestsPage: React.FC = () => {
   const [showOnlyUnread, setShowOnlyUnread] = useState(false);
 
   const loadRequests = () => { serviceRequestsApi.getMy().then(r => setRequests(r.data)).catch(() => {}).finally(() => setLoading(false)); };
-  useEffect(() => { loadRequests(); }, []);
+  useEffect(() => { loadRequests(); }, [notificationTick]);
 
   const unreadCount = useMemo(() => requests.filter(r => r.hasUnreadMessages).length, [requests]);
 

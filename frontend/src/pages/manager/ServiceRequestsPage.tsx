@@ -12,6 +12,7 @@ import { SR_STATUSES, AREAS, CATEGORIES, PRIORITIES } from '../../types';
 import { formatDateLocal } from '../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../auth/AuthContext';
+import { useNotifications } from '../../contexts/NotificationContext';
 import TicketChat from '../../components/TicketChat';
 
 const priorityColor = (p: string) => p === 'Critical' ? 'error' : p === 'High' ? 'warning' : p === 'Medium' ? 'info' : 'default';
@@ -30,6 +31,7 @@ const nowLocal = () => {
 const ServiceRequestsPage: React.FC = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { notificationTick } = useNotifications();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [requests, setRequests] = useState<ServiceRequestDto[]>([]);
@@ -73,7 +75,7 @@ const ServiceRequestsPage: React.FC = () => {
     } catch { setError(t('serviceRequests.failedLoad')); } finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, [filterStatus, filterBuilding]);
+  useEffect(() => { load(); }, [filterStatus, filterBuilding, notificationTick]);
 
   const handleTicketUpdated = (update: { ticketId: number; area?: string; category?: string; priority?: string; isEmergency?: boolean; description?: string; status?: string }) => {
     const patch = (sr: ServiceRequestDto) => ({

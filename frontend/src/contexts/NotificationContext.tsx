@@ -7,13 +7,16 @@ import { useAuth } from '../auth/AuthContext';
 interface NotificationContextType {
   unreadCount: number;
   refreshUnreadCount: () => void;
+  /** Increments each time the server signals new unread messages. Pages can watch this to refresh their data. */
+  notificationTick: number;
 }
 
-const NotificationContext = createContext<NotificationContextType>({ unreadCount: 0, refreshUnreadCount: () => {} });
+const NotificationContext = createContext<NotificationContextType>({ unreadCount: 0, refreshUnreadCount: () => {}, notificationTick: 0 });
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationTick, setNotificationTick] = useState(0);
   const connectionRef = useRef<HubConnection | null>(null);
 
   const refreshUnreadCount = useCallback(async () => {
@@ -42,6 +45,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     connection.on('UnreadCountChanged', () => {
       refreshUnreadCount();
+      setNotificationTick(prev => prev + 1);
     });
 
     connection.start().then(() => {
@@ -57,7 +61,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, [isAuthenticated, refreshUnreadCount]);
 
   return (
-    <NotificationContext.Provider value={{ unreadCount, refreshUnreadCount }}>
+    <NotificationContext.Provider value={{ unreadCount, refreshUnreadCount, notificationTick }}>
       {children}
     </NotificationContext.Provider>
   );
