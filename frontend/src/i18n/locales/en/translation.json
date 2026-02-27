@@ -63,7 +63,8 @@
     "tenants": "Tenants",
     "vendorInvoices": "Vendor Payments",
     "sendReminders": "Send Reminders",
-    "managerInvoices": "Accounting Documents"
+    "managerInvoices": "Accounting Documents",
+    "unreadMessages": "{{count}} unread message(s)"
   },
 
   "login": {

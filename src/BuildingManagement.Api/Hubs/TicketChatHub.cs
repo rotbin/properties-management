@@ -1,4 +1,5 @@
 using BuildingManagement.Core.Entities;
+using BuildingManagement.Core.Enums;
 using BuildingManagement.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
@@ -14,6 +15,14 @@ public class TicketChatHub : Hub
 
     public TicketChatHub(AppDbContext db) => _db = db;
 
+    public override async Task OnConnectedAsync()
+    {
+        var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userId != null)
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"user-{userId}");
+        await base.OnConnectedAsync();
+    }
+
     /// <summary>Client joins a ticket's message group to receive real-time updates.</summary>
     public async Task JoinTicket(int ticketId)
     {
@@ -23,7 +32,6 @@ public class TicketChatHub : Hub
         var sr = await _db.ServiceRequests.AsNoTracking().FirstOrDefaultAsync(s => s.Id == ticketId);
         if (sr == null) return;
 
-        // Authorization: tenant can only join own tickets, manager/admin can join any
         var isTenant = Context.User!.IsInRole("Tenant") && !Context.User.IsInRole("Admin") && !Context.User.IsInRole("Manager");
         if (isTenant && sr.SubmittedByUserId != userId) return;
 

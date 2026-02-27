@@ -263,6 +263,8 @@ export const ticketMessagesApi = {
     apiClient.post<TicketMessageDto>(`/api/tickets/${ticketId}/messages`, { text }),
   markRead: (ticketId: number) =>
     apiClient.post(`/api/tickets/${ticketId}/mark-read`),
+  getUnreadCount: () =>
+    apiClient.get<number>('/api/tickets/unread-count'),
 };
 
 // Accounting Documents

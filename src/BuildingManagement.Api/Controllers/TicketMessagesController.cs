@@ -98,6 +98,50 @@ public class TicketMessagesController : ControllerBase
         return Ok();
     }
 
+    /// <summary>Returns the count of tickets that have unread messages for the current user.</summary>
+    [HttpGet("unread-count")]
+    public async Task<ActionResult<int>> GetUnreadCount()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+        var isTenant = User.IsInRole(AppRoles.Tenant) && !User.IsInRole(AppRoles.Admin) && !User.IsInRole(AppRoles.Manager);
+
+        IQueryable<ServiceRequest> ticketQuery = _db.ServiceRequests;
+        if (isTenant)
+        {
+            ticketQuery = ticketQuery.Where(sr => sr.SubmittedByUserId == userId);
+        }
+        else
+        {
+            var buildingIds = await _db.BuildingManagers
+                .Where(bm => bm.UserId == userId)
+                .Select(bm => bm.BuildingId)
+                .ToListAsync();
+            if (!User.IsInRole(AppRoles.Admin))
+                ticketQuery = ticketQuery.Where(sr => buildingIds.Contains(sr.BuildingId));
+        }
+
+        var ticketIds = await ticketQuery.Select(sr => sr.Id).ToListAsync();
+        if (ticketIds.Count == 0) return Ok(0);
+
+        var receipts = await _db.TicketReadReceipts
+            .Where(r => r.UserId == userId && ticketIds.Contains(r.ServiceRequestId))
+            .ToDictionaryAsync(r => r.ServiceRequestId, r => r.LastReadMessageId);
+
+        var maxMsgIds = await _db.TicketMessages
+            .Where(m => ticketIds.Contains(m.ServiceRequestId))
+            .GroupBy(m => m.ServiceRequestId)
+            .Select(g => new { TicketId = g.Key, MaxId = g.Max(m => m.Id) })
+            .ToListAsync();
+
+        var unreadCount = maxMsgIds.Count(t =>
+        {
+            var lastRead = receipts.TryGetValue(t.TicketId, out var lr) ? lr : 0;
+            return t.MaxId > lastRead;
+        });
+
+        return Ok(unreadCount);
+    }
+
     /// <summary>Post a message to a ticket thread. Triggers AI agent response if sender is tenant.</summary>
     [HttpPost("{id}/messages")]
     public async Task<ActionResult<TicketMessageDto>> PostMessage(int id, [FromBody] PostTicketMessageRequest request)
@@ -303,6 +347,7 @@ public class TicketMessagesController : ControllerBase
             db.TicketMessages.Add(agentMsg);
             await db.SaveChangesAsync();
             await hub.Clients.Group($"ticket-{serviceRequestId}").SendAsync("NewMessage", MapDto(agentMsg));
+            await NotifyUsersStaticAsync(db, hub, serviceRequestId);
         }
         else
         {
@@ -321,6 +366,22 @@ public class TicketMessagesController : ControllerBase
                 description = sr.Description
             });
         }
+    }
+
+    private static async Task NotifyUsersStaticAsync(AppDbContext db, IHubContext<TicketChatHub> hub, int ticketId)
+    {
+        var sr = await db.ServiceRequests.AsNoTracking().FirstOrDefaultAsync(s => s.Id == ticketId);
+        if (sr == null) return;
+
+        var userIds = new List<string> { sr.SubmittedByUserId };
+        var managerIds = await db.BuildingManagers
+            .Where(bm => bm.BuildingId == sr.BuildingId)
+            .Select(bm => bm.UserId)
+            .ToListAsync();
+        userIds.AddRange(managerIds);
+
+        var groups = userIds.Distinct().Select(uid => $"user-{uid}").ToList();
+        await hub.Clients.Groups(groups).SendAsync("UnreadCountChanged");
     }
 
     private static bool ApplyFieldUpdates(ServiceRequest sr, TicketFieldUpdates? updates)
@@ -360,8 +421,36 @@ public class TicketMessagesController : ControllerBase
 
     private async Task BroadcastMessageAsync(int ticketId, TicketMessageDto dto)
     {
-        try { await _hubContext.Clients.Group($"ticket-{ticketId}").SendAsync("NewMessage", dto); }
+        try
+        {
+            await _hubContext.Clients.Group($"ticket-{ticketId}").SendAsync("NewMessage", dto);
+            await NotifyUsersOfNewMessageAsync(ticketId);
+        }
         catch (Exception ex) { _logger.LogWarning(ex, "SignalR broadcast failed for ticket #{Id}", ticketId); }
+    }
+
+    private async Task NotifyUsersOfNewMessageAsync(int ticketId)
+    {
+        try
+        {
+            var sr = await _db.ServiceRequests.AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == ticketId);
+            if (sr == null) return;
+
+            var userIds = new List<string> { sr.SubmittedByUserId };
+            var managerIds = await _db.BuildingManagers
+                .Where(bm => bm.BuildingId == sr.BuildingId)
+                .Select(bm => bm.UserId)
+                .ToListAsync();
+            userIds.AddRange(managerIds);
+
+            var groups = userIds.Distinct().Select(uid => $"user-{uid}").ToList();
+            await _hubContext.Clients.Groups(groups).SendAsync("UnreadCountChanged");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "User notification failed for ticket #{Id}", ticketId);
+        }
     }
 
     private static TicketContext BuildContext(ServiceRequest sr) => new(

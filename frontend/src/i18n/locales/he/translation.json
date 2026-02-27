@@ -63,7 +63,8 @@
     "tenants": "דיירים",
     "vendorInvoices": "תשלומי ספקים",
     "sendReminders": "שליחת תזכורות",
-    "managerInvoices": "מסמכי חשבונאות"
+    "managerInvoices": "מסמכי חשבונאות",
+    "unreadMessages": "{{count}} הודעות שלא נקראו"
   },
 
   "login": {

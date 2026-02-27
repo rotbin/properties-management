@@ -77,10 +77,11 @@ public class OpenAiTicketAgent : ITicketAiAgent
             {openTicketsSummary}
             """;
 
-        var json = await CallAzureOpenAiAsync(systemPrompt, userPrompt, ct);
-        if (json == null)
+        var raw = await CallAzureOpenAiAsync(systemPrompt, userPrompt, ct);
+        if (raw == null)
             return new AgentAnalysisResult { Message = null };
 
+        var json = StripMarkdownFences(raw);
         try
         {
             using var doc = JsonDocument.Parse(json);
@@ -105,7 +106,7 @@ public class OpenAiTicketAgent : ITicketAiAgent
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to parse Azure OpenAI analysis response");
+            _logger.LogWarning(ex, "Failed to parse Azure OpenAI analysis response: {Raw}", Truncate(json, 200));
             return new AgentAnalysisResult { Message = json };
         }
     }
@@ -156,10 +157,11 @@ public class OpenAiTicketAgent : ITicketAiAgent
             $"- Description: {ticket.Description}\n\n" +
             $"Conversation:\n{convoText}";
 
-        var json = await CallAzureOpenAiAsync(systemPrompt, userPrompt, ct);
-        if (json == null)
+        var raw = await CallAzureOpenAiAsync(systemPrompt, userPrompt, ct);
+        if (raw == null)
             return new AgentReplyResult { Message = null };
 
+        var json = StripMarkdownFences(raw);
         try
         {
             using var doc = JsonDocument.Parse(json);
@@ -264,6 +266,20 @@ public class OpenAiTicketAgent : ITicketAiAgent
             _logger.LogError(ex, "Azure OpenAI API call failed");
             return null;
         }
+    }
+
+    private static string StripMarkdownFences(string text)
+    {
+        var trimmed = text.Trim();
+        if (trimmed.StartsWith("```"))
+        {
+            var firstNewline = trimmed.IndexOf('\n');
+            if (firstNewline > 0)
+                trimmed = trimmed[(firstNewline + 1)..];
+            if (trimmed.EndsWith("```"))
+                trimmed = trimmed[..^3].TrimEnd();
+        }
+        return trimmed;
     }
 
     private static string Truncate(string s, int max) => s.Length <= max ? s : s[..max] + "...";

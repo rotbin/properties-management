@@ -5,8 +5,10 @@ import {
 import { Send, SmartToy, Person, SupportAgent } from '@mui/icons-material';
 import { HubConnectionBuilder, HubConnection, LogLevel } from '@microsoft/signalr';
 import { ticketMessagesApi } from '../api/services';
+import { getAccessToken } from '../api/client';
 import type { TicketMessageDto } from '../types';
 import { useAuth } from '../auth/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
 import { useTranslation } from 'react-i18next';
 
 interface TicketFieldUpdate {
@@ -29,6 +31,7 @@ interface TicketChatProps {
 const TicketChat: React.FC<TicketChatProps> = ({ ticketId, incidentGroupId, incidentTicketCount, onTicketUpdated }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { refreshUnreadCount } = useNotifications();
   const [messages, setMessages] = useState<TicketMessageDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
@@ -37,7 +40,7 @@ const TicketChat: React.FC<TicketChatProps> = ({ ticketId, incidentGroupId, inci
   const connectionRef = useRef<HubConnection | null>(null);
 
   const getToken = useCallback(() => {
-    return localStorage.getItem('token') || '';
+    return getAccessToken() || '';
   }, []);
 
   // Initial fetch + SignalR connection
@@ -52,8 +55,8 @@ const TicketChat: React.FC<TicketChatProps> = ({ ticketId, incidentGroupId, inci
       } catch { /* ignore */ }
       finally { if (!cancelled) setLoading(false); }
 
-      // Mark as read
-      try { await ticketMessagesApi.markRead(ticketId); } catch { /* ignore */ }
+      // Mark as read and refresh bell icon
+      try { await ticketMessagesApi.markRead(ticketId); refreshUnreadCount(); } catch { /* ignore */ }
 
       // Set up SignalR
       const baseUrl = import.meta.env.VITE_API_URL || window.location.origin;
@@ -70,7 +73,7 @@ const TicketChat: React.FC<TicketChatProps> = ({ ticketId, incidentGroupId, inci
           if (prev.some(m => m.id === msg.id)) return prev;
           return [...prev, msg];
         });
-        ticketMessagesApi.markRead(ticketId).catch(() => {});
+        ticketMessagesApi.markRead(ticketId).then(() => refreshUnreadCount()).catch(() => {});
       });
 
       connection.on('TicketUpdated', (update: TicketFieldUpdate) => {

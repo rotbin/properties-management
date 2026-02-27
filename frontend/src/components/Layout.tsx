@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import {
   AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemIcon,
-  ListItemText, Box, IconButton, Divider, Chip, useMediaQuery, useTheme, Avatar
+  ListItemText, Box, IconButton, Divider, Chip, useMediaQuery, useTheme, Avatar, Badge, Tooltip
 } from '@mui/material';
 import {
   Menu as MenuIcon, Dashboard, Business, Engineering, CleaningServices,
   Assignment, Build, Logout, WorkOutline, Schedule,
-  AccountBalance, Payment, Settings, BarChart, FactCheck, People, RequestPage, Notifications, Receipt
+  AccountBalance, Payment, Settings, BarChart, FactCheck, People, RequestPage, Notifications, Receipt,
+  NotificationsActive
 } from '@mui/icons-material';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
 import { useTranslation } from 'react-i18next';
 
 const DRAWER_WIDTH = 264;
@@ -46,6 +48,7 @@ const navItems: NavItem[] = [
 
 const Layout: React.FC = () => {
   const { user, logout, hasAnyRole } = useAuth();
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -102,26 +105,33 @@ const Layout: React.FC = () => {
       {/* Navigation */}
       <Box sx={{ flex: 1, overflow: 'auto', py: 1 }}>
         <List disablePadding>
-          {visibleItems.map(item => (
-            <ListItemButton
-              key={item.path}
-              selected={location.pathname === item.path}
-              onClick={() => { navigate(item.path); if (isMobile) setMobileOpen(false); }}
-              sx={{ py: 0.75 }}
-            >
-              <ListItemIcon sx={{ minWidth: 40, color: location.pathname === item.path ? 'primary.main' : 'text.secondary' }}>
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText
-                primary={t(item.labelKey)}
-                primaryTypographyProps={{
-                  variant: 'body2',
-                  fontWeight: location.pathname === item.path ? 600 : 400,
-                  color: location.pathname === item.path ? 'primary.main' : 'text.primary',
-                }}
-              />
-            </ListItemButton>
-          ))}
+          {visibleItems.map(item => {
+            const showBadge = unreadCount > 0 && (item.path === '/my-requests' || item.path === '/service-requests');
+            return (
+              <ListItemButton
+                key={item.path}
+                selected={location.pathname === item.path}
+                onClick={() => { navigate(item.path); if (isMobile) setMobileOpen(false); }}
+                sx={{ py: 0.75 }}
+              >
+                <ListItemIcon sx={{ minWidth: 40, color: location.pathname === item.path ? 'primary.main' : 'text.secondary' }}>
+                  {showBadge ? (
+                    <Badge badgeContent={unreadCount} color="error" max={99} sx={{ '& .MuiBadge-badge': { fontSize: '0.65rem', height: 16, minWidth: 16 } }}>
+                      {item.icon}
+                    </Badge>
+                  ) : item.icon}
+                </ListItemIcon>
+                <ListItemText
+                  primary={t(item.labelKey)}
+                  primaryTypographyProps={{
+                    variant: 'body2',
+                    fontWeight: location.pathname === item.path ? 600 : 400,
+                    color: location.pathname === item.path ? 'primary.main' : 'text.primary',
+                  }}
+                />
+              </ListItemButton>
+            );
+          })}
         </List>
       </Box>
 
@@ -160,6 +170,21 @@ const Layout: React.FC = () => {
             />
           )}
           <Box sx={{ flexGrow: 1 }} />
+          {unreadCount > 0 && (
+            <Tooltip title={t('nav.unreadMessages', { count: unreadCount })}>
+              <IconButton
+                color="inherit"
+                onClick={() => {
+                  const ticketPath = hasAnyRole('Admin', 'Manager') ? '/service-requests' : '/my-requests';
+                  navigate(ticketPath);
+                }}
+              >
+                <Badge badgeContent={unreadCount} color="error" max={99}>
+                  <NotificationsActive />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+          )}
         </Toolbar>
       </AppBar>
 
