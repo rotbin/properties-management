@@ -17,7 +17,7 @@ interface TicketChatProps {
 
 const POLL_INTERVAL = 15_000;
 
-const TicketChat: React.FC<TicketChatProps> = ({ ticketId, incidentGroupId, incidentGroupTitle, incidentTicketCount }) => {
+const TicketChat: React.FC<TicketChatProps> = ({ ticketId, incidentGroupId, incidentTicketCount }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [messages, setMessages] = useState<TicketMessageDto[]>([]);
@@ -25,7 +25,7 @@ const TicketChat: React.FC<TicketChatProps> = ({ ticketId, incidentGroupId, inci
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval>>();
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchMessages = useCallback(async () => {
     try {
@@ -69,7 +69,7 @@ const TicketChat: React.FC<TicketChatProps> = ({ ticketId, incidentGroupId, inci
     }
   };
 
-  const isOwnMessage = (msg: TicketMessageDto) => msg.senderUserId === user?.userId;
+  const isOwnMessage = (msg: TicketMessageDto) => msg.senderUserId === user?.id;
 
   return (
     <Box sx={{ mt: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2, display: 'flex', flexDirection: 'column', maxHeight: 400 }}>
