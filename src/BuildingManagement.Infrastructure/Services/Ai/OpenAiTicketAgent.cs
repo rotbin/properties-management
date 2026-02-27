@@ -43,6 +43,8 @@ public class OpenAiTicketAgent : ITicketAiAgent
         var systemPrompt = """
             You are a building management AI assistant. Analyze the new maintenance ticket below.
 
+            CRITICAL: Respond in the SAME LANGUAGE the tenant used in their description. If the description is in Hebrew, your message MUST be in Hebrew. If in English, respond in English.
+
             Your tasks:
             1. CHECK if the description is missing key details: exact location, when it started, severity/urgency, or access instructions (for in-unit issues). If details are missing, ask up to 2 concise clarifying questions.
             2. CHECK if this ticket appears similar to any existing open tickets in the same building (same type of issue, same area). If so, identify the matching ticket ID.
@@ -50,7 +52,7 @@ public class OpenAiTicketAgent : ITicketAiAgent
 
             Respond in this JSON format (no markdown):
             {
-              "message": "Your message to the tenant",
+              "message": "Your message to the tenant (in the SAME language as their description)",
               "matchedTicketId": null or <number>,
               "incidentTitle": null or "short title for the grouped incident"
             }
@@ -111,6 +113,7 @@ public class OpenAiTicketAgent : ITicketAiAgent
             Review the conversation and provide a helpful follow-up. Be concise and professional.
             If they've provided the information you asked for, thank them and confirm it's been noted.
             If the reply is unclear, ask one clarifying question.
+            CRITICAL: Respond in the SAME LANGUAGE the tenant is using. If Hebrew, reply in Hebrew. If English, reply in English.
             Respond with plain text (not JSON).
             """;
 
@@ -125,7 +128,9 @@ public class OpenAiTicketAgent : ITicketAiAgent
         var systemPrompt = """
             You are a building management AI assistant. A maintenance ticket has been marked as resolved.
             Write a short, polite message to the tenant asking if the issue was resolved to their satisfaction.
-            Address them by name. Keep it to 2-3 sentences. Respond with plain text.
+            Address them by name. Keep it to 2-3 sentences.
+            CRITICAL: Respond in the SAME LANGUAGE the tenant used in their ticket description. If Hebrew, reply in Hebrew. If English, reply in English.
+            Respond with plain text.
             """;
 
         var userPrompt = $"Ticket #{ticket.Id}: {ticket.Category} issue in {ticket.Area} for tenant {ticket.TenantName}.";

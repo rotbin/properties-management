@@ -17,32 +17,37 @@ public class FakeTicketAgent : ITicketAiAgent
     {
         _logger.LogInformation("[FakeAI] Analyzing ticket #{Id}: {Desc}", ticket.Id, ticket.Description);
 
-        // Check for missing details heuristically
+        var he = IsHebrew(ticket.Description);
         var desc = ticket.Description.ToLowerInvariant();
         var missingParts = new List<string>();
 
         if (desc.Length < 30)
-            missingParts.Add("a more detailed description of the issue");
+            missingParts.Add(he ? "תיאור מפורט יותר של הבעיה" : "a more detailed description of the issue");
         if (!ContainsLocationHint(desc) && ticket.Area == "Other")
-            missingParts.Add("the exact location (floor, area, or apartment)");
+            missingParts.Add(he ? "המיקום המדויק (קומה, אזור או דירה)" : "the exact location (floor, area, or apartment)");
         if (!ContainsTimeHint(desc))
-            missingParts.Add("when this issue started or was first noticed");
+            missingParts.Add(he ? "מתי הבעיה התחילה או זוהתה לראשונה" : "when this issue started or was first noticed");
 
-        string? message = null;
+        string? message;
         if (missingParts.Count > 0)
         {
-            message = $"Hi {ticket.TenantName}, thank you for reporting this issue. " +
-                      $"To help us address it quickly, could you please provide:\n" +
-                      string.Join("\n", missingParts.Select((p, i) => $"{i + 1}. {p}")) +
-                      "\n\nThis will help the building management team respond more efficiently.";
+            message = he
+                ? $"שלום {ticket.TenantName}, תודה על הדיווח. כדי שנוכל לטפל בבעיה במהירות, נשמח אם תוכל/י לספק:\n" +
+                  string.Join("\n", missingParts.Select((p, i) => $"{i + 1}. {p}")) +
+                  "\n\nמידע זה יעזור לצוות ניהול הבניין להגיב ביעילות."
+                : $"Hi {ticket.TenantName}, thank you for reporting this issue. " +
+                  $"To help us address it quickly, could you please provide:\n" +
+                  string.Join("\n", missingParts.Select((p, i) => $"{i + 1}. {p}")) +
+                  "\n\nThis will help the building management team respond more efficiently.";
         }
         else
         {
-            message = $"Hi {ticket.TenantName}, thank you for the detailed report. " +
-                      "Your ticket has been received and the building management team will review it shortly.";
+            message = he
+                ? $"שלום {ticket.TenantName}, תודה על הדיווח המפורט. הפנייה שלך התקבלה וצוות ניהול הבניין יבחן אותה בהקדם."
+                : $"Hi {ticket.TenantName}, thank you for the detailed report. " +
+                  "Your ticket has been received and the building management team will review it shortly.";
         }
 
-        // Check for similar tickets (simple keyword match for demo)
         int? matchedGroupId = null;
         string? incidentTitle = null;
         // Cluster if same area + category (strong signal), or same category + word overlap
@@ -55,8 +60,10 @@ public class FakeTicketAgent : ITicketAiAgent
         {
             matchedGroupId = matchingTicket.IncidentGroupId;
             incidentTitle = $"{ticket.Area} - {ticket.Category} issue";
-            message += $"\n\nNote: This appears related to an existing report (Ticket #{matchingTicket.Id}). " +
-                       "We've linked these together so the management team can address them as one incident.";
+            message += he
+                ? $"\n\nלידיעתך: דיווח זה נראה קשור לפנייה קיימת (פנייה #{matchingTicket.Id}). קישרנו אותם יחד כדי שצוות הניהול יוכל לטפל בהם כאירוע אחד."
+                : $"\n\nNote: This appears related to an existing report (Ticket #{matchingTicket.Id}). " +
+                  "We've linked these together so the management team can address them as one incident.";
         }
 
         return Task.FromResult(new AgentAnalysisResult
@@ -73,25 +80,37 @@ public class FakeTicketAgent : ITicketAiAgent
         _logger.LogInformation("[FakeAI] Processing reply on ticket #{Id}", ticket.Id);
 
         var lastTenantMsg = conversationHistory.LastOrDefault(m => m.SenderType == "Tenant")?.Text ?? "";
+        var he = IsHebrew(lastTenantMsg) || IsHebrew(ticket.Description);
 
         if (lastTenantMsg.Length < 10)
-            return Task.FromResult<string?>("Thank you for your response. Could you provide a bit more detail so we can assist you better?");
+            return Task.FromResult<string?>(he
+                ? "תודה על התגובה. האם תוכל/י לפרט קצת יותר כדי שנוכל לסייע לך?"
+                : "Thank you for your response. Could you provide a bit more detail so we can assist you better?");
 
-        return Task.FromResult<string?>(
-            "Thank you for the additional information. The building management team has been notified " +
-            "and will take this into account when handling your request.");
+        return Task.FromResult<string?>(he
+            ? "תודה על המידע הנוסף. צוות ניהול הבניין קיבל עדכון ויתחשב במידע זה בטיפול בפנייתך."
+            : "Thank you for the additional information. The building management team has been notified " +
+              "and will take this into account when handling your request.");
     }
 
     public Task<string> GenerateResolutionFollowUpAsync(TicketContext ticket, CancellationToken ct = default)
     {
         _logger.LogInformation("[FakeAI] Generating resolution follow-up for ticket #{Id}", ticket.Id);
 
-        return Task.FromResult(
-            $"Hi {ticket.TenantName}, your ticket regarding the {ticket.Category.ToLowerInvariant()} " +
-            $"issue in {ticket.Area.ToLowerInvariant()} has been marked as resolved.\n\n" +
-            "Has this issue been resolved to your satisfaction? " +
-            "Please reply to let us know, or contact the building management if you need further assistance.");
+        var he = IsHebrew(ticket.Description);
+
+        return Task.FromResult(he
+            ? $"שלום {ticket.TenantName}, הפנייה שלך בנוגע לתקלת {ticket.Category.ToLowerInvariant()} " +
+              $"באזור {ticket.Area.ToLowerInvariant()} סומנה כפתורה.\n\n" +
+              "האם הבעיה נפתרה לשביעות רצונך? אנא השב/י כדי לעדכן אותנו, או פנה/י להנהלת הבניין אם נדרשת עזרה נוספת."
+            : $"Hi {ticket.TenantName}, your ticket regarding the {ticket.Category.ToLowerInvariant()} " +
+              $"issue in {ticket.Area.ToLowerInvariant()} has been marked as resolved.\n\n" +
+              "Has this issue been resolved to your satisfaction? " +
+              "Please reply to let us know, or contact the building management if you need further assistance.");
     }
+
+    private static bool IsHebrew(string text) =>
+        text.Any(c => c >= '\u0590' && c <= '\u05FF');
 
     private static bool ContainsLocationHint(string text) =>
         new[] { "floor", "apartment", "apt", "room", "entrance", "lobby", "parking", "roof", "garden", "stairwell", "corridor", "קומה", "דירה", "חדר", "כניסה" }
