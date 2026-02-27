@@ -143,7 +143,8 @@ public class ServiceRequestsController : ControllerBase
         if (status.HasValue) query = query.Where(sr => sr.Status == status);
 
         var items = await query.OrderByDescending(sr => sr.CreatedAtUtc).ToListAsync();
-        return Ok(items.Select(MapToDto).ToList());
+        var readReceipts = await GetReadReceipts(userId!, items.Select(s => s.Id).ToList());
+        return Ok(items.Select(sr => MapToDto(sr, readReceipts)).ToList());
     }
 
     [HttpGet("my")]
@@ -163,7 +164,8 @@ public class ServiceRequestsController : ControllerBase
             .OrderByDescending(sr => sr.CreatedAtUtc)
             .ToListAsync();
 
-        return Ok(items.Select(MapToDto).ToList());
+        var readReceipts = await GetReadReceipts(userId, items.Select(s => s.Id).ToList());
+        return Ok(items.Select(sr => MapToDto(sr, readReceipts)).ToList());
     }
 
     [HttpGet("{id}")]
@@ -181,13 +183,14 @@ public class ServiceRequestsController : ControllerBase
         if (sr == null) return NotFound();
 
         // Tenants can only see their own
+        var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
         if (User.IsInRole(AppRoles.Tenant))
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
-            if (sr.SubmittedByUserId != userId) return Forbid();
+            if (sr.SubmittedByUserId != currentUserId) return Forbid();
         }
 
-        return Ok(MapToDto(sr));
+        var readReceipts = await GetReadReceipts(currentUserId, new List<int> { sr.Id });
+        return Ok(MapToDto(sr, readReceipts));
     }
 
     /// <summary>Assign a vendor to a service request by creating/updating a linked work order.</summary>
@@ -351,9 +354,18 @@ public class ServiceRequestsController : ControllerBase
         return Ok(result);
     }
 
-    private static ServiceRequestDto MapToDto(ServiceRequest sr)
+    private async Task<Dictionary<int, int>> GetReadReceipts(string userId, List<int> srIds)
+    {
+        return await _db.TicketReadReceipts
+            .Where(r => r.UserId == userId && srIds.Contains(r.ServiceRequestId))
+            .ToDictionaryAsync(r => r.ServiceRequestId, r => r.LastReadMessageId);
+    }
+
+    private static ServiceRequestDto MapToDto(ServiceRequest sr, Dictionary<int, int>? readReceipts = null)
     {
         var linkedWo = sr.WorkOrders?.FirstOrDefault();
+        var maxMsgId = sr.Messages?.Any() == true ? sr.Messages.Max(m => m.Id) : 0;
+        var lastRead = readReceipts != null && readReceipts.TryGetValue(sr.Id, out var lr) ? lr : 0;
         return new ServiceRequestDto
         {
             Id = sr.Id,
@@ -388,7 +400,8 @@ public class ServiceRequestsController : ControllerBase
             IncidentGroupId = sr.IncidentGroupId,
             IncidentGroupTitle = sr.IncidentGroup?.Title,
             IncidentTicketCount = sr.IncidentGroup?.ServiceRequests?.Count ?? 0,
-            MessageCount = sr.Messages?.Count ?? 0
+            MessageCount = sr.Messages?.Count ?? 0,
+            HasUnreadMessages = maxMsgId > lastRead
         };
     }
 }

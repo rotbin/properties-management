@@ -112,6 +112,7 @@ export interface ServiceRequestDto {
   incidentTicketCount?: number;
   // Message count
   messageCount?: number;
+  hasUnreadMessages?: boolean;
 }
 
 export interface AttachmentDto {

@@ -4,7 +4,7 @@ import {
   Paper, Chip, Button, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress,
   Card, CardContent, CardActionArea, Stack, useMediaQuery, useTheme
 } from '@mui/material';
-import { Visibility, Add, BugReport, Chat } from '@mui/icons-material';
+import { Visibility, Add, BugReport, Chat, FiberNew } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { serviceRequestsApi } from '../../api/services';
 import type { ServiceRequestDto } from '../../types';
@@ -52,6 +52,7 @@ const MyRequestsPage: React.FC = () => {
                   <Typography variant="body2" fontWeight={600} noWrap>{sr.buildingName} – {t(`enums.area.${sr.area}`, sr.area)} – {t(`enums.category.${sr.category}`, sr.category)}</Typography>
                   <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
                     <Typography variant="caption" color="text.secondary">{formatDateLocal(sr.createdAtUtc)}</Typography>
+                    {sr.hasUnreadMessages && <Chip icon={<FiberNew sx={{ fontSize: 14 }} />} label={t('ticketChat.unread')} size="small" color="error" sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />}
                     {sr.incidentGroupId && <Chip icon={<BugReport sx={{ fontSize: 14 }} />} label={`#${sr.incidentGroupId}`} size="small" color="warning" variant="outlined" sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />}
                     {(sr.messageCount ?? 0) > 0 && <Chip icon={<Chat sx={{ fontSize: 14 }} />} label={sr.messageCount} size="small" variant="outlined" sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />}
                   </Box>

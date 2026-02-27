@@ -1036,6 +1036,7 @@
     "placeholder": "כתוב הודעה...",
     "noMessages": "אין הודעות עדיין. העוזר החכם יגיב בקרוב.",
     "aiAssistant": "עוזר חכם",
-    "incidentLinked": "מקושר לאירוע #{{id}} ({{count}} דיווחים)"
+    "incidentLinked": "מקושר לאירוע #{{id}} ({{count}} דיווחים)",
+    "unread": "חדש"
   }
 }

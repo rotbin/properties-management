@@ -37,6 +37,7 @@ public record ServiceRequestDto
 
     // Message count
     public int MessageCount { get; init; }
+    public bool HasUnreadMessages { get; init; }
 }
 
 public record CreateServiceRequestRequest

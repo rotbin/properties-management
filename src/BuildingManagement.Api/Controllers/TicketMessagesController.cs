@@ -1,3 +1,4 @@
+using BuildingManagement.Api.Hubs;
 using BuildingManagement.Core.DTOs;
 using BuildingManagement.Core.Entities;
 using BuildingManagement.Core.Enums;
@@ -5,6 +6,7 @@ using BuildingManagement.Core.Interfaces;
 using BuildingManagement.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
@@ -18,13 +20,15 @@ public class TicketMessagesController : ControllerBase
     private readonly AppDbContext _db;
     private readonly ITicketAiAgent _aiAgent;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IHubContext<TicketChatHub> _hubContext;
     private readonly ILogger<TicketMessagesController> _logger;
 
-    public TicketMessagesController(AppDbContext db, ITicketAiAgent aiAgent, IServiceScopeFactory scopeFactory, ILogger<TicketMessagesController> logger)
+    public TicketMessagesController(AppDbContext db, ITicketAiAgent aiAgent, IServiceScopeFactory scopeFactory, IHubContext<TicketChatHub> hubContext, ILogger<TicketMessagesController> logger)
     {
         _db = db;
         _aiAgent = aiAgent;
         _scopeFactory = scopeFactory;
+        _hubContext = hubContext;
         _logger = logger;
     }
 
@@ -57,6 +61,41 @@ public class TicketMessagesController : ControllerBase
             .ToListAsync();
 
         return Ok(messages);
+    }
+
+    /// <summary>Mark messages as read up to the latest message in the thread.</summary>
+    [HttpPost("{id}/mark-read")]
+    public async Task<IActionResult> MarkRead(int id)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+        var lastMsgId = await _db.TicketMessages
+            .Where(m => m.ServiceRequestId == id)
+            .OrderByDescending(m => m.Id)
+            .Select(m => m.Id)
+            .FirstOrDefaultAsync();
+
+        if (lastMsgId == 0) return Ok();
+
+        var receipt = await _db.TicketReadReceipts
+            .FirstOrDefaultAsync(r => r.ServiceRequestId == id && r.UserId == userId);
+
+        if (receipt == null)
+        {
+            _db.TicketReadReceipts.Add(new TicketReadReceipt
+            {
+                ServiceRequestId = id,
+                UserId = userId,
+                LastReadMessageId = lastMsgId
+            });
+        }
+        else if (lastMsgId > receipt.LastReadMessageId)
+        {
+            receipt.LastReadMessageId = lastMsgId;
+            receipt.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok();
     }
 
     /// <summary>Post a message to a ticket thread. Triggers AI agent response if sender is tenant.</summary>
@@ -93,6 +132,9 @@ public class TicketMessagesController : ControllerBase
         _db.TicketMessages.Add(message);
         await _db.SaveChangesAsync();
 
+        // Broadcast via SignalR
+        await BroadcastMessageAsync(id, MapDto(message));
+
         // If tenant posted, trigger AI agent response in a new scope (fire-and-forget)
         if (senderType == TicketMessageSender.Tenant)
         {
@@ -105,7 +147,8 @@ public class TicketMessagesController : ControllerBase
                     using var scope = factory.CreateScope();
                     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                     var agent = scope.ServiceProvider.GetRequiredService<ITicketAiAgent>();
-                    await GenerateAgentReplyInScopeAsync(db, agent, ticketId);
+                    var hub = scope.ServiceProvider.GetRequiredService<IHubContext<TicketChatHub>>();
+                    await GenerateAgentReplyInScopeAsync(db, agent, hub, ticketId);
                 }
                 catch (Exception ex) { Console.WriteLine($"Agent reply failed for ticket #{ticketId}: {ex}"); }
             });
@@ -177,14 +220,16 @@ public class TicketMessagesController : ControllerBase
             // Post agent message
             if (!string.IsNullOrEmpty(result.Message))
             {
-                _db.TicketMessages.Add(new TicketMessage
+                var agentMsg = new TicketMessage
                 {
                     ServiceRequestId = serviceRequestId,
                     SenderType = TicketMessageSender.Agent,
                     SenderName = "AI Assistant",
                     Text = result.Message
-                });
+                };
+                _db.TicketMessages.Add(agentMsg);
                 await _db.SaveChangesAsync();
+                await BroadcastMessageAsync(serviceRequestId, MapDto(agentMsg));
                 _logger.LogInformation("Agent message posted for SR #{Id}", serviceRequestId);
             }
         }
@@ -208,16 +253,18 @@ public class TicketMessagesController : ControllerBase
             if (sr == null) return;
 
             var ctx = BuildContext(sr);
-            var message = await _aiAgent.GenerateResolutionFollowUpAsync(ctx);
+            var msgText = await _aiAgent.GenerateResolutionFollowUpAsync(ctx);
 
-            _db.TicketMessages.Add(new TicketMessage
+            var agentMsg = new TicketMessage
             {
                 ServiceRequestId = serviceRequestId,
                 SenderType = TicketMessageSender.Agent,
                 SenderName = "AI Assistant",
-                Text = message
-            });
+                Text = msgText
+            };
+            _db.TicketMessages.Add(agentMsg);
             await _db.SaveChangesAsync();
+            await BroadcastMessageAsync(serviceRequestId, MapDto(agentMsg));
         }
         catch (Exception ex)
         {
@@ -225,7 +272,7 @@ public class TicketMessagesController : ControllerBase
         }
     }
 
-    private static async Task GenerateAgentReplyInScopeAsync(AppDbContext db, ITicketAiAgent agent, int serviceRequestId)
+    private static async Task GenerateAgentReplyInScopeAsync(AppDbContext db, ITicketAiAgent agent, IHubContext<TicketChatHub> hub, int serviceRequestId)
     {
         var sr = await db.ServiceRequests
             .Include(s => s.Building)
@@ -244,15 +291,23 @@ public class TicketMessagesController : ControllerBase
 
         if (!string.IsNullOrEmpty(reply))
         {
-            db.TicketMessages.Add(new TicketMessage
+            var agentMsg = new TicketMessage
             {
                 ServiceRequestId = serviceRequestId,
                 SenderType = TicketMessageSender.Agent,
                 SenderName = "AI Assistant",
                 Text = reply
-            });
+            };
+            db.TicketMessages.Add(agentMsg);
             await db.SaveChangesAsync();
+            await hub.Clients.Group($"ticket-{serviceRequestId}").SendAsync("NewMessage", MapDto(agentMsg));
         }
+    }
+
+    private async Task BroadcastMessageAsync(int ticketId, TicketMessageDto dto)
+    {
+        try { await _hubContext.Clients.Group($"ticket-{ticketId}").SendAsync("NewMessage", dto); }
+        catch (Exception ex) { _logger.LogWarning(ex, "SignalR broadcast failed for ticket #{Id}", ticketId); }
     }
 
     private static TicketContext BuildContext(ServiceRequest sr) => new(

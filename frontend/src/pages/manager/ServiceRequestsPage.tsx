@@ -5,7 +5,7 @@ import {
   DialogActions, CircularProgress, Alert, useMediaQuery, useTheme, Card, CardContent,
   Stack, CardActionArea, FormControlLabel, Switch, ImageList, ImageListItem, IconButton
 } from '@mui/material';
-import { Visibility, Add, Delete, CloudUpload, NoteAdd, Edit, BugReport, Chat } from '@mui/icons-material';
+import { Visibility, Add, Delete, CloudUpload, NoteAdd, Edit, BugReport, Chat, FiberNew } from '@mui/icons-material';
 import { serviceRequestsApi, buildingsApi, workOrdersApi, vendorsApi } from '../../api/services';
 import type { ServiceRequestDto, BuildingDto, VendorDto, UnitDto } from '../../types';
 import { SR_STATUSES, AREAS, CATEGORIES, PRIORITIES } from '../../types';
@@ -225,6 +225,7 @@ const ServiceRequestsPage: React.FC = () => {
                   <Typography variant="body2" fontWeight={600} noWrap>{srTitle(sr)}</Typography>
                   <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
                     <Typography variant="caption" color="text.secondary">{sr.submittedByName} · {formatDateLocal(sr.createdAtUtc)}</Typography>
+                    {sr.hasUnreadMessages && <Chip icon={<FiberNew sx={{ fontSize: 14 }} />} label={t('ticketChat.unread')} size="small" color="error" sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />}
                     {sr.incidentGroupId && <Chip icon={<BugReport sx={{ fontSize: 14 }} />} label={`#${sr.incidentGroupId}`} size="small" color="warning" variant="outlined" sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />}
                     {(sr.messageCount ?? 0) > 0 && <Chip icon={<Chat sx={{ fontSize: 14 }} />} label={sr.messageCount} size="small" variant="outlined" sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />}
                   </Box>
@@ -249,6 +250,7 @@ const ServiceRequestsPage: React.FC = () => {
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       {srTitle(sr)}
+                      {sr.hasUnreadMessages && <Chip icon={<FiberNew sx={{ fontSize: 14 }} />} label={t('ticketChat.unread')} size="small" color="error" sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />}
                       {sr.incidentGroupId && <Chip icon={<BugReport sx={{ fontSize: 14 }} />} label={`#${sr.incidentGroupId}`} size="small" color="warning" variant="outlined" sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />}
                       {(sr.messageCount ?? 0) > 0 && <Chip icon={<Chat sx={{ fontSize: 14 }} />} label={sr.messageCount} size="small" variant="outlined" sx={{ height: 20, '& .MuiChip-label': { px: 0.5, fontSize: '0.65rem' } }} />}
                     </Box>

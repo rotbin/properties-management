@@ -76,6 +76,20 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
         ClockSkew = TimeSpan.FromMinutes(1)
     };
+    // Allow SignalR to receive JWT from query string
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 
 builder.Services.AddAuthorization();
@@ -177,6 +191,9 @@ builder.Services.AddCors(options =>
     });
 });
 
+// ─── SignalR ─────────────────────────────────────────────
+builder.Services.AddSignalR();
+
 // ─── Controllers & Swagger ──────────────────────────────
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -264,6 +281,7 @@ app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<BuildingManagement.Api.Hubs.TicketChatHub>("/hubs/ticket-chat");
 app.MapHealthChecks("/health");
 
 // SPA fallback: for any non-API, non-file request, serve index.html so React Router works

@@ -261,6 +261,8 @@ export const ticketMessagesApi = {
     apiClient.get<TicketMessageDto[]>(`/api/tickets/${ticketId}/messages`),
   postMessage: (ticketId: number, text: string) =>
     apiClient.post<TicketMessageDto>(`/api/tickets/${ticketId}/messages`, { text }),
+  markRead: (ticketId: number) =>
+    apiClient.post(`/api/tickets/${ticketId}/mark-read`),
 };
 
 // Accounting Documents

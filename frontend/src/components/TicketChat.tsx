@@ -3,6 +3,7 @@ import {
   Box, Typography, TextField, IconButton, CircularProgress, Avatar, Chip
 } from '@mui/material';
 import { Send, SmartToy, Person, SupportAgent } from '@mui/icons-material';
+import { HubConnectionBuilder, HubConnection, LogLevel } from '@microsoft/signalr';
 import { ticketMessagesApi } from '../api/services';
 import type { TicketMessageDto } from '../types';
 import { useAuth } from '../auth/AuthContext';
@@ -15,8 +16,6 @@ interface TicketChatProps {
   incidentTicketCount?: number;
 }
 
-const POLL_INTERVAL = 15_000;
-
 const TicketChat: React.FC<TicketChatProps> = ({ ticketId, incidentGroupId, incidentTicketCount }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -25,22 +24,77 @@ const TicketChat: React.FC<TicketChatProps> = ({ ticketId, incidentGroupId, inci
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const connectionRef = useRef<HubConnection | null>(null);
 
-  const fetchMessages = useCallback(async () => {
-    try {
-      const res = await ticketMessagesApi.getMessages(ticketId);
-      setMessages(res.data);
-    } catch { /* ignore */ }
-    finally { setLoading(false); }
-  }, [ticketId]);
+  const getToken = useCallback(() => {
+    return localStorage.getItem('token') || '';
+  }, []);
 
+  // Initial fetch + SignalR connection
   useEffect(() => {
-    setLoading(true);
-    fetchMessages();
-    pollRef.current = setInterval(fetchMessages, POLL_INTERVAL);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [ticketId, fetchMessages]);
+    let cancelled = false;
+
+    const init = async () => {
+      // Fetch existing messages
+      try {
+        const res = await ticketMessagesApi.getMessages(ticketId);
+        if (!cancelled) setMessages(res.data);
+      } catch { /* ignore */ }
+      finally { if (!cancelled) setLoading(false); }
+
+      // Mark as read
+      try { await ticketMessagesApi.markRead(ticketId); } catch { /* ignore */ }
+
+      // Set up SignalR
+      const baseUrl = import.meta.env.VITE_API_URL || window.location.origin;
+      const connection = new HubConnectionBuilder()
+        .withUrl(`${baseUrl}/hubs/ticket-chat`, {
+          accessTokenFactory: () => getToken(),
+        })
+        .withAutomaticReconnect()
+        .configureLogging(LogLevel.Warning)
+        .build();
+
+      connection.on('NewMessage', (msg: TicketMessageDto) => {
+        setMessages(prev => {
+          if (prev.some(m => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
+        // Mark as read since chat is open
+        ticketMessagesApi.markRead(ticketId).catch(() => {});
+      });
+
+      try {
+        await connection.start();
+        await connection.invoke('JoinTicket', ticketId);
+        connectionRef.current = connection;
+      } catch (err) {
+        console.warn('SignalR connection failed, falling back to polling', err);
+        // Fallback: poll every 10s
+        if (!cancelled) {
+          const interval = setInterval(async () => {
+            try {
+              const res = await ticketMessagesApi.getMessages(ticketId);
+              setMessages(res.data);
+            } catch { /* ignore */ }
+          }, 10_000);
+          return () => clearInterval(interval);
+        }
+      }
+    };
+
+    init();
+
+    return () => {
+      cancelled = true;
+      const conn = connectionRef.current;
+      if (conn) {
+        conn.invoke('LeaveTicket', ticketId).catch(() => {});
+        conn.stop().catch(() => {});
+        connectionRef.current = null;
+      }
+    };
+  }, [ticketId, getToken]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -52,7 +106,6 @@ const TicketChat: React.FC<TicketChatProps> = ({ ticketId, incidentGroupId, inci
     try {
       await ticketMessagesApi.postMessage(ticketId, text.trim());
       setText('');
-      await fetchMessages();
     } catch { /* ignore */ }
     finally { setSending(false); }
   };
