@@ -28,7 +28,7 @@ const MyRequestsPage: React.FC = () => {
   const [selected, setSelected] = useState<ServiceRequestDto | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [showOnlyUnread, setShowOnlyUnread] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setInterval>>();
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadRequests = useCallback(() => {
     serviceRequestsApi.getMy().then(r => setRequests(r.data)).catch(() => {}).finally(() => setLoading(false));
@@ -40,7 +40,7 @@ const MyRequestsPage: React.FC = () => {
   // Polling fallback: refresh every 8 seconds to catch unread changes even if SignalR misses
   useEffect(() => {
     pollRef.current = setInterval(loadRequests, 8000);
-    return () => clearInterval(pollRef.current);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadRequests]);
 
   const unreadCount = useMemo(() => requests.filter(r => r.hasUnreadMessages).length, [requests]);
