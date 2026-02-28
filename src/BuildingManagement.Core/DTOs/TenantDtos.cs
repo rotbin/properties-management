@@ -89,6 +89,10 @@ public record TenantMessageDto
     public bool IsRead { get; init; }
     public DateTime CreatedAtUtc { get; init; }
     public DateTime? ReadAtUtc { get; init; }
+    public int? ParentMessageId { get; init; }
+    public int ReplyCount { get; init; }
+    public DateTime? LastReplyAtUtc { get; init; }
+    public List<TenantMessageDto>? Replies { get; init; }
 }
 
 public record SendTenantMessageRequest
@@ -98,6 +102,8 @@ public record SendTenantMessageRequest
 
     [Required]
     public string Body { get; init; } = string.Empty;
+
+    public int? ParentMessageId { get; init; }
 }
 
 public record SendPaymentRemindersRequest

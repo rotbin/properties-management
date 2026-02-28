@@ -158,6 +158,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             .OnDelete(DeleteBehavior.SetNull);
 
         builder.Entity<TenantMessage>()
+            .HasOne(tm => tm.ParentMessage)
+            .WithMany(tm => tm.Replies)
+            .HasForeignKey(tm => tm.ParentMessageId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<TenantMessage>()
             .HasIndex(tm => new { tm.TenantProfileId, tm.CreatedAtUtc });
 
         // ─── IncidentGroup ──────────────────────────────────

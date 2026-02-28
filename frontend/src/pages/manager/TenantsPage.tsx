@@ -72,6 +72,11 @@ const TenantsPage: React.FC = () => {
   const [msgHistory, setMsgHistory] = useState<TenantMessageDto[]>([]);
   const [msgHistoryLoading, setMsgHistoryLoading] = useState(false);
   const [reminderSending, setReminderSending] = useState(false);
+  const [threadOpen, setThreadOpen] = useState<number | null>(null);
+  const [threadMessages, setThreadMessages] = useState<TenantMessageDto[]>([]);
+  const [threadLoading, setThreadLoading] = useState(false);
+  const [threadReply, setThreadReply] = useState('');
+  const [threadReplySending, setThreadReplySending] = useState(false);
 
   // Load data
   const load = useCallback(async () => {
@@ -256,11 +261,37 @@ const TenantsPage: React.FC = () => {
     setMsgHistoryTenant(tp);
     setMsgHistoryOpen(true);
     setMsgHistoryLoading(true);
+    setThreadOpen(null);
     try {
       const res = await tenantMessagesApi.getForTenant(tp.id);
       setMsgHistory(res.data);
     } catch { setError(t('tenants.failedLoadMessages')); }
     finally { setMsgHistoryLoading(false); }
+  };
+
+  const openThread = async (rootId: number) => {
+    if (threadOpen === rootId) { setThreadOpen(null); return; }
+    setThreadOpen(rootId);
+    setThreadLoading(true);
+    setThreadReply('');
+    try {
+      const res = await tenantMessagesApi.getThread(rootId);
+      setThreadMessages(res.data);
+    } catch { /* ignore */ }
+    finally { setThreadLoading(false); }
+  };
+
+  const handleThreadReply = async (rootMsg: TenantMessageDto) => {
+    if (!threadReply.trim() || !msgHistoryTenant) return;
+    setThreadReplySending(true);
+    try {
+      const subject = rootMsg.subject.startsWith('Re: ') ? rootMsg.subject : `Re: ${rootMsg.subject}`;
+      const res = await tenantMessagesApi.sendMessage(msgHistoryTenant.id, { subject, body: threadReply.trim(), parentMessageId: rootMsg.id });
+      setThreadMessages(prev => [...prev, res.data]);
+      setThreadReply('');
+      setMsgHistory(prev => prev.map(m => m.id === rootMsg.id ? { ...m, replyCount: m.replyCount + 1, lastReplyAtUtc: new Date().toISOString() } : m));
+    } catch { setError(t('tenants.failedSendMessage')); }
+    finally { setThreadReplySending(false); }
   };
 
   const handleSendReminders = async () => {
@@ -590,33 +621,71 @@ const TenantsPage: React.FC = () => {
               {msgHistory.map(msg => (
                 <Card key={msg.id} variant="outlined" sx={{
                   borderLeft: '4px solid',
-                  borderLeftColor: msg.messageType === 'TenantReply' ? '#2e7d32' : msg.messageType === 'Warning' ? '#d32f2f' : msg.messageType === 'PaymentReminder' ? '#ed6c02' : '#1976d2',
-                  ...(msg.messageType === 'TenantReply' ? { bgcolor: '#f1f8e9' } : {})
+                  borderLeftColor: msg.messageType === 'Warning' ? '#d32f2f' : msg.messageType === 'PaymentReminder' ? '#ed6c02' : '#1976d2'
                 }}>
-                  <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                      <Typography variant="subtitle2" fontWeight={700}>
-                        {msg.messageType === 'TenantReply' && '↩ '}{msg.subject}
-                      </Typography>
-                      <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-                        {msg.payerCategory && (
-                          <Chip label={msg.payerCategory} size="small" variant="outlined"
-                            color={msg.payerCategory === 'ChronicallyLate' ? 'error' : msg.payerCategory === 'OccasionallyLate' ? 'warning' : 'success'} />
-                        )}
-                        <Chip label={msg.messageType} size="small" variant="outlined" />
-                        {msg.isRead ? (
-                          <Chip icon={<MarkEmailRead sx={{ fontSize: 14 }} />} label={t('tenants.read')} size="small" color="success" />
-                        ) : (
-                          <Chip icon={<Circle sx={{ fontSize: 8 }} />} label={t('tenants.unread')} size="small" color="error" />
-                        )}
+                  <CardActionArea onClick={() => openThread(msg.id)}>
+                    <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                        <Typography variant="subtitle2" fontWeight={700}>{msg.subject}</Typography>
+                        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                          {msg.replyCount > 0 && (
+                            <Chip icon={<Chat sx={{ fontSize: 14 }} />} label={msg.replyCount} size="small" variant="outlined" sx={{ height: 22 }} />
+                          )}
+                          {msg.payerCategory && (
+                            <Chip label={msg.payerCategory} size="small" variant="outlined"
+                              color={msg.payerCategory === 'ChronicallyLate' ? 'error' : msg.payerCategory === 'OccasionallyLate' ? 'warning' : 'success'} />
+                          )}
+                          <Chip label={msg.messageType} size="small" variant="outlined" />
+                        </Box>
                       </Box>
+                      <Typography variant="body2" color="text.secondary" noWrap>{msg.body.substring(0, 150)}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {t('tenants.sentBy')}: {msg.sentByName || 'AI Agent'} · {new Date(msg.lastReplyAtUtc || msg.createdAtUtc).toLocaleString()}
+                      </Typography>
+                    </CardContent>
+                  </CardActionArea>
+
+                  {threadOpen === msg.id && (
+                    <Box sx={{ borderTop: '1px solid', borderColor: 'divider', px: 2, py: 1.5, bgcolor: '#fafafa' }}>
+                      {threadLoading ? <CircularProgress size={20} /> : (
+                        <Stack spacing={1}>
+                          {threadMessages.map(tm => {
+                            const isTenantMsg = tm.messageType === 'TenantReply';
+                            return (
+                              <Box key={tm.id} sx={{ display: 'flex', justifyContent: isTenantMsg ? 'flex-start' : 'flex-end' }}>
+                                <Box sx={{
+                                  maxWidth: '80%', px: 1.5, py: 1, borderRadius: 2,
+                                  bgcolor: isTenantMsg ? '#e8f5e9' : '#e3f2fd',
+                                  borderBottomLeftRadius: isTenantMsg ? 4 : 16,
+                                  borderBottomRightRadius: isTenantMsg ? 16 : 4
+                                }}>
+                                  <Typography variant="caption" fontWeight={600} color="text.secondary">
+                                    {tm.sentByName || 'AI Agent'}
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{tm.body}</Typography>
+                                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                                    {new Date(tm.createdAtUtc).toLocaleString()}
+                                    {tm.isRead && tm.readAtUtc && ` · ${t('tenants.readAt')}: ${new Date(tm.readAtUtc).toLocaleString()}`}
+                                  </Typography>
+                                </Box>
+                              </Box>
+                            );
+                          })}
+                          <Box sx={{ display: 'flex', gap: 1, mt: 1, alignItems: 'flex-end' }}>
+                            <TextField fullWidth size="small" multiline minRows={1} maxRows={3}
+                              placeholder={t('myMessages.replyPlaceholder')}
+                              value={threadReply} onChange={e => setThreadReply(e.target.value)}
+                              disabled={threadReplySending}
+                              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleThreadReply(msg); } }} />
+                            <IconButton color="primary" onClick={() => handleThreadReply(msg)}
+                              disabled={!threadReply.trim() || threadReplySending}>
+                              {threadReplySending ? <CircularProgress size={20} /> : <Send />}
+                            </IconButton>
+                          </Box>
+                        </Stack>
+                      )}
                     </Box>
-                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', my: 1 }}>{msg.body}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {t('tenants.sentBy')}: {msg.sentByName || 'AI Agent'} · {new Date(msg.createdAtUtc).toLocaleString()}
-                      {msg.readAtUtc && ` · ${t('tenants.readAt')}: ${new Date(msg.readAtUtc).toLocaleString()}`}
-                    </Typography>
-                  </CardContent>
+                  )}
                 </Card>
               ))}
             </Stack>

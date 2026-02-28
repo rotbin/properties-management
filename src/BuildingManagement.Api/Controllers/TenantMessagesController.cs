@@ -33,7 +33,7 @@ public class TenantMessagesController : ControllerBase
     [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Manager}")]
     public async Task<ActionResult<List<TenantMessageDto>>> GetMessagesForTenant(int tenantProfileId)
     {
-        var messages = await _db.TenantMessages
+        var allMessages = await _db.TenantMessages
             .Where(m => m.TenantProfileId == tenantProfileId)
             .OrderByDescending(m => m.CreatedAtUtc)
             .Select(m => new TenantMessageDto
@@ -49,11 +49,12 @@ public class TenantMessagesController : ControllerBase
                 PayerCategory = m.PayerCategory,
                 IsRead = m.IsRead,
                 CreatedAtUtc = m.CreatedAtUtc,
-                ReadAtUtc = m.ReadAtUtc
+                ReadAtUtc = m.ReadAtUtc,
+                ParentMessageId = m.ParentMessageId
             })
             .ToListAsync();
 
-        return Ok(messages);
+        return Ok(BuildThreadedList(allMessages));
     }
 
     [HttpPost("tenant/{tenantProfileId}/send")]
@@ -66,13 +67,16 @@ public class TenantMessagesController : ControllerBase
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
         var userName = User.FindFirst("fullName")?.Value ?? "Manager";
 
+        var parentId = req.ParentMessageId;
+
         var msg = new TenantMessage
         {
             TenantProfileId = tenantProfileId,
             SentByUserId = userId,
             Subject = req.Subject,
             Body = req.Body,
-            MessageType = "Manual"
+            MessageType = parentId.HasValue ? "ManagerReply" : "Manual",
+            ParentMessageId = parentId
         };
         _db.TenantMessages.Add(msg);
         await _db.SaveChangesAsync();
@@ -96,7 +100,8 @@ public class TenantMessagesController : ControllerBase
             Body = msg.Body,
             MessageType = msg.MessageType,
             IsRead = false,
-            CreatedAtUtc = msg.CreatedAtUtc
+            CreatedAtUtc = msg.CreatedAtUtc,
+            ParentMessageId = parentId
         });
     }
 
@@ -172,7 +177,7 @@ public class TenantMessagesController : ControllerBase
             .FirstOrDefaultAsync(t => t.UserId == userId && t.IsActive && !t.IsDeleted);
         if (tenantProfile == null) return Ok(new List<TenantMessageDto>());
 
-        var messages = await _db.TenantMessages
+        var allMessages = await _db.TenantMessages
             .Where(m => m.TenantProfileId == tenantProfile.Id)
             .OrderByDescending(m => m.CreatedAtUtc)
             .Select(m => new TenantMessageDto
@@ -188,11 +193,55 @@ public class TenantMessagesController : ControllerBase
                 PayerCategory = m.PayerCategory,
                 IsRead = m.IsRead,
                 CreatedAtUtc = m.CreatedAtUtc,
-                ReadAtUtc = m.ReadAtUtc
+                ReadAtUtc = m.ReadAtUtc,
+                ParentMessageId = m.ParentMessageId
             })
             .ToListAsync();
 
-        return Ok(messages);
+        return Ok(BuildThreadedList(allMessages));
+    }
+
+    [HttpGet("{id}/thread")]
+    [Authorize]
+    public async Task<ActionResult<List<TenantMessageDto>>> GetThread(int id)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+        var isManager = User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Manager);
+
+        var rootMsg = await _db.TenantMessages.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id);
+        if (rootMsg == null) return NotFound();
+
+        if (!isManager)
+        {
+            var tenantProfile = await _db.TenantProfiles
+                .FirstOrDefaultAsync(t => t.UserId == userId && t.IsActive && !t.IsDeleted);
+            if (tenantProfile == null || rootMsg.TenantProfileId != tenantProfile.Id) return Forbid();
+        }
+
+        var rootId = rootMsg.ParentMessageId ?? rootMsg.Id;
+
+        var thread = await _db.TenantMessages
+            .Where(m => m.Id == rootId || m.ParentMessageId == rootId)
+            .OrderBy(m => m.CreatedAtUtc)
+            .Select(m => new TenantMessageDto
+            {
+                Id = m.Id,
+                TenantProfileId = m.TenantProfileId,
+                TenantName = m.TenantProfile.FullName,
+                SentByUserId = m.SentByUserId,
+                SentByName = m.SentByUser != null ? m.SentByUser.FullName : "AI Agent",
+                Subject = m.Subject,
+                Body = m.Body,
+                MessageType = m.MessageType,
+                PayerCategory = m.PayerCategory,
+                IsRead = m.IsRead,
+                CreatedAtUtc = m.CreatedAtUtc,
+                ReadAtUtc = m.ReadAtUtc,
+                ParentMessageId = m.ParentMessageId
+            })
+            .ToListAsync();
+
+        return Ok(thread);
     }
 
     [HttpGet("my-unread-count")]
@@ -231,6 +280,29 @@ public class TenantMessagesController : ControllerBase
         return Ok();
     }
 
+    [HttpPost("{id}/mark-thread-read")]
+    [Authorize(Roles = AppRoles.Tenant)]
+    public async Task<IActionResult> MarkThreadRead(int id)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+        var tenantProfile = await _db.TenantProfiles
+            .FirstOrDefaultAsync(t => t.UserId == userId && t.IsActive && !t.IsDeleted);
+        if (tenantProfile == null) return NotFound();
+
+        var unread = await _db.TenantMessages
+            .Where(m => m.TenantProfileId == tenantProfile.Id && !m.IsRead
+                && (m.Id == id || m.ParentMessageId == id))
+            .ToListAsync();
+
+        foreach (var m in unread)
+        {
+            m.IsRead = true;
+            m.ReadAtUtc = DateTime.UtcNow;
+        }
+        await _db.SaveChangesAsync();
+        return Ok();
+    }
+
     [HttpPost("reply")]
     [Authorize(Roles = AppRoles.Tenant)]
     public async Task<ActionResult<TenantMessageDto>> TenantReply([FromBody] SendTenantMessageRequest req)
@@ -240,6 +312,15 @@ public class TenantMessagesController : ControllerBase
             .FirstOrDefaultAsync(t => t.UserId == userId && t.IsActive && !t.IsDeleted);
         if (tenantProfile == null) return NotFound();
 
+        var parentId = req.ParentMessageId;
+        if (parentId.HasValue)
+        {
+            var parent = await _db.TenantMessages.AsNoTracking().FirstOrDefaultAsync(m => m.Id == parentId.Value);
+            if (parent == null) return BadRequest("Parent message not found");
+            if (parent.ParentMessageId.HasValue)
+                parentId = parent.ParentMessageId;
+        }
+
         var msg = new TenantMessage
         {
             TenantProfileId = tenantProfile.Id,
@@ -247,6 +328,7 @@ public class TenantMessagesController : ControllerBase
             Subject = req.Subject,
             Body = req.Body,
             MessageType = "TenantReply",
+            ParentMessageId = parentId,
             IsRead = true
         };
         _db.TenantMessages.Add(msg);
@@ -265,7 +347,8 @@ public class TenantMessagesController : ControllerBase
             Body = msg.Body,
             MessageType = msg.MessageType,
             IsRead = true,
-            CreatedAtUtc = msg.CreatedAtUtc
+            CreatedAtUtc = msg.CreatedAtUtc,
+            ParentMessageId = parentId
         });
     }
 
@@ -373,6 +456,22 @@ public class TenantMessagesController : ControllerBase
         if (overdueCount >= 3 || onTimeRate < 50) return "ChronicallyLate";
         if (overdueCount >= 1 || onTimeRate < 80) return "OccasionallyLate";
         return "GoodPayer";
+    }
+
+    /// <summary>Takes a flat list of messages, returns only root messages with reply counts and last reply timestamps.</summary>
+    private static List<TenantMessageDto> BuildThreadedList(List<TenantMessageDto> allMessages)
+    {
+        var roots = allMessages.Where(m => m.ParentMessageId == null).ToList();
+        var repliesByParent = allMessages
+            .Where(m => m.ParentMessageId != null)
+            .GroupBy(m => m.ParentMessageId!.Value)
+            .ToDictionary(g => g.Key, g => g.OrderBy(r => r.CreatedAtUtc).ToList());
+
+        return roots.Select(r => r with
+        {
+            ReplyCount = repliesByParent.ContainsKey(r.Id) ? repliesByParent[r.Id].Count : 0,
+            LastReplyAtUtc = repliesByParent.ContainsKey(r.Id) ? repliesByParent[r.Id].Last().CreatedAtUtc : null
+        }).OrderByDescending(r => r.LastReplyAtUtc ?? r.CreatedAtUtc).ToList();
     }
 
     private static (string Subject, string Body) GeneratePaymentMessage(

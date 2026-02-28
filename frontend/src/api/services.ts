@@ -302,8 +302,12 @@ export const tenantMessagesApi = {
     apiClient.get<number>('/api/tenant-messages/my-unread-count'),
   markRead: (id: number) =>
     apiClient.post(`/api/tenant-messages/${id}/mark-read`),
+  markThreadRead: (id: number) =>
+    apiClient.post(`/api/tenant-messages/${id}/mark-thread-read`),
   markAllRead: () =>
     apiClient.post('/api/tenant-messages/mark-all-read'),
+  getThread: (id: number) =>
+    apiClient.get<TenantMessageDto[]>(`/api/tenant-messages/${id}/thread`),
   reply: (data: SendTenantMessageRequest) =>
     apiClient.post<TenantMessageDto>('/api/tenant-messages/reply', data),
 };

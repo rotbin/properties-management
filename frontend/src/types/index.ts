@@ -657,11 +657,16 @@ export interface TenantMessageDto {
   isRead: boolean;
   createdAtUtc: string;
   readAtUtc?: string;
+  parentMessageId?: number;
+  replyCount: number;
+  lastReplyAtUtc?: string;
+  replies?: TenantMessageDto[];
 }
 
 export interface SendTenantMessageRequest {
   subject: string;
   body: string;
+  parentMessageId?: number;
 }
 
 export interface PaymentAnalysisDto {
