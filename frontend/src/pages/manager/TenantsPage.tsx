@@ -7,7 +7,7 @@ import {
 } from '@mui/material';
 import {
   Edit, EventBusy, Archive, Delete, History, PersonAdd, Send, Chat,
-  NotificationsActive, MarkEmailRead, Circle
+  NotificationsActive
 } from '@mui/icons-material';
 import { buildingsApi, tenantsApi, tenantMessagesApi } from '../../api/services';
 import type { TenantProfileDto, BuildingDto, UnitDto, CreateTenantRequest, UpdateTenantRequest, TenantMessageDto, SendTenantMessageRequest } from '../../types';
