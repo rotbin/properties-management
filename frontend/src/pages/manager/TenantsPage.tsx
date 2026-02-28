@@ -590,11 +590,14 @@ const TenantsPage: React.FC = () => {
               {msgHistory.map(msg => (
                 <Card key={msg.id} variant="outlined" sx={{
                   borderLeft: '4px solid',
-                  borderLeftColor: msg.messageType === 'Warning' ? '#d32f2f' : msg.messageType === 'PaymentReminder' ? '#ed6c02' : '#1976d2'
+                  borderLeftColor: msg.messageType === 'TenantReply' ? '#2e7d32' : msg.messageType === 'Warning' ? '#d32f2f' : msg.messageType === 'PaymentReminder' ? '#ed6c02' : '#1976d2',
+                  ...(msg.messageType === 'TenantReply' ? { bgcolor: '#f1f8e9' } : {})
                 }}>
                   <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                      <Typography variant="subtitle2" fontWeight={700}>{msg.subject}</Typography>
+                      <Typography variant="subtitle2" fontWeight={700}>
+                        {msg.messageType === 'TenantReply' && '↩ '}{msg.subject}
+                      </Typography>
                       <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
                         {msg.payerCategory && (
                           <Chip label={msg.payerCategory} size="small" variant="outlined"

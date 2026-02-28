@@ -913,7 +913,10 @@
     "markAllRead": "סמן הכל כנקרא",
     "noMessages": "אין הודעות עדיין. כאן תקבל/י התראות על תשלומים ועדכוני בניין.",
     "urgent": "דחוף",
-    "from": "מאת"
+    "from": "מאת",
+    "replyPlaceholder": "כתוב/י תשובה...",
+    "replySent": "התשובה נשלחה",
+    "yourReply": "התשובה שלך"
   },
 
   "collection": {

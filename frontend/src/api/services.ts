@@ -304,4 +304,6 @@ export const tenantMessagesApi = {
     apiClient.post(`/api/tenant-messages/${id}/mark-read`),
   markAllRead: () =>
     apiClient.post('/api/tenant-messages/mark-all-read'),
+  reply: (data: SendTenantMessageRequest) =>
+    apiClient.post<TenantMessageDto>('/api/tenant-messages/reply', data),
 };

@@ -913,7 +913,10 @@
     "markAllRead": "Mark all as read",
     "noMessages": "No messages yet. You'll receive notifications about payments and building updates here.",
     "urgent": "Urgent",
-    "from": "From"
+    "from": "From",
+    "replyPlaceholder": "Type your reply...",
+    "replySent": "Reply sent",
+    "yourReply": "Your reply"
   },
 
   "collection": {

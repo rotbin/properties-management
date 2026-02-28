@@ -9,14 +9,17 @@ interface NotificationContextType {
   refreshUnreadCount: () => void;
   /** Increments each time the server signals new unread messages. Pages can watch this to refresh their data. */
   notificationTick: number;
+  /** Increments each time a new tenant message arrives via SignalR. */
+  tenantMessageTick: number;
 }
 
-const NotificationContext = createContext<NotificationContextType>({ unreadCount: 0, refreshUnreadCount: () => {}, notificationTick: 0 });
+const NotificationContext = createContext<NotificationContextType>({ unreadCount: 0, refreshUnreadCount: () => {}, notificationTick: 0, tenantMessageTick: 0 });
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationTick, setNotificationTick] = useState(0);
+  const [tenantMessageTick, setTenantMessageTick] = useState(0);
   const connectionRef = useRef<HubConnection | null>(null);
 
   const refreshUnreadCount = useCallback(async () => {
@@ -48,6 +51,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setNotificationTick(prev => prev + 1);
     });
 
+    connection.on('NewTenantMessage', () => {
+      setTenantMessageTick(prev => prev + 1);
+    });
+
     connection.start().then(() => {
       connectionRef.current = connection;
     }).catch(err => {
@@ -61,7 +68,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, [isAuthenticated, refreshUnreadCount]);
 
   return (
-    <NotificationContext.Provider value={{ unreadCount, refreshUnreadCount, notificationTick }}>
+    <NotificationContext.Provider value={{ unreadCount, refreshUnreadCount, notificationTick, tenantMessageTick }}>
       {children}
     </NotificationContext.Provider>
   );

@@ -1,17 +1,20 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Box, Typography, Card, CardContent, CardActionArea, Stack, Chip, CircularProgress,
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, useMediaQuery, useTheme
+  Dialog, DialogTitle, DialogContent, DialogActions, Button, useMediaQuery, useTheme,
+  TextField, IconButton
 } from '@mui/material';
-import { MarkEmailRead, Circle, Warning, Payment, Email } from '@mui/icons-material';
+import { MarkEmailRead, Circle, Warning, Payment, Email, Send, Reply } from '@mui/icons-material';
 import { tenantMessagesApi } from '../../api/services';
 import type { TenantMessageDto } from '../../types';
 import { useTranslation } from 'react-i18next';
+import { useNotifications } from '../../contexts/NotificationContext';
 
 const typeIcon = (type: string) => {
   switch (type) {
     case 'Warning': return <Warning sx={{ fontSize: 18, color: '#d32f2f' }} />;
     case 'PaymentReminder': return <Payment sx={{ fontSize: 18, color: '#ed6c02' }} />;
+    case 'TenantReply': return <Reply sx={{ fontSize: 18, color: '#2e7d32' }} />;
     default: return <Email sx={{ fontSize: 18, color: '#1976d2' }} />;
   }
 };
@@ -20,6 +23,7 @@ const typeBorderColor = (type: string) => {
   switch (type) {
     case 'Warning': return '#d32f2f';
     case 'PaymentReminder': return '#ed6c02';
+    case 'TenantReply': return '#2e7d32';
     default: return '#1976d2';
   }
 };
@@ -28,10 +32,13 @@ const MyMessagesPage: React.FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { tenantMessageTick } = useNotifications();
   const [messages, setMessages] = useState<TenantMessageDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<TenantMessageDto | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [replySending, setReplySending] = useState(false);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -42,7 +49,7 @@ const MyMessagesPage: React.FC = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); }, [load, tenantMessageTick]);
 
   useEffect(() => {
     pollRef.current = setInterval(load, 8000);
@@ -65,6 +72,18 @@ const MyMessagesPage: React.FC = () => {
       await tenantMessagesApi.markAllRead();
       setMessages(prev => prev.map(m => ({ ...m, isRead: true, readAtUtc: m.readAtUtc || new Date().toISOString() })));
     } catch { /* ignore */ }
+  };
+
+  const handleReply = async () => {
+    if (!replyText.trim() || !selected) return;
+    setReplySending(true);
+    try {
+      const subject = selected.subject.startsWith('Re: ') ? selected.subject : `Re: ${selected.subject}`;
+      const res = await tenantMessagesApi.reply({ subject, body: replyText.trim() });
+      setMessages(prev => [res.data, ...prev]);
+      setReplyText('');
+    } catch { /* ignore */ }
+    finally { setReplySending(false); }
   };
 
   const unreadCount = messages.filter(m => !m.isRead).length;
@@ -147,9 +166,33 @@ const MyMessagesPage: React.FC = () => {
               <Typography variant="caption" color="text.secondary">
                 {t('myMessages.from')}: {selected.sentByName || 'AI Agent'} · {new Date(selected.createdAtUtc).toLocaleString()}
               </Typography>
+
+              {selected.messageType !== 'TenantReply' && (
+                <Box sx={{ mt: 3, display: 'flex', gap: 1, alignItems: 'flex-end' }}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    minRows={2}
+                    maxRows={5}
+                    size="small"
+                    placeholder={t('myMessages.replyPlaceholder')}
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    disabled={replySending}
+                  />
+                  <IconButton
+                    color="primary"
+                    onClick={handleReply}
+                    disabled={!replyText.trim() || replySending}
+                    sx={{ mb: 0.5 }}
+                  >
+                    {replySending ? <CircularProgress size={20} /> : <Send />}
+                  </IconButton>
+                </Box>
+              )}
             </DialogContent>
             <DialogActions>
-              <Button onClick={() => setDetailOpen(false)}>{t('app.close')}</Button>
+              <Button onClick={() => { setDetailOpen(false); setReplyText(''); }}>{t('app.close')}</Button>
             </DialogActions>
           </>
         )}

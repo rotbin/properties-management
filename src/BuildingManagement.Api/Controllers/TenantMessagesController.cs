@@ -1,9 +1,11 @@
+using BuildingManagement.Api.Hubs;
 using BuildingManagement.Core.DTOs;
 using BuildingManagement.Core.Entities;
 using BuildingManagement.Core.Enums;
 using BuildingManagement.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
@@ -16,11 +18,13 @@ public class TenantMessagesController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ILogger<TenantMessagesController> _logger;
+    private readonly IHubContext<TicketChatHub> _hub;
 
-    public TenantMessagesController(AppDbContext db, ILogger<TenantMessagesController> logger)
+    public TenantMessagesController(AppDbContext db, ILogger<TenantMessagesController> logger, IHubContext<TicketChatHub> hub)
     {
         _db = db;
         _logger = logger;
+        _hub = hub;
     }
 
     // ─── Manager endpoints ────────────────────────────────
@@ -72,6 +76,14 @@ public class TenantMessagesController : ControllerBase
         };
         _db.TenantMessages.Add(msg);
         await _db.SaveChangesAsync();
+
+        if (!string.IsNullOrEmpty(tp.UserId))
+        {
+            await _hub.Clients.Group($"user-{tp.UserId}")
+                .SendAsync("NewTenantMessage");
+            await _hub.Clients.Group($"user-{tp.UserId}")
+                .SendAsync("UnreadCountChanged");
+        }
 
         return Ok(new TenantMessageDto
         {
@@ -132,6 +144,19 @@ public class TenantMessagesController : ControllerBase
 
         await _db.SaveChangesAsync();
         _logger.LogInformation("Sent {Count} payment reminders for building {BuildingId}", sent, req.BuildingId);
+
+        foreach (var analysis in tenantsWithDebt)
+        {
+            var tp = await _db.TenantProfiles.AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Id == analysis.TenantProfileId);
+            if (tp?.UserId != null)
+            {
+                await _hub.Clients.Group($"user-{tp.UserId}")
+                    .SendAsync("NewTenantMessage");
+                await _hub.Clients.Group($"user-{tp.UserId}")
+                    .SendAsync("UnreadCountChanged");
+            }
+        }
 
         return Ok(new { sent, message = $"Sent {sent} payment reminder(s)." });
     }
@@ -204,6 +229,44 @@ public class TenantMessagesController : ControllerBase
             await _db.SaveChangesAsync();
         }
         return Ok();
+    }
+
+    [HttpPost("reply")]
+    [Authorize(Roles = AppRoles.Tenant)]
+    public async Task<ActionResult<TenantMessageDto>> TenantReply([FromBody] SendTenantMessageRequest req)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+        var tenantProfile = await _db.TenantProfiles
+            .FirstOrDefaultAsync(t => t.UserId == userId && t.IsActive && !t.IsDeleted);
+        if (tenantProfile == null) return NotFound();
+
+        var msg = new TenantMessage
+        {
+            TenantProfileId = tenantProfile.Id,
+            SentByUserId = userId,
+            Subject = req.Subject,
+            Body = req.Body,
+            MessageType = "TenantReply",
+            IsRead = true
+        };
+        _db.TenantMessages.Add(msg);
+        await _db.SaveChangesAsync();
+
+        var userName = User.FindFirst("fullName")?.Value ?? tenantProfile.FullName;
+
+        return Ok(new TenantMessageDto
+        {
+            Id = msg.Id,
+            TenantProfileId = msg.TenantProfileId,
+            TenantName = tenantProfile.FullName,
+            SentByUserId = userId,
+            SentByName = userName,
+            Subject = msg.Subject,
+            Body = msg.Body,
+            MessageType = msg.MessageType,
+            IsRead = true,
+            CreatedAtUtc = msg.CreatedAtUtc
+        });
     }
 
     [HttpPost("mark-all-read")]
