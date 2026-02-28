@@ -7,7 +7,7 @@ import {
   Menu as MenuIcon, Dashboard, Business, Engineering, CleaningServices,
   Assignment, Build, Logout, WorkOutline, Schedule,
   AccountBalance, Payment, Settings, BarChart, FactCheck, People, RequestPage, Notifications, Receipt,
-  NotificationsActive
+  NotificationsActive, Email
 } from '@mui/icons-material';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -43,6 +43,7 @@ const navItems: NavItem[] = [
   { labelKey: 'nav.myRequests', path: '/my-requests', icon: <Assignment />, roles: ['Tenant'] },
   { labelKey: 'nav.newRequest', path: '/new-request', icon: <Assignment />, roles: ['Tenant'] },
   { labelKey: 'nav.myCharges', path: '/my-charges', icon: <Payment />, roles: ['Tenant'] },
+  { labelKey: 'nav.myMessages', path: '/my-messages', icon: <Email />, roles: ['Tenant'] },
   { labelKey: 'nav.myWorkOrders', path: '/my-work-orders', icon: <WorkOutline />, roles: ['Vendor'] },
 ];
 

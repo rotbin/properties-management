@@ -57,6 +57,7 @@
     "myRequests": "My Requests",
     "newRequest": "New Request",
     "myCharges": "My Charges",
+    "myMessages": "My Messages",
     "myWorkOrders": "My Work Orders",
     "incomeExpenses": "Income & Expenses",
     "collectionStatus": "Collection Status",
@@ -884,7 +885,35 @@
     "failedUpdate": "Failed to update tenant",
     "failedEndTenancy": "Failed to end tenancy",
     "failedDelete": "Failed to remove tenant",
-    "failedLoadHistory": "Failed to load tenant history"
+    "failedLoadHistory": "Failed to load tenant history",
+    "sendMessage": "Send Message",
+    "messageHistory": "Messages",
+    "sendMessageTo": "Send message to {{name}}",
+    "msgSubject": "Subject",
+    "msgBody": "Message",
+    "send": "Send",
+    "messageSent": "Message sent successfully",
+    "failedSendMessage": "Failed to send message",
+    "messagesFor": "Messages for {{name}}",
+    "noMessages": "No messages yet",
+    "read": "Read",
+    "unread": "Unread",
+    "sentBy": "Sent by",
+    "readAt": "Read at",
+    "sendNew": "Send New Message",
+    "sendPaymentReminders": "Send Payment Reminders",
+    "selectBuildingFirst": "Please select a building first to send payment reminders",
+    "failedSendReminders": "Failed to send payment reminders",
+    "failedLoadMessages": "Failed to load messages"
+  },
+
+  "myMessages": {
+    "title": "My Messages",
+    "unreadCount": "{{count}} unread",
+    "markAllRead": "Mark all as read",
+    "noMessages": "No messages yet. You'll receive notifications about payments and building updates here.",
+    "urgent": "Urgent",
+    "from": "From"
   },
 
   "collection": {

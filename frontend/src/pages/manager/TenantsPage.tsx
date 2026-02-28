@@ -6,10 +6,11 @@ import {
   Stack, CardActionArea, IconButton, Tooltip, Switch, FormControlLabel
 } from '@mui/material';
 import {
-  Edit, EventBusy, Archive, Delete, History, PersonAdd
+  Edit, EventBusy, Archive, Delete, History, PersonAdd, Send, Chat,
+  NotificationsActive, MarkEmailRead, Circle
 } from '@mui/icons-material';
-import { buildingsApi, tenantsApi } from '../../api/services';
-import type { TenantProfileDto, BuildingDto, UnitDto, CreateTenantRequest, UpdateTenantRequest } from '../../types';
+import { buildingsApi, tenantsApi, tenantMessagesApi } from '../../api/services';
+import type { TenantProfileDto, BuildingDto, UnitDto, CreateTenantRequest, UpdateTenantRequest, TenantMessageDto, SendTenantMessageRequest } from '../../types';
 import { formatDateOnly, toInputDate } from '../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
 
@@ -60,6 +61,17 @@ const TenantsPage: React.FC = () => {
   const [historyUnitNumber, setHistoryUnitNumber] = useState('');
   const [historyData, setHistoryData] = useState<TenantProfileDto[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  // Messaging
+  const [msgDialogOpen, setMsgDialogOpen] = useState(false);
+  const [msgTenant, setMsgTenant] = useState<TenantProfileDto | null>(null);
+  const [msgForm, setMsgForm] = useState<SendTenantMessageRequest>({ subject: '', body: '' });
+  const [msgSending, setMsgSending] = useState(false);
+  const [msgHistoryOpen, setMsgHistoryOpen] = useState(false);
+  const [msgHistoryTenant, setMsgHistoryTenant] = useState<TenantProfileDto | null>(null);
+  const [msgHistory, setMsgHistory] = useState<TenantMessageDto[]>([]);
+  const [msgHistoryLoading, setMsgHistoryLoading] = useState(false);
+  const [reminderSending, setReminderSending] = useState(false);
 
   // Load data
   const load = useCallback(async () => {
@@ -221,6 +233,46 @@ const TenantsPage: React.FC = () => {
     finally { setHistoryLoading(false); }
   };
 
+  // ─── Messaging ──────────────────────────────────────
+
+  const openSendMessage = (tp: TenantProfileDto) => {
+    setMsgTenant(tp);
+    setMsgForm({ subject: '', body: '' });
+    setMsgDialogOpen(true);
+  };
+
+  const handleSendMessage = async () => {
+    if (!msgTenant || !msgForm.subject.trim() || !msgForm.body.trim()) return;
+    setMsgSending(true);
+    try {
+      await tenantMessagesApi.sendMessage(msgTenant.id, msgForm);
+      setMsgDialogOpen(false);
+      setSuccess(t('tenants.messageSent'));
+    } catch { setError(t('tenants.failedSendMessage')); }
+    finally { setMsgSending(false); }
+  };
+
+  const openMessageHistory = async (tp: TenantProfileDto) => {
+    setMsgHistoryTenant(tp);
+    setMsgHistoryOpen(true);
+    setMsgHistoryLoading(true);
+    try {
+      const res = await tenantMessagesApi.getForTenant(tp.id);
+      setMsgHistory(res.data);
+    } catch { setError(t('tenants.failedLoadMessages')); }
+    finally { setMsgHistoryLoading(false); }
+  };
+
+  const handleSendReminders = async () => {
+    if (!filterBuilding) { setError(t('tenants.selectBuildingFirst')); return; }
+    setReminderSending(true);
+    try {
+      const res = await tenantMessagesApi.sendPaymentReminders(Number(filterBuilding));
+      setSuccess(res.data.message);
+    } catch { setError(t('tenants.failedSendReminders')); }
+    finally { setReminderSending(false); }
+  };
+
   // ─── Render ───────────────────────────────────────────
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
@@ -231,9 +283,15 @@ const TenantsPage: React.FC = () => {
         <Typography variant="h4" sx={{ fontWeight: 700, fontSize: { xs: '1.3rem', md: '2rem' } }}>
           {t('tenants.title')}
         </Typography>
-        <Button variant="contained" startIcon={<PersonAdd />} onClick={openCreate}>
-          {t('tenants.addTenant')}
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button variant="outlined" color="warning" startIcon={<NotificationsActive />}
+            onClick={handleSendReminders} disabled={!filterBuilding || reminderSending}>
+            {reminderSending ? <CircularProgress size={20} /> : t('tenants.sendPaymentReminders')}
+          </Button>
+          <Button variant="contained" startIcon={<PersonAdd />} onClick={openCreate}>
+            {t('tenants.addTenant')}
+          </Button>
+        </Box>
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
@@ -279,6 +337,10 @@ const TenantsPage: React.FC = () => {
                       <Chip label={t('tenants.endTenancy')} size="small" color="warning" variant="outlined"
                         onClick={(e) => { e.stopPropagation(); openEndTenancy(tp); }} />
                     )}
+                    <Chip icon={<Send sx={{ fontSize: 14 }} />} label={t('tenants.sendMessage')} size="small" color="primary" variant="outlined"
+                      onClick={(e) => { e.stopPropagation(); openSendMessage(tp); }} />
+                    <Chip icon={<Chat sx={{ fontSize: 14 }} />} label={t('tenants.messageHistory')} size="small" variant="outlined"
+                      onClick={(e) => { e.stopPropagation(); openMessageHistory(tp); }} />
                     <Chip label={t('tenants.history')} size="small" variant="outlined"
                       onClick={(e) => { e.stopPropagation(); openHistory(tp.unitId, tp.unitNumber || ''); }} />
                     <Chip label={tp.isArchived ? t('app.delete') : t('tenants.archive')} size="small" color="error" variant="outlined"
@@ -333,6 +395,16 @@ const TenantsPage: React.FC = () => {
                           </IconButton>
                         </Tooltip>
                       )}
+                      <Tooltip title={t('tenants.sendMessage')}>
+                        <IconButton size="small" color="primary" onClick={() => openSendMessage(tp)}>
+                          <Send fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title={t('tenants.messageHistory')}>
+                        <IconButton size="small" onClick={() => openMessageHistory(tp)}>
+                          <Chat fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                       <Tooltip title={t('tenants.history')}>
                         <IconButton size="small" onClick={() => openHistory(tp.unitId, tp.unitNumber || '')}>
                           <History fontSize="small" />
@@ -483,6 +555,75 @@ const TenantsPage: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setHistoryOpen(false)}>{t('app.close')}</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Send Message Dialog ───────────────────────── */}
+      <Dialog open={msgDialogOpen} onClose={() => setMsgDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
+        <DialogTitle>{t('tenants.sendMessageTo', { name: msgTenant?.fullName })}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField label={t('tenants.msgSubject')} value={msgForm.subject}
+              onChange={e => setMsgForm({ ...msgForm, subject: e.target.value })}
+              fullWidth required />
+            <TextField label={t('tenants.msgBody')} value={msgForm.body}
+              onChange={e => setMsgForm({ ...msgForm, body: e.target.value })}
+              fullWidth required multiline rows={6} />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setMsgDialogOpen(false)}>{t('app.cancel')}</Button>
+          <Button variant="contained" onClick={handleSendMessage} disabled={msgSending || !msgForm.subject.trim() || !msgForm.body.trim()}>
+            {msgSending ? <CircularProgress size={20} /> : t('tenants.send')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Message History Dialog ────────────────────── */}
+      <Dialog open={msgHistoryOpen} onClose={() => setMsgHistoryOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
+        <DialogTitle>{t('tenants.messagesFor', { name: msgHistoryTenant?.fullName })}</DialogTitle>
+        <DialogContent>
+          {msgHistoryLoading ? <CircularProgress /> : msgHistory.length === 0 ? (
+            <Typography color="text.secondary" align="center" sx={{ py: 4 }}>{t('tenants.noMessages')}</Typography>
+          ) : (
+            <Stack spacing={1.5} sx={{ mt: 1 }}>
+              {msgHistory.map(msg => (
+                <Card key={msg.id} variant="outlined" sx={{
+                  borderLeft: '4px solid',
+                  borderLeftColor: msg.messageType === 'Warning' ? '#d32f2f' : msg.messageType === 'PaymentReminder' ? '#ed6c02' : '#1976d2'
+                }}>
+                  <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                      <Typography variant="subtitle2" fontWeight={700}>{msg.subject}</Typography>
+                      <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                        {msg.payerCategory && (
+                          <Chip label={msg.payerCategory} size="small" variant="outlined"
+                            color={msg.payerCategory === 'ChronicallyLate' ? 'error' : msg.payerCategory === 'OccasionallyLate' ? 'warning' : 'success'} />
+                        )}
+                        <Chip label={msg.messageType} size="small" variant="outlined" />
+                        {msg.isRead ? (
+                          <Chip icon={<MarkEmailRead sx={{ fontSize: 14 }} />} label={t('tenants.read')} size="small" color="success" />
+                        ) : (
+                          <Chip icon={<Circle sx={{ fontSize: 8 }} />} label={t('tenants.unread')} size="small" color="error" />
+                        )}
+                      </Box>
+                    </Box>
+                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', my: 1 }}>{msg.body}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {t('tenants.sentBy')}: {msg.sentByName || 'AI Agent'} · {new Date(msg.createdAtUtc).toLocaleString()}
+                      {msg.readAtUtc && ` · ${t('tenants.readAt')}: ${new Date(msg.readAtUtc).toLocaleString()}`}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              ))}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button variant="outlined" startIcon={<Send />} onClick={() => { setMsgHistoryOpen(false); if (msgHistoryTenant) openSendMessage(msgHistoryTenant); }}>
+            {t('tenants.sendNew')}
+          </Button>
+          <Button onClick={() => setMsgHistoryOpen(false)}>{t('app.close')}</Button>
         </DialogActions>
       </Dialog>
     </Box>

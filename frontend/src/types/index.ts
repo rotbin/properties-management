@@ -641,3 +641,41 @@ export interface ManagerInvoiceDto {
   issuedAtUtc?: string;
   createdAtUtc: string;
 }
+
+// ─── Tenant Messages ────────────────────────────────────
+
+export interface TenantMessageDto {
+  id: number;
+  tenantProfileId: number;
+  tenantName: string;
+  sentByUserId?: string;
+  sentByName?: string;
+  subject: string;
+  body: string;
+  messageType: string;
+  payerCategory?: string;
+  isRead: boolean;
+  createdAtUtc: string;
+  readAtUtc?: string;
+}
+
+export interface SendTenantMessageRequest {
+  subject: string;
+  body: string;
+}
+
+export interface PaymentAnalysisDto {
+  tenantProfileId: number;
+  tenantName: string;
+  unitNumber?: string;
+  buildingName?: string;
+  payerCategory: string;
+  totalDue: number;
+  totalPaid: number;
+  outstanding: number;
+  overdueCount: number;
+  totalCharges: number;
+  latePayments: number;
+  onTimeRate: number;
+  hasStandingOrder: boolean;
+}

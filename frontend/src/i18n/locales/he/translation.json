@@ -57,6 +57,7 @@
     "myRequests": "הקריאות שלי",
     "newRequest": "קריאה חדשה",
     "myCharges": "החיובים שלי",
+    "myMessages": "ההודעות שלי",
     "myWorkOrders": "הזמנות העבודה שלי",
     "incomeExpenses": "הכנסות והוצאות",
     "collectionStatus": "סטטוס גבייה",
@@ -884,7 +885,35 @@
     "failedUpdate": "עדכון דייר נכשל",
     "failedEndTenancy": "סיום שכירות נכשל",
     "failedDelete": "הסרת דייר נכשלה",
-    "failedLoadHistory": "טעינת היסטוריית דיירים נכשלה"
+    "failedLoadHistory": "טעינת היסטוריית דיירים נכשלה",
+    "sendMessage": "שלח הודעה",
+    "messageHistory": "הודעות",
+    "sendMessageTo": "שלח הודעה ל{{name}}",
+    "msgSubject": "נושא",
+    "msgBody": "הודעה",
+    "send": "שלח",
+    "messageSent": "ההודעה נשלחה בהצלחה",
+    "failedSendMessage": "שליחת ההודעה נכשלה",
+    "messagesFor": "הודעות עבור {{name}}",
+    "noMessages": "אין הודעות עדיין",
+    "read": "נקרא",
+    "unread": "לא נקרא",
+    "sentBy": "נשלח על ידי",
+    "readAt": "נקרא ב",
+    "sendNew": "שלח הודעה חדשה",
+    "sendPaymentReminders": "שלח תזכורות תשלום",
+    "selectBuildingFirst": "יש לבחור בניין תחילה לשליחת תזכורות תשלום",
+    "failedSendReminders": "שליחת תזכורות נכשלה",
+    "failedLoadMessages": "טעינת הודעות נכשלה"
+  },
+
+  "myMessages": {
+    "title": "ההודעות שלי",
+    "unreadCount": "{{count}} לא נקראו",
+    "markAllRead": "סמן הכל כנקרא",
+    "noMessages": "אין הודעות עדיין. כאן תקבל/י התראות על תשלומים ועדכוני בניין.",
+    "urgent": "דחוף",
+    "from": "מאת"
   },
 
   "collection": {

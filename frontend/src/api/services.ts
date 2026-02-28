@@ -10,7 +10,8 @@ import type {
   VendorInvoiceDto, VendorPaymentDto,
   SmsTemplateDto, SmsCampaignDto, CreateCampaignResult, SendCampaignResult, SmsCampaignRecipientDto, ReminderChannel,
   StandingOrderDto, CreateStandingOrderRequest, CreateStandingOrderResponse,
-  TenantPaymentDto, ManagerInvoiceDto, TicketMessageDto
+  TenantPaymentDto, ManagerInvoiceDto, TicketMessageDto,
+  TenantMessageDto, SendTenantMessageRequest, PaymentAnalysisDto
 } from '../types';
 
 // Auth
@@ -282,4 +283,25 @@ export const accountingApi = {
     apiClient.get<{ issuerProfileId: string }>('/api/accounting/my-issuer-profile'),
   setMyIssuerProfile: (issuerProfileId: string) =>
     apiClient.put<{ issuerProfileId: string }>('/api/accounting/my-issuer-profile', { issuerProfileId }),
+};
+
+// ─── Tenant Messages ──────────────────────────────────
+
+export const tenantMessagesApi = {
+  getForTenant: (tenantProfileId: number) =>
+    apiClient.get<TenantMessageDto[]>(`/api/tenant-messages/tenant/${tenantProfileId}`),
+  sendMessage: (tenantProfileId: number, data: SendTenantMessageRequest) =>
+    apiClient.post<TenantMessageDto>(`/api/tenant-messages/tenant/${tenantProfileId}/send`, data),
+  getPaymentAnalysis: (buildingId: number) =>
+    apiClient.get<PaymentAnalysisDto[]>(`/api/tenant-messages/payment-analysis/${buildingId}`),
+  sendPaymentReminders: (buildingId: number) =>
+    apiClient.post<{ sent: number; message: string }>('/api/tenant-messages/send-payment-reminders', { buildingId }),
+  getMyMessages: () =>
+    apiClient.get<TenantMessageDto[]>('/api/tenant-messages/my-messages'),
+  getMyUnreadCount: () =>
+    apiClient.get<number>('/api/tenant-messages/my-unread-count'),
+  markRead: (id: number) =>
+    apiClient.post(`/api/tenant-messages/${id}/mark-read`),
+  markAllRead: () =>
+    apiClient.post('/api/tenant-messages/mark-all-read'),
 };

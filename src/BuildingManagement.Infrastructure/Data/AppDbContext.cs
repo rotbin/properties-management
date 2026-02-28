@@ -28,6 +28,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<TicketMessage> TicketMessages => Set<TicketMessage>();
     public DbSet<IncidentGroup> IncidentGroups => Set<IncidentGroup>();
     public DbSet<TicketReadReceipt> TicketReadReceipts => Set<TicketReadReceipt>();
+    public DbSet<TenantMessage> TenantMessages => Set<TenantMessage>();
 
     // Finance
     public DbSet<HOAFeePlan> HOAFeePlans => Set<HOAFeePlan>();
@@ -142,6 +143,22 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<TicketReadReceipt>()
             .HasIndex(r => new { r.ServiceRequestId, r.UserId })
             .IsUnique();
+
+        // TenantMessage -> TenantProfile
+        builder.Entity<TenantMessage>()
+            .HasOne(tm => tm.TenantProfile)
+            .WithMany()
+            .HasForeignKey(tm => tm.TenantProfileId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<TenantMessage>()
+            .HasOne(tm => tm.SentByUser)
+            .WithMany()
+            .HasForeignKey(tm => tm.SentByUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<TenantMessage>()
+            .HasIndex(tm => new { tm.TenantProfileId, tm.CreatedAtUtc });
 
         // ─── IncidentGroup ──────────────────────────────────
 

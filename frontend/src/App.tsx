@@ -23,6 +23,7 @@ import JobsPage from './pages/manager/JobsPage';
 import NewRequestPage from './pages/tenant/NewRequestPage';
 import MyRequestsPage from './pages/tenant/MyRequestsPage';
 import MyChargesPage from './pages/tenant/MyChargesPage';
+import MyMessagesPage from './pages/tenant/MyMessagesPage';
 import VendorWorkOrdersPage from './pages/vendor/VendorWorkOrdersPage';
 import HOAPlansPage from './pages/manager/HOAPlansPage';
 import PaymentProviderConfigPage from './pages/manager/PaymentProviderConfigPage';
@@ -90,6 +91,7 @@ const AppRoutes: React.FC = () => {
         <Route path="new-request" element={<ProtectedRoute roles={['Tenant', 'Admin', 'Manager']}><NewRequestPage /></ProtectedRoute>} />
         <Route path="my-requests" element={<ProtectedRoute roles={['Tenant']}><MyRequestsPage /></ProtectedRoute>} />
         <Route path="my-charges" element={<ProtectedRoute roles={['Tenant']}><MyChargesPage /></ProtectedRoute>} />
+        <Route path="my-messages" element={<ProtectedRoute roles={['Tenant']}><MyMessagesPage /></ProtectedRoute>} />
         <Route path="my-work-orders" element={<ProtectedRoute roles={['Vendor']}><VendorWorkOrdersPage /></ProtectedRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
