@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Box, Typography, Card, CardContent, CardActionArea, Stack, Chip, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions, Button, useMediaQuery, useTheme
@@ -33,14 +33,21 @@ const MyMessagesPage: React.FC = () => {
   const [selected, setSelected] = useState<TenantMessageDto | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  const load = () => {
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const load = useCallback(() => {
     tenantMessagesApi.getMyMessages()
       .then(r => setMessages(r.data))
       .catch(() => {})
       .finally(() => setLoading(false));
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    pollRef.current = setInterval(load, 8000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [load]);
 
   const handleOpen = async (msg: TenantMessageDto) => {
     setSelected(msg);
